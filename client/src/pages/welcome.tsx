@@ -1,0 +1,102 @@
+import { Link } from "wouter";
+import { TruckIcon } from "lucide-react";
+import { Header } from "@/components/layout/header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useLanguageStore } from "@/lib/i18n";
+import { SteeringWheelIcon } from "./icons/steering-wheel-icon";
+import { Chatbot } from "@/components/features/chatbot";
+
+// Custom icon component
+export const TruckMovingIcon = () => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 640 512"
+    fill="currentColor"
+    className="h-5 w-5"
+  >
+    <path d="M48 0C21.5 0 0 21.5 0 48V368c0 26.5 21.5 48 48 48H64c0 53 43 96 96 96s96-43 96-96H384c0 53 43 96 96 96s96-43 96-96h32c17.7 0 32-14.3 32-32s-14.3-32-32-32V288 256 237.3c0-17-6.7-33.3-18.7-45.3L512 114.7c-12-12-28.3-18.7-45.3-18.7H416V48c0-26.5-21.5-48-48-48H48zM416 160h50.7L544 237.3V256H416V160zM112 416a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm368-48a48 48 0 1 1 0 96 48 48 0 1 1 0-96z"/>
+  </svg>
+);
+
+const WelcomePage = () => {
+  const { t } = useLanguageStore();
+
+  return (
+    <div className="min-h-screen flex flex-col bg-neutral-50">
+      <Header />
+
+      <div className="flex-grow container mx-auto px-4 py-6 max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-neutral-800 mb-2">
+            {t("welcome")}
+          </h1>
+          <p className="text-neutral-500">
+            {t("welcome_subtitle")}
+          </p>
+        </div>
+
+        <div className="flex flex-col space-y-4 mb-8">
+          <img
+            className="w-full max-w-xs mx-auto h-auto rounded-lg shadow-md"
+            src="https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=600&h=400&fit=crop"
+            alt="Logistics illustration"
+          />
+        </div>
+
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-bold mb-4 text-neutral-800">
+              I am a...
+            </h2>
+
+            <div className="flex flex-col space-y-3">
+              <Link to="/driver/register">
+                <Button 
+                  className="w-full justify-between bg-primary text-white hover:bg-primary-dark h-14"
+                  size="lg"
+                >
+                  <span className="flex items-center">
+                    <SteeringWheelIcon className="mr-3 h-5 w-5" />
+                    <span>{t("driver")}</span>
+                  </span>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Button>
+              </Link>
+
+              <Link to="/fleet-owner/register">
+                <Button 
+                  className="w-full justify-between bg-[#FF6D00] text-white hover:bg-[#E65100] h-14"
+                  size="lg"
+                >
+                  <span className="flex items-center">
+                    <TruckMovingIcon />
+                    <span className="ml-3">{t("fleet_owner")}</span>
+                  </span>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="text-center text-neutral-500">
+          <p>
+            {t("already_have_account")}{" "}
+            <Link to="/login">
+              <a className="text-primary font-medium">{t("sign_in")}</a>
+            </Link>
+          </p>
+        </div>
+      </div>
+
+      <Chatbot />
+    </div>
+  );
+};
+
+export default WelcomePage;
