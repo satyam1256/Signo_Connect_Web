@@ -88,7 +88,7 @@ const WelcomePage = () => {
           <p>
             {t("already_have_account")}{" "}
             <Link to="/login">
-              <a className="text-primary font-medium">{t("sign_in")}</a>
+              <span className="text-primary font-medium">{t("sign_in")}</span>
             </Link>
           </p>
         </div>
