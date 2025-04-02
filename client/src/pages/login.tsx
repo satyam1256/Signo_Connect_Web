@@ -60,27 +60,37 @@ const LoginPage = () => {
   const onPhoneSubmit = async (values: z.infer<typeof phoneSchema>) => {
     setIsSubmitting(true);
     try {
-      await apiRequest(
-        "POST",
-        "/api/register",
-        {
+      // Try to register the user - this will either create a new user or return an error if the user exists
+      const registerResponse = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           fullName: values.fullName,
           phoneNumber: values.phoneNumber,
           userType: "driver", // Default to driver, will be overridden by actual value in database
-        }
-      );
-
-      // Save phone number for next step
-      setPhoneNumber(values.phoneNumber);
-
-      // Move to OTP step
-      setStep(LoginStep.OTP);
-
-      // Success notification
-      toast({
-        title: "Verification code sent",
-        description: `An OTP has been sent to ${values.phoneNumber}`,
+        }),
       });
+      
+      // If registration succeeds or fails with conflict (user exists), continue
+      if (registerResponse.ok || registerResponse.status === 409) {
+        // Save phone number for next step
+        setPhoneNumber(values.phoneNumber);
+        
+        // Move to OTP step
+        setStep(LoginStep.OTP);
+        
+        // Success notification
+        toast({
+          title: "Verification code sent",
+          description: `Use code 123456 to verify your phone number`,
+        });
+      } else {
+        // Handle other errors
+        const errorData = await registerResponse.json();
+        throw new Error(errorData.error || 'Registration failed');
+      }
     } catch (error) {
       console.error("Error during login:", error);
       toast({

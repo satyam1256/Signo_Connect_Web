@@ -47,11 +47,28 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       // Check if user already exists
       const existingUser = await storage.getUserByPhone(userData.phoneNumber);
       if (existingUser) {
-        return res.status(409).json({ error: "User with this phone number already exists" });
+        // User exists, generate and send OTP for login
+        const otp = "123456"; // Fixed OTP for testing
+        const expiresAt = new Date();
+        expiresAt.setMinutes(expiresAt.getMinutes() + 15); // OTP valid for 15 minutes
+
+        // Update or create OTP verification
+        await storage.createOtpVerification({
+          phoneNumber: userData.phoneNumber,
+          otp,
+          expiresAt
+        });
+
+        return res.status(409).json({ 
+          error: "User with this phone number already exists",
+          message: "OTP sent for login",
+          userId: existingUser.id,
+          otpForDemo: otp
+        });
       }
 
       // Generate OTP for verification
-      const otp = generateOTP();
+      const otp = "123456"; // Fixed OTP for testing
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 15); // OTP valid for 15 minutes
 
