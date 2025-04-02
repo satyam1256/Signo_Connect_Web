@@ -80,7 +80,6 @@ interface Notification {
   };
 }
 
-// Mock data for initial development
 const mockJobAlerts: JobAlert[] = [
   {
     id: 1,
@@ -192,42 +191,42 @@ const DriverAlertsPage = () => {
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
-  
+
   const [alerts, setAlerts] = useState<JobAlert[]>(mockJobAlerts);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [isAddingAlert, setIsAddingAlert] = useState(false);
   const [newAlertName, setNewAlertName] = useState("");
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
-  
+
   const availableLocations = ["Delhi", "Mumbai", "Bangalore", "Gurgaon", "Noida", "Pune", "Chennai", "Hyderabad", "Kolkata", "Delhi NCR", "North India", "South India"];
-  
+
   const toggleAlertActive = (id: number) => {
     setAlerts(alerts.map(alert => 
       alert.id === id ? { ...alert, active: !alert.active } : alert
     ));
   };
-  
+
   const deleteAlert = (id: number) => {
     setAlerts(alerts.filter(alert => alert.id !== id));
   };
-  
+
   const markAllAsRead = () => {
     setNotifications(notifications.map(notification => ({ ...notification, read: true })));
   };
-  
+
   const markAsRead = (id: number) => {
     setNotifications(notifications.map(notification => 
       notification.id === id ? { ...notification, read: true } : notification
     ));
   };
-  
+
   const deleteNotification = (id: number) => {
     setNotifications(notifications.filter(notification => notification.id !== id));
   };
-  
+
   const handleAddAlert = () => {
     if (newAlertName.trim() === "") return;
-    
+
     const newAlert: JobAlert = {
       id: alerts.length + 1,
       name: newAlertName,
@@ -240,13 +239,13 @@ const DriverAlertsPage = () => {
       lastUpdated: "Just now",
       matchCount: 0
     };
-    
+
     setAlerts([newAlert, ...alerts]);
     setNewAlertName("");
     setSelectedLocations([]);
     setIsAddingAlert(false);
   };
-  
+
   const toggleLocationSelection = (location: string) => {
     if (selectedLocations.includes(location)) {
       setSelectedLocations(selectedLocations.filter(loc => loc !== location));
@@ -254,7 +253,7 @@ const DriverAlertsPage = () => {
       setSelectedLocations([...selectedLocations, location]);
     }
   };
-  
+
   // If no user is logged in, redirect to welcome page
   useEffect(() => {
     if (!user) {
@@ -265,9 +264,9 @@ const DriverAlertsPage = () => {
   if (!user) {
     return null;
   }
-  
+
   const unreadCount = notifications.filter(n => !n.read).length;
-  
+
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 pb-16">
       <Header>
@@ -289,7 +288,7 @@ const DriverAlertsPage = () => {
             </TabsTrigger>
             <TabsTrigger value="job-alerts">Job Alerts</TabsTrigger>
           </TabsList>
-          
+
           {/* Notifications Tab */}
           <TabsContent value="notifications" className="mt-0">
             <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
@@ -306,7 +305,7 @@ const DriverAlertsPage = () => {
                   </Button>
                 )}
               </div>
-              
+
               {notifications.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
@@ -336,7 +335,7 @@ const DriverAlertsPage = () => {
                            notification.type === 'system' ? <Bell size={18} /> :
                            <Calendar size={18} />}
                         </div>
-                        
+
                         <div className="flex-grow">
                           <div className="flex justify-between items-start">
                             <h4 className="font-medium text-neutral-900">{notification.title}</h4>
@@ -363,9 +362,9 @@ const DriverAlertsPage = () => {
                               </DropdownMenu>
                             </div>
                           </div>
-                          
+
                           <p className="text-neutral-600 text-sm my-1">{notification.message}</p>
-                          
+
                           {notification.metadata && (
                             <div className="bg-neutral-50 rounded p-2 my-2 text-sm">
                               {notification.metadata.jobTitle && (
@@ -399,7 +398,7 @@ const DriverAlertsPage = () => {
                               )}
                             </div>
                           )}
-                          
+
                           {notification.actionUrl && (
                             <div className="mt-2">
                               <Button 
@@ -420,7 +419,7 @@ const DriverAlertsPage = () => {
               )}
             </div>
           </TabsContent>
-          
+
           {/* Job Alerts Tab */}
           <TabsContent value="job-alerts" className="mt-0">
             <div className="flex justify-between items-center mb-4">
@@ -436,39 +435,40 @@ const DriverAlertsPage = () => {
                       Set up criteria for jobs you want to be notified about.
                     </DialogDescription>
                   </DialogHeader>
-                  
-                  <div className="mt-4 space-y-4">
-                    <div>
+
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
                       <Label htmlFor="alert-name">Alert Name</Label>
                       <Input 
                         id="alert-name" 
+                        placeholder="e.g., Delhi Local Delivery Jobs" 
                         value={newAlertName}
                         onChange={(e) => setNewAlertName(e.target.value)}
-                        placeholder="e.g., Delhi Driving Jobs"
                       />
                     </div>
-                    
-                    <div>
-                      <Label>Locations</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
+
+                    <div className="space-y-2">
+                      <Label>Locations (Select at least one)</Label>
+                      <div className="grid grid-cols-2 gap-2">
                         {availableLocations.map(location => (
-                          <div 
-                            key={location}
-                            className={`p-2 border rounded cursor-pointer text-sm
-                              ${selectedLocations.includes(location) 
-                                ? 'bg-primary text-white border-primary' 
-                                : 'bg-white text-neutral-800 border-neutral-200 hover:bg-neutral-50'
-                              }`}
-                            onClick={() => toggleLocationSelection(location)}
-                          >
-                            {location}
+                          <div key={location} className="flex items-center space-x-2">
+                            <input 
+                              type="checkbox" 
+                              id={`loc-${location}`} 
+                              checked={selectedLocations.includes(location)}
+                              onChange={() => toggleLocationSelection(location)}
+                              className="rounded text-primary focus:ring-primary"
+                            />
+                            <Label htmlFor={`loc-${location}`} className="text-sm cursor-pointer">
+                              {location}
+                            </Label>
                           </div>
                         ))}
                       </div>
                     </div>
                   </div>
-                  
-                  <DialogFooter className="mt-6">
+
+                  <DialogFooter>
                     <Button variant="outline" onClick={() => setIsAddingAlert(false)}>
                       Cancel
                     </Button>
@@ -479,88 +479,143 @@ const DriverAlertsPage = () => {
                 </DialogContent>
               </Dialog>
             </div>
-            
+
             {alerts.length === 0 ? (
-              <div className="bg-white rounded-lg border border-neutral-200 p-8 text-center">
-                <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
-                  <BellOff className="h-6 w-6 text-neutral-400" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No job alerts yet</h3>
-                <p className="text-neutral-500 max-w-md mx-auto mb-6">
-                  Create job alerts to get notified when new jobs matching your criteria are posted.
-                </p>
-                <Button onClick={() => setIsAddingAlert(true)}>
-                  Create Your First Alert
-                </Button>
-              </div>
+              <Card>
+                <CardContent className="text-center py-12">
+                  <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
+                    <BellOff className="h-6 w-6 text-neutral-400" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">No job alerts</h3>
+                  <p className="text-neutral-500 max-w-md mx-auto mb-4">
+                    Create job alerts to get notified when new jobs matching your criteria are posted.
+                  </p>
+                  <Button onClick={() => setIsAddingAlert(true)}>Create Your First Alert</Button>
+                </CardContent>
+              </Card>
             ) : (
               <div className="space-y-4">
                 {alerts.map(alert => (
-                  <Card key={alert.id}>
-                    <CardContent className="p-0">
-                      <div className="p-4 flex justify-between items-start border-b border-neutral-100">
+                  <Card key={alert.id} className={!alert.active ? "opacity-75" : undefined}>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-medium text-lg">{alert.name}</h4>
-                          <p className="text-sm text-neutral-500">Last updated: {alert.lastUpdated}</p>
+                          <h4 className="text-lg font-medium flex items-center">
+                            {alert.name}
+                            {alert.matchCount > 0 && (
+                              <Badge className="ml-2 bg-green-100 text-green-800 hover:bg-green-100">
+                                {alert.matchCount} matches
+                              </Badge>
+                            )}
+                          </h4>
+                          <p className="text-neutral-500 text-sm">Last updated: {alert.lastUpdated}</p>
                         </div>
+
                         <div className="flex items-center">
-                          <span className={`text-sm mr-3 ${alert.active ? 'text-green-600' : 'text-neutral-400'}`}>
-                            {alert.active ? 'Active' : 'Inactive'}
-                          </span>
-                          <Switch 
-                            checked={alert.active}
-                            onCheckedChange={() => toggleAlertActive(alert.id)}
-                          />
+                          <div className="mr-4 flex items-center">
+                            <Label htmlFor={`alert-${alert.id}`} className="mr-2 text-sm">
+                              {alert.active ? "Active" : "Inactive"}
+                            </Label>
+                            <Switch 
+                              id={`alert-${alert.id}`} 
+                              checked={alert.active}
+                              onCheckedChange={() => toggleAlertActive(alert.id)}
+                            />
+                          </div>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Matching Jobs
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Filter className="h-4 w-4 mr-2" />
+                                Edit Criteria
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => deleteAlert(alert.id)} className="text-red-600">
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Delete Alert
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
-                      
-                      <div className="p-4">
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {alert.criteria.locations.map(location => (
-                            <Badge key={location} variant="outline" className="bg-blue-50 border-blue-200 text-blue-700">
-                              <MapPin className="h-3 w-3 mr-1" /> {location}
-                            </Badge>
-                          ))}
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                          <div>
-                            <p className="text-neutral-500">Job Types</p>
-                            <p>{alert.criteria.jobTypes.join(", ")}</p>
+
+                      <Separator className="my-4" />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h5 className="text-sm font-medium mb-2 flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" /> Locations
+                          </h5>
+                          <div className="flex flex-wrap gap-2">
+                            {alert.criteria.locations.map((location, index) => (
+                              <Badge key={index} variant="outline">
+                                {location}
+                              </Badge>
+                            ))}
                           </div>
-                          <div>
-                            <p className="text-neutral-500">Vehicle Types</p>
-                            <p>{alert.criteria.vehicleTypes.join(", ")}</p>
-                          </div>
-                          {alert.criteria.distance && (
-                            <div>
-                              <p className="text-neutral-500">Distance</p>
-                              <p>{alert.criteria.distance}</p>
-                            </div>
-                          )}
-                          {alert.criteria.salaryMin && (
-                            <div>
-                              <p className="text-neutral-500">Min. Salary</p>
-                              <p>₹{alert.criteria.salaryMin.toLocaleString()}/month</p>
-                            </div>
-                          )}
                         </div>
-                        
-                        <div className="flex justify-between items-center">
-                          <Badge className={`${alert.matchCount > 0 ? 'bg-green-100 text-green-800' : 'bg-neutral-100 text-neutral-600'}`}>
-                            {alert.matchCount} matching jobs
-                          </Badge>
-                          
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              Edit
-                            </Button>
-                            <Button variant="destructive" size="sm" onClick={() => deleteAlert(alert.id)}>
-                              Delete
-                            </Button>
+
+                        <div>
+                          <h5 className="text-sm font-medium mb-2 flex items-center">
+                            <Clock className="h-4 w-4 mr-1" /> Job Types
+                          </h5>
+                          <div className="flex flex-wrap gap-2">
+                            {alert.criteria.jobTypes.map((type, index) => (
+                              <Badge key={index} variant="outline">
+                                {type}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <h5 className="text-sm font-medium mb-2 flex items-center">
+                            <Briefcase className="h-4 w-4 mr-1" /> Vehicle Types
+                          </h5>
+                          <div className="flex flex-wrap gap-2">
+                            {alert.criteria.vehicleTypes.map((type, index) => (
+                              <Badge key={index} variant="outline">
+                                {type}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <h5 className="text-sm font-medium mb-2 flex items-center">
+                            <ArrowUpDown className="h-4 w-4 mr-1" /> Other Criteria
+                          </h5>
+                          <div className="flex flex-wrap gap-2">
+                            {alert.criteria.salaryMin && (
+                              <Badge variant="outline">
+                                Min ₹{alert.criteria.salaryMin}/month
+                              </Badge>
+                            )}
+                            {alert.criteria.distance && (
+                              <Badge variant="outline">
+                                {alert.criteria.distance}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
+
+                      {alert.matchCount > 0 && (
+                        <div className="mt-4 text-right">
+                          <Button variant="link" className="h-auto p-0 text-primary">
+                            View {alert.matchCount} matching jobs
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -569,7 +624,7 @@ const DriverAlertsPage = () => {
           </TabsContent>
         </Tabs>
       </div>
-      
+
       <BottomNavigation userType="driver" />
       <Chatbot />
     </div>
