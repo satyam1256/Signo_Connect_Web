@@ -107,6 +107,35 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
           return res.status(404).json({ error: "User not found" });
         }
 
+        // Create initial profile based on user type if it doesn't exist
+        if (user.userType === UserType.DRIVER) {
+          // Check if driver profile exists
+          const existingDriver = await storage.getDriver(user.id);
+          if (!existingDriver) {
+            // Create initial driver profile
+            await storage.createDriver({
+              userId: user.id,
+              preferredLocations: [],
+              experience: 0,
+              vehicleTypes: []
+            });
+            console.log(`Created initial driver profile for user ${user.id}`);
+          }
+        } else if (user.userType === UserType.FLEET_OWNER) {
+          // Check if fleet owner profile exists
+          const existingFleetOwner = await storage.getFleetOwner(user.id);
+          if (!existingFleetOwner) {
+            // Create initial fleet owner profile
+            await storage.createFleetOwner({
+              userId: user.id,
+              companyName: "",
+              fleetSize: 0,
+              preferredLocations: []
+            });
+            console.log(`Created initial fleet owner profile for user ${user.id}`);
+          }
+        }
+
         return res.status(200).json({ 
           userId: user.id,
           userType: user.userType,
