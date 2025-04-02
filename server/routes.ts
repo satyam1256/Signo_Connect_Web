@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { IStorage, storage as memStorage } from "./storage";
+import { DbStorage } from "./db-storage";
 import { 
   userRegistrationSchema, 
   verifyOtpSchema, 
@@ -17,9 +18,14 @@ function generateOTP(): string {
   return "123456";
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Reset storage data on server start (for development purposes)
-  storage.resetData();
+export async function registerRoutes(app: Express, customStorage?: IStorage): Promise<Server> {
+  // Use the provided storage or fall back to memory storage
+  const storage = customStorage || memStorage;
+  
+  // Only reset memory storage if we're not using the DB storage
+  if (!customStorage || !(customStorage instanceof DbStorage)) {
+    (memStorage as any).resetData();
+  }
 
   // Error handler middleware
   const handleError = (err: Error, res: Response) => {
