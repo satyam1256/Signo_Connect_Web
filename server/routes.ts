@@ -116,7 +116,7 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
             await storage.createDriver({
               userId: user.id,
               preferredLocations: [],
-              experience: 0,
+              experience: "0", // Use string type as per schema
               vehicleTypes: []
             });
             console.log(`Created initial driver profile for user ${user.id}`);
@@ -129,7 +129,7 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
             await storage.createFleetOwner({
               userId: user.id,
               companyName: "",
-              fleetSize: 0,
+              fleetSize: "0", // Use string type as per schema
               preferredLocations: []
             });
             console.log(`Created initial fleet owner profile for user ${user.id}`);

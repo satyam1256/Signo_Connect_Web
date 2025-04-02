@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   User,
   MapPin,
@@ -17,7 +17,8 @@ import {
   Bell,
   Truck,
   Edit,
-  Camera
+  Camera,
+  Loader2
 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
@@ -46,11 +47,14 @@ import { Chatbot } from "@/components/features/chatbot";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguageStore } from "@/lib/i18n";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { User as UserType, Driver } from "@shared/schema";
 
+// Extended profile interface that combines DB data with UI requirements
 interface UserProfile {
   fullName: string;
   phoneNumber: string;
-  email: string;
+  email?: string;
   language: string;
   location: string;
   about: string;
@@ -67,35 +71,89 @@ interface UserProfile {
   completionPercentage: number;
 }
 
+// API response type for user profile data
+interface UserProfileResponse {
+  user: UserType;
+  profile: Driver | null;
+}
+
 const DriverProfilePage = () => {
   const { user, logout, updateUser } = useAuth();
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
 
+  // Default profile data (used as fallback while loading)
   const [profile, setProfile] = useState<UserProfile>({
-    fullName: "Rahul Kumar",
-    phoneNumber: "+91 9876543210",
-    email: "rahul.kumar@example.com",
+    fullName: user?.fullName || "",
+    phoneNumber: user?.phoneNumber || "",
+    email: "",
     language: "English",
-    location: "Delhi NCR",
-    about: "Experienced driver with over 5 years in logistics and transportation. Specialized in long-haul driving across North India.",
-    experience: "5+ years",
-    preferredLocations: ["Delhi", "Mumbai", "Jaipur", "North India"],
-    vehicleTypes: ["Heavy Vehicle", "Medium Vehicle"],
-    drivingLicense: "DL-1234567890",
-    identityProof: "ABCDE1234F",
+    location: "",
+    about: "Professional driver looking for opportunities",
+    experience: "1+ years",
+    preferredLocations: [],
+    vehicleTypes: ["Heavy Vehicle"],
+    drivingLicense: null,
+    identityProof: null,
     availability: "full-time",
-    skills: ["Long Distance Driving", "Fleet Management", "GPS Navigation", "Load Securing", "Basic Vehicle Maintenance"],
-    joinedDate: "January 2023",
-    completionPercentage: 85
+    skills: ["Driving"],
+    joinedDate: new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
+    completionPercentage: 20
   });
+
+  // Fetch real user data from API
+  const { data: userData, isLoading } = useQuery<UserProfileResponse>({
+    queryKey: ['/api/user', user?.id],
+    enabled: !!user?.id
+  });
+  
+  // Effect to update profile when user data is loaded
+  useEffect(() => {
+    if (userData?.user) {
+      // Initialize profile with data from API
+      const driverProfile = userData.profile;
+      
+      setProfile(prevProfile => ({
+        ...prevProfile,
+        fullName: userData.user.fullName,
+        phoneNumber: userData.user.phoneNumber,
+        email: userData.user.email || "",
+        // If driver profile exists, update with real data
+        preferredLocations: driverProfile?.preferredLocations || [],
+        drivingLicense: driverProfile?.drivingLicense || null,
+        identityProof: driverProfile?.identityProof || null,
+        // Calculate profile completion percentage
+        completionPercentage: calculateProfileCompletion(userData.user, driverProfile)
+      }));
+    }
+  }, [userData]);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [identityFile, setIdentityFile] = useState<File | null>(null);
+  
+  // Calculate profile completion percentage
+  const calculateProfileCompletion = (user: UserType, driverProfile: Driver | null): number => {
+    let total = 0;
+    let completed = 0;
+    
+    // User basic info
+    total += 3;
+    if (user.fullName) completed += 1;
+    if (user.phoneNumber) completed += 1;
+    if (user.email) completed += 1;
+    
+    // Driver specific info
+    total += 4;
+    if (driverProfile?.preferredLocations?.length) completed += 1;
+    if (driverProfile?.drivingLicense) completed += 2;
+    if (driverProfile?.identityProof) completed += 1;
+    
+    return Math.round((completed / total) * 100);
+  };
 
   // Dialog states
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
@@ -103,11 +161,39 @@ const DriverProfilePage = () => {
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
   const [languageSettingsOpen, setLanguageSettingsOpen] = useState(false);
 
+  // Mutation for updating driver profile
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: Partial<UserProfile>) => {
+      if (!user?.id) throw new Error("User ID is required");
+      
+      // Create a driver profile update object with the data from form
+      const driverProfileData = {
+        userId: user.id,
+        preferredLocations: data.preferredLocations || profile.preferredLocations,
+        drivingLicense: data.drivingLicense || profile.drivingLicense,
+        identityProof: data.identityProof || profile.identityProof
+      };
+      
+      const response = await apiRequest("POST", "/api/driver-profile", driverProfileData);
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate user query to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/user', user?.id] });
+    },
+    onError: (error) => {
+      console.error("Profile update error:", error);
+    }
+  });
+
   // Handle profile update
   const handleProfileUpdate = () => {
     if (Object.keys(editedProfile).length > 0) {
+      // Update local state immediately for a responsive UI
       setProfile({ ...profile, ...editedProfile });
-      // In a real app, send this to the server
+      
+      // Save to server
+      updateProfileMutation.mutate(editedProfile);
 
       // Clear the edited profile
       setEditedProfile({});
@@ -132,6 +218,16 @@ const DriverProfilePage = () => {
   if (!profile.drivingLicense) missingItems.push("Driving License");
   if (!profile.identityProof) missingItems.push("Identity Proof");
   if (!profile.about) missingItems.push("About Section");
+
+  // Show loading state while data is being fetched
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-50">
+        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+        <p className="text-neutral-600">Loading profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 pb-16">
