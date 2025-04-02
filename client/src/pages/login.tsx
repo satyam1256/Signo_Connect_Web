@@ -26,6 +26,7 @@ import signoLogo from "@/assets/signo-logo.png";
 
 // Form schemas
 const phoneSchema = z.object({
+  fullName: z.string().min(3, "Name must be at least 3 characters").max(50),
   phoneNumber: z.string().min(10, "Enter a valid phone number").max(15),
 });
 
@@ -50,6 +51,7 @@ const LoginPage = () => {
   const phoneForm = useForm<z.infer<typeof phoneSchema>>({
     resolver: zodResolver(phoneSchema),
     defaultValues: {
+      fullName: "",
       phoneNumber: "",
     },
   });
@@ -62,6 +64,7 @@ const LoginPage = () => {
         "POST",
         "/api/register",
         {
+          fullName: values.fullName,
           phoneNumber: values.phoneNumber,
           userType: "driver", // Default to driver, will be overridden by actual value in database
         }
@@ -232,12 +235,29 @@ const LoginPage = () => {
           Sign In to SIGNO Connect
         </h2>
         <p className="text-neutral-500">
-          Enter your mobile number to continue
+          Enter your name and mobile number to continue
         </p>
       </div>
 
       <Form {...phoneForm}>
         <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-4">
+          <FormField
+            control={phoneForm.control}
+            name="fullName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("full_name")}</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter your full name"
+                    {...field}
+                    className="h-12"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <FormField
             control={phoneForm.control}
             name="phoneNumber"
