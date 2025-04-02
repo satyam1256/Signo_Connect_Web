@@ -59,14 +59,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = (userData: User) => {
     setUser(userData);
     localStorage.setItem("signoUser", JSON.stringify(userData));
-    
+
     // Redirect based on user type and profile completion
     if (userData.userType === "driver") {
       navigate("/driver/dashboard");
     } else if (userData.userType === "fleet_owner") {
       navigate("/fleet-owner/dashboard");
     }
-    
+
     toast({
       title: "Login successful",
       description: `Welcome, ${userData.fullName}!`,
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUser(null);
     localStorage.removeItem("signoUser");
     navigate("/");
-    
+
     toast({
       title: "Logged out",
       description: "You have been successfully logged out.",

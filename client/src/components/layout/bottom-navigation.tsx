@@ -32,13 +32,13 @@ interface BottomNavigationProps {
 export const BottomNavigation = ({ userType }: BottomNavigationProps) => {
   const [location] = useLocation();
   const { t } = useLanguageStore();
-  
+
   const isDriver = userType === "driver";
   const baseRoute = isDriver ? "/driver" : "/fleet-owner";
   const activeColor = isDriver ? "text-primary" : "text-secondary";
-  
+
   const getIconSize = { className: "h-5 w-5" };
-  
+
   return (
     <div className="fixed bottom-0 left-0 w-full bg-white border-t border-neutral-200 z-10">
       <div className="flex justify-around py-2">
@@ -49,7 +49,7 @@ export const BottomNavigation = ({ userType }: BottomNavigationProps) => {
           isActive={location === `${baseRoute}/dashboard`}
           color={activeColor}
         />
-        
+
         {isDriver ? (
           <NavItem
             to={`${baseRoute}/jobs`}
@@ -67,7 +67,7 @@ export const BottomNavigation = ({ userType }: BottomNavigationProps) => {
             color={activeColor}
           />
         )}
-        
+
         {isDriver ? (
           <NavItem
             to={`${baseRoute}/alerts`}
@@ -85,7 +85,7 @@ export const BottomNavigation = ({ userType }: BottomNavigationProps) => {
             color={activeColor}
           />
         )}
-        
+
         <NavItem
           to={`${baseRoute}/profile`}
           icon={<User {...getIconSize} />}

@@ -68,21 +68,21 @@ const DriverRegistration = () => {
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
   const { login } = useAuth();
-  
+
   // State for registration process
   const [userId, setUserId] = useState<number | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [registrationComplete, setRegistrationComplete] = useState(false);
-  
+
   const steps = [
     { title: t("basic_info") },
     { title: t("verification") },
     { title: t("documents") },
     { title: t("success") },
   ];
-  
+
   const stepper = useStepper({ steps: steps.length });
-  
+
   // Forms for each step
   const basicInfoForm = useForm<z.infer<typeof basicInfoSchema>>({
     resolver: zodResolver(basicInfoSchema),
@@ -93,14 +93,14 @@ const DriverRegistration = () => {
       preferredLocations: [],
     },
   });
-  
+
   const otpForm = useForm<z.infer<typeof otpSchema>>({
     resolver: zodResolver(otpSchema),
     defaultValues: {
       otp: "",
     },
   });
-  
+
   const documentsForm = useForm<z.infer<typeof documentsSchema>>({
     resolver: zodResolver(documentsSchema),
     defaultValues: {

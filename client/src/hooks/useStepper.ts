@@ -7,7 +7,7 @@ interface UseStepperProps {
 
 export const useStepper = ({ steps, initialStep = 1 }: UseStepperProps) => {
   const [currentStep, setCurrentStep] = useState(initialStep);
-  
+
   const nextStep = () => {
     if (currentStep < steps) {
       setCurrentStep(currentStep + 1);
@@ -15,7 +15,7 @@ export const useStepper = ({ steps, initialStep = 1 }: UseStepperProps) => {
     }
     return false;
   };
-  
+
   const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
@@ -23,7 +23,7 @@ export const useStepper = ({ steps, initialStep = 1 }: UseStepperProps) => {
     }
     return false;
   };
-  
+
   const goToStep = (step: number) => {
     if (step >= 1 && step <= steps) {
       setCurrentStep(step);
@@ -31,10 +31,10 @@ export const useStepper = ({ steps, initialStep = 1 }: UseStepperProps) => {
     }
     return false;
   };
-  
+
   const isFirstStep = currentStep === 1;
   const isLastStep = currentStep === steps;
-  
+
   return {
     currentStep,
     nextStep,

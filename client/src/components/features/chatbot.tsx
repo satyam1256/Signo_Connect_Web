@@ -64,7 +64,7 @@ export const Chatbot = () => {
     // Simple automated response logic (in a real app, this would be an API call)
     setTimeout(() => {
       let responseContent = "";
-      
+
       if (inputValue.toLowerCase().includes("license") || inputValue.toLowerCase().includes("document")) {
         responseContent = "To upload your documents, go to your Profile section, select Documents, and click on 'Upload License' or 'Upload ID Proof'. You can take a photo or upload an existing image.";
       } else if (inputValue.toLowerCase().includes("job") || inputValue.toLowerCase().includes("work")) {
@@ -110,7 +110,7 @@ export const Chatbot = () => {
               </Button>
             </div>
           </div>
-          
+
           {/* Messages */}
           <div className="h-64 p-4 overflow-y-auto bg-neutral-50">
             {messages.map((message) => (
@@ -126,7 +126,7 @@ export const Chatbot = () => {
                     <Bot className="h-4 w-4 text-white" />
                   </div>
                 )}
-                
+
                 <div
                   className={cn(
                     "p-3 rounded-lg shadow-sm max-w-xs",
@@ -141,7 +141,7 @@ export const Chatbot = () => {
             ))}
             <div ref={messagesEndRef} />
           </div>
-          
+
           {/* Input */}
           <div className="p-3 border-t border-neutral-200">
             <div className="flex">
@@ -164,7 +164,7 @@ export const Chatbot = () => {
           </div>
         </div>
       )}
-      
+
       <Button
         onClick={toggleChat}
         className="w-14 h-14 rounded-full shadow-lg"
