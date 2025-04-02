@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useLanguageStore } from "@/lib/i18n";
 import { SteeringWheelIcon } from "./icons/steering-wheel-icon";
 import { Chatbot } from "@/components/features/chatbot";
+import signoLogo from "@/assets/signo-logo.png";
 
 // Custom icon component
 export const TruckMovingIcon = () => (
@@ -38,9 +39,9 @@ const WelcomePage = () => {
 
         <div className="flex flex-col space-y-4 mb-8">
           <img
-            className="w-full max-w-xs mx-auto h-auto rounded-lg shadow-md"
-            src="https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=600&h=400&fit=crop"
-            alt="Logistics illustration"
+            className="w-64 mx-auto h-auto"
+            src={signoLogo}
+            alt="SIGNO Logo"
           />
         </div>
 
@@ -87,8 +88,8 @@ const WelcomePage = () => {
         <div className="text-center text-neutral-500">
           <p>
             {t("already_have_account")}{" "}
-            <Link to="/login">
-              <span className="text-primary font-medium">{t("sign_in")}</span>
+            <Link to="/login" className="text-primary font-medium">
+              {t("sign_in")}
             </Link>
           </p>
         </div>

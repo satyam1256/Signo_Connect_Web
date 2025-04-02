@@ -52,13 +52,13 @@ const FleetOwnerDashboard = () => {
     return null;
   }
 
-  const companyName = user.companyName || "Your Company";
+  // We'll use the user's full name for display
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 pb-16">
       <Header>
         <h1 className="text-xl font-bold text-neutral-800 ml-2">
-          {t("fleet_owner")} {t("dashboard")}
+          {t("fleet_owner")}
         </h1>
         <div className="ml-auto mr-4">
           <Button 
@@ -81,28 +81,30 @@ const FleetOwnerDashboard = () => {
                 <Building className="text-[#FF6D00] h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-xl font-medium">{t("welcome_user")} {companyName}!</h2>
-                <p className="text-[#FFF3E0]">Company ID: {user.id}</p>
+                <h2 className="text-xl font-medium">{t("welcome_user")} {user.fullName}!</h2>
+                <p className="text-[#FFF3E0]">Fleet Owner ID: {user.id}</p>
               </div>
             </div>
-            
+
             <div className="bg-[#E65100] bg-opacity-30 rounded-md p-3 mb-4">
               <p className="text-sm flex items-start">
                 <Info className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
                 <span>Post your first job to start connecting with drivers</span>
               </p>
             </div>
-            
+
             <div className="flex justify-between">
               <Button 
                 variant="secondary" 
                 className="bg-white text-[#FF6D00] hover:bg-neutral-100"
+                onClick={() => navigate("/fleet-owner/profile")}
               >
                 {t("complete_profile")}
               </Button>
               <Button 
                 variant="destructive" 
                 className="bg-[#E65100] text-white hover:bg-[#E65100]/90"
+                onClick={() => navigate("/fleet-owner/jobs")}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 {t("post_job")}
@@ -110,7 +112,7 @@ const FleetOwnerDashboard = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-4">
           <Card className="text-center">
@@ -120,12 +122,15 @@ const FleetOwnerDashboard = () => {
               </div>
               <h3 className="font-medium text-neutral-800 mb-1">{t("find_drivers")}</h3>
               <p className="text-neutral-500 text-sm mb-3">Search qualified drivers in your area</p>
-              <Button className="w-full">
+              <Button 
+                className="w-full"
+                onClick={() => navigate("/fleet-owner/drivers")}
+              >
                 {t("search")}
               </Button>
             </CardContent>
           </Card>
-          
+
           <Card className="text-center">
             <CardContent className="p-4">
               <div className="w-12 h-12 bg-[#FFF3E0] rounded-full flex items-center justify-center mx-auto mb-3">
@@ -133,20 +138,23 @@ const FleetOwnerDashboard = () => {
               </div>
               <h3 className="font-medium text-neutral-800 mb-1">{t("manage_jobs")}</h3>
               <p className="text-neutral-500 text-sm mb-3">View and manage your job postings</p>
-              <Button className="w-full bg-[#FF6D00] hover:bg-[#E65100]">
+              <Button 
+                className="w-full bg-[#FF6D00] hover:bg-[#E65100]"
+                onClick={() => navigate("/fleet-owner/jobs")}
+              >
                 {t("manage")}
               </Button>
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Driver Recommendations */}
         <Card>
           <CardContent className="p-6">
             <h3 className="text-lg font-medium text-neutral-800 mb-4">
               {t("recommended_drivers")}
             </h3>
-            
+
             {driversLoading ? (
               <div className="space-y-4">
                 {[1, 2].map((i) => (
@@ -194,7 +202,7 @@ const FleetOwnerDashboard = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="border border-neutral-200 rounded-md p-4 hover:border-[#FF6D00] cursor-pointer transition duration-200">
                   <div className="flex items-start">
                     <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mr-4">
@@ -222,11 +230,12 @@ const FleetOwnerDashboard = () => {
                 </div>
               </div>
             )}
-            
+
             <div className="text-center mt-4">
               <Button 
                 variant="link" 
                 className="text-[#FF6D00] font-medium"
+                onClick={() => navigate("/fleet-owner/drivers")}
               >
                 {t("view_all_drivers")} <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
