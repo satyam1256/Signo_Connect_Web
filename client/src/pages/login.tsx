@@ -126,35 +126,54 @@ const LoginPage = () => {
       }
 
       const data = await response.json();
+      
+      console.log("OTP verification successful:", data);
 
       if (data.verified) {
-        // Fetch user data
-        const userResponse = await apiRequest(
-          "GET",
-          `/api/user/${data.userId}`
-        );
-        
-        if (!userResponse.ok) {
-          throw new Error('User data fetch failed');
+        try {
+          // Fetch user data
+          const userResponse = await apiRequest(
+            "GET",
+            `/api/user/${data.userId}`
+          );
+          
+          if (!userResponse.ok) {
+            throw new Error('User data fetch failed');
+          }
+
+          const userData = await userResponse.json();
+          console.log("User data fetched:", userData);
+
+          // Login user with the complete user data
+          login({
+            id: userData.user.id,
+            fullName: userData.user.fullName,
+            phoneNumber: userData.user.phoneNumber,
+            userType: userData.user.userType,
+            email: userData.user.email,
+            profileCompleted: userData.user.profileCompleted || false
+          });
+
+          console.log("User logged in, redirecting to dashboard");
+          
+          // Redirect based on user type - use setTimeout to ensure state updates before navigation
+          setTimeout(() => {
+            if (userData.user.userType === "driver") {
+              setLocation("/driver/dashboard");
+            } else {
+              setLocation("/fleet-owner/dashboard");
+            }
+          }, 300);
+
+          // Success notification
+          toast({
+            title: "Login successful",
+            description: "Welcome to SIGNO Connect",
+          });
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          throw error;
         }
-
-        const userData = await userResponse.json();
-
-        // Login user
-        login(userData.user);
-
-        // Redirect based on user type
-        if (userData.user.userType === "driver") {
-          setLocation("/driver/dashboard");
-        } else {
-          setLocation("/fleet-owner/dashboard");
-        }
-
-        // Success notification
-        toast({
-          title: "Login successful",
-          description: "Welcome to SIGNO Connect",
-        });
       } else {
         toast({
           variant: "destructive",
