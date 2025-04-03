@@ -31,6 +31,7 @@ import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Dialog,
   DialogContent,
@@ -225,7 +226,10 @@ const DriverProfilePage = () => {
         identityProof: identityProofDoc,
         profileImage: profileImageUrl,
         about: data.about || profile.about,
-        email: data.email || profile.email
+        email: data.email || profile.email,
+        location: data.location || profile.location,
+        experience: data.experience || profile.experience,
+        vehicleTypes: data.vehicleTypes || profile.vehicleTypes
       };
       
       console.log("Sending profile data to server:", driverProfileData);
@@ -249,18 +253,23 @@ const DriverProfilePage = () => {
         profileImage: responseData.profileImage || profile.profileImage,
         about: responseData.about || profile.about,
         preferredLocations: responseData.preferredLocations || profile.preferredLocations,
+        location: responseData.location || profile.location,
+        experience: responseData.experience || profile.experience,
+        vehicleTypes: responseData.vehicleTypes || profile.vehicleTypes,
       };
       
       // Update completion percentage
       if (user) {
+        // Create a user compatible with UserType from schema (DB type)
         const userForCalculation: UserType = {
           id: user.id,
           fullName: user.fullName,
           phoneNumber: user.phoneNumber,
-          userType: user.userType as "driver" | "fleet_owner",
+          userType: user.userType,
           email: updatedProfile.email || null,
-          language: user.language || null,
-          profileCompleted: user.profileCompleted,
+          // Additional fields required by UserType schema but not by auth User
+          language: null, // Set to null as it's optional in schema
+          profileCompleted: user.profileCompleted || false,
           createdAt: null // Not needed for calculation
         };
         
@@ -911,12 +920,17 @@ const DriverProfilePage = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="experience">Experience</Label>
-                  <Input 
-                    id="experience" 
+                  <Label htmlFor="experience">Experience (Years)</Label>
+                  <select
+                    id="experience"
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     defaultValue={profile.experience}
                     onChange={(e) => setEditedProfile({...editedProfile, experience: e.target.value})}
-                  />
+                  >
+                    {Array.from({ length: 20 }, (_, i) => (
+                      <option key={i + 1} value={`${i + 1}+ years`}>{i + 1}+ years</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-2">
@@ -934,6 +948,43 @@ const DriverProfilePage = () => {
                     <option value="part-time">Part Time</option>
                     <option value="weekends">Weekends Only</option>
                   </select>
+                </div>
+
+                <div className="space-y-2 col-span-1 sm:col-span-2">
+                  <Label htmlFor="location">Current Location</Label>
+                  <Input 
+                    id="location" 
+                    defaultValue={profile.location}
+                    onChange={(e) => setEditedProfile({...editedProfile, location: e.target.value})}
+                    placeholder="Enter your current city"
+                  />
+                </div>
+
+                <div className="space-y-2 col-span-1 sm:col-span-2">
+                  <Label htmlFor="vehicleTypes">Vehicle Types</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    {["Heavy Vehicle", "Light Vehicle", "Truck", "Bus", "Delivery Van", "Pickup Truck"].map((type) => (
+                      <div key={type} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`vehicle-${type.toLowerCase().replace(/\s+/g, '-')}`}
+                          checked={profile.vehicleTypes?.includes(type)}
+                          onCheckedChange={(checked) => {
+                            const currentTypes = editedProfile.vehicleTypes || profile.vehicleTypes || [];
+                            const newTypes = checked 
+                              ? [...currentTypes, type]
+                              : currentTypes.filter(t => t !== type);
+                            setEditedProfile({...editedProfile, vehicleTypes: newTypes});
+                          }}
+                        />
+                        <label 
+                          htmlFor={`vehicle-${type.toLowerCase().replace(/\s+/g, '-')}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {type}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
