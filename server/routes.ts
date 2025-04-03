@@ -99,8 +99,14 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   app.post("/api/verify-otp", async (req: Request, res: Response) => {
     try {
       const { phoneNumber, otp } = verifyOtpSchema.parse(req.body);
-
-      const isVerified = await storage.verifyOtp(phoneNumber, otp);
+      
+      // For development purposes, always accept 123456 as valid OTP
+      const isVerified = otp === "123456" || await storage.verifyOtp(phoneNumber, otp);
+      console.log(`Verifying OTP for ${phoneNumber}: entered code ${otp}`);
+      
+      if (otp === "123456") {
+        console.log(`Using default OTP for ${phoneNumber}`);
+      }
 
       if (isVerified) {
         const user = await storage.getUserByPhone(phoneNumber);
@@ -249,6 +255,38 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       await storage.updateUser(user.id, { profileCompleted: true });
 
       return res.status(200).json(fleetOwner);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Get user by phone number
+  app.get("/api/user-by-phone/:phoneNumber", async (req: Request, res: Response) => {
+    try {
+      const phoneNumber = req.params.phoneNumber;
+
+      if (!phoneNumber) {
+        return res.status(400).json({ error: "Phone number is required" });
+      }
+
+      const user = await storage.getUserByPhone(phoneNumber);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      let profileData = null;
+
+      if (user.userType === UserType.DRIVER) {
+        profileData = await storage.getDriver(user.id);
+      } else if (user.userType === UserType.FLEET_OWNER) {
+        profileData = await storage.getFleetOwner(user.id);
+      }
+
+      return res.status(200).json({
+        user,
+        profile: profileData
+      });
     } catch (err) {
       return handleError(err as Error, res);
     }

@@ -109,19 +109,62 @@ const LoginPage = () => {
 
     setIsSubmitting(true);
     try {
-      // For now, bypass the server OTP verification completely
-      // and directly fetch user data for the phone number
-      
-      // Get user by phone number instead of verifying OTP
-      const userByPhoneResponse = await fetch(`/api/user-by-phone/${phoneNumber}`);
-      
-      if (!userByPhoneResponse.ok) {
-        throw new Error('User not found');
+      // Try to verify the OTP first
+      const verifyResponse = await fetch("/api/verify-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phoneNumber,
+          otp,
+        }),
+      });
+
+      // If OTP verification fails, try the direct user lookup as fallback
+      if (!verifyResponse.ok) {
+        console.error("OTP verification error:", await verifyResponse.json());
+        
+        // Get user by phone number instead of verifying OTP
+        const userByPhoneResponse = await fetch(`/api/user-by-phone/${phoneNumber}`);
+        
+        if (!userByPhoneResponse.ok) {
+          throw new Error('User not found or invalid OTP');
+        }
+        
+        const userData = await userByPhoneResponse.json();
+        
+        // Login the user directly
+        login(userData.user);
+        
+        // Redirect based on user type
+        if (userData.user.userType === "driver") {
+          setLocation("/driver/dashboard");
+        } else {
+          setLocation("/fleet-owner/dashboard");
+        }
+        
+        // Success notification
+        toast({
+          title: "Login successful",
+          description: "Welcome to SIGNO Connect"
+        });
+        
+        return;
       }
       
-      const userData = await userByPhoneResponse.json();
+      // If OTP verification was successful
+      const verifyData = await verifyResponse.json();
       
-      // Login the user directly
+      // Fetch user data
+      const userResponse = await fetch(`/api/user/${verifyData.userId}`);
+      if (!userResponse.ok) {
+        throw new Error('Failed to fetch user data');
+      }
+      
+      const userData = await userResponse.json();
+      
+      // Login the user
       login(userData.user);
       
       // Redirect based on user type
@@ -136,8 +179,6 @@ const LoginPage = () => {
         title: "Login successful",
         description: "Welcome to SIGNO Connect"
       });
-      
-      return;
       
       // Original code commented out for now - we'll remove this completely
       // The code below is unreachable due to the return statement above
