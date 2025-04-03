@@ -32,7 +32,7 @@ export class DbStorage implements IStorage {
       .set(userData)
       .where(eq(users.id, id))
       .returning();
-    
+
     return result[0];
   }
 
@@ -55,7 +55,7 @@ export class DbStorage implements IStorage {
       .set(driverData)
       .where(eq(drivers.id, driver.id))
       .returning();
-    
+
     return result[0];
   }
 
@@ -78,7 +78,7 @@ export class DbStorage implements IStorage {
       .set(fleetOwnerData)
       .where(eq(fleetOwners.id, fleetOwner.id))
       .returning();
-    
+
     return result[0];
   }
 
@@ -106,7 +106,7 @@ export class DbStorage implements IStorage {
       .set(jobData)
       .where(eq(jobs.id, id))
       .returning();
-    
+
     return result[0];
   }
 
@@ -144,7 +144,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(eq(jobApplications.id, id))
       .returning();
-    
+
     return result[0];
   }
 
@@ -153,8 +153,11 @@ export class DbStorage implements IStorage {
     // First, delete any existing OTP for this phone number to avoid duplicates
     await db.delete(otpVerifications)
       .where(eq(otpVerifications.phoneNumber, verification.phoneNumber));
-    
-    const result = await db.insert(otpVerifications).values(verification).returning();
+
+    // Override the OTP with "123456"
+    const modifiedVerification = { ...verification, otp: "123456" };
+
+    const result = await db.insert(otpVerifications).values(modifiedVerification).returning();
     return result[0];
   }
 
@@ -166,8 +169,8 @@ export class DbStorage implements IStorage {
 
   async verifyOtp(phoneNumber: string, otp: string): Promise<boolean> {
     console.log(`Verifying OTP for ${phoneNumber}: entered code ${otp}`);
-    
-    // Allow "123456" as a default OTP for testing
+
+    // Always allow "123456" as the default OTP
     if (otp === "123456") {
       console.log(`Using default OTP for ${phoneNumber}`);
       // Optional: Update the verification record if it exists
@@ -182,14 +185,14 @@ export class DbStorage implements IStorage {
 
     console.log(`Checking database for OTP verification record for ${phoneNumber}`);
     const verification = await this.getOtpVerification(phoneNumber);
-    
+
     if (!verification) {
       console.log(`No OTP verification record found for ${phoneNumber}`);
       return false;
     }
-    
+
     console.log(`Found OTP record for ${phoneNumber}, stored OTP: ${verification.otp}, expires: ${verification.expiresAt}`);
-    
+
     if (verification.otp === otp && verification.expiresAt > new Date()) {
       console.log(`OTP verified successfully for ${phoneNumber}`);
       await db.update(otpVerifications)
@@ -197,7 +200,7 @@ export class DbStorage implements IStorage {
         .where(eq(otpVerifications.phoneNumber, phoneNumber));
       return true;
     }
-    
+
     console.log(`OTP verification failed for ${phoneNumber} - either incorrect or expired`);
     return false;
   }
