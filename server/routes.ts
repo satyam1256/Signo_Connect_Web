@@ -8,7 +8,8 @@ import {
   driverInsertSchema, 
   fleetOwnerInsertSchema,
   jobInsertSchema,
-  UserType
+  UserType,
+  User
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -152,7 +153,11 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   // Create or update driver profile
   app.post("/api/driver-profile", async (req: Request, res: Response) => {
     try {
-      const driverData = driverInsertSchema.parse(req.body);
+      // Extract all data from request
+      const { email, ...driverRequestData } = req.body;
+      
+      // Parse only driver fields using the schema
+      const driverData = driverInsertSchema.parse(driverRequestData);
 
       // Check if user exists
       const user = await storage.getUser(driverData.userId);
@@ -176,10 +181,22 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
         driver = await storage.createDriver(driverData);
       }
 
-      // Update user's profile completion status
-      await storage.updateUser(user.id, { profileCompleted: true });
+      // Update user's email and profile completion status
+      const userUpdateData: { email?: string; profileCompleted: boolean; } = { profileCompleted: true };
+      
+      // Add email to user update if provided
+      if (email) {
+        userUpdateData.email = email;
+      }
+      
+      // Update user record with email and completion status
+      const updatedUser = await storage.updateUser(user.id, userUpdateData);
 
-      return res.status(200).json(driver);
+      // Return combined data including email
+      return res.status(200).json({
+        ...driver,
+        email: updatedUser?.email
+      });
     } catch (err) {
       return handleError(err as Error, res);
     }
@@ -188,7 +205,11 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   // Create or update fleet owner profile
   app.post("/api/fleet-owner-profile", async (req: Request, res: Response) => {
     try {
-      const fleetOwnerData = fleetOwnerInsertSchema.parse(req.body);
+      // Extract all data from request
+      const { email, ...fleetOwnerRequestData } = req.body;
+      
+      // Parse only fleet owner fields using the schema
+      const fleetOwnerData = fleetOwnerInsertSchema.parse(fleetOwnerRequestData);
 
       // Check if user exists
       const user = await storage.getUser(fleetOwnerData.userId);
@@ -212,10 +233,22 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
         fleetOwner = await storage.createFleetOwner(fleetOwnerData);
       }
 
-      // Update user's profile completion status
-      await storage.updateUser(user.id, { profileCompleted: true });
+      // Update user's email and profile completion status
+      const userUpdateData: { email?: string; profileCompleted: boolean; } = { profileCompleted: true };
+      
+      // Add email to user update if provided
+      if (email) {
+        userUpdateData.email = email;
+      }
+      
+      // Update user record with email and completion status
+      const updatedUser = await storage.updateUser(user.id, userUpdateData);
 
-      return res.status(200).json(fleetOwner);
+      // Return combined data including email
+      return res.status(200).json({
+        ...fleetOwner,
+        email: updatedUser?.email
+      });
     } catch (err) {
       return handleError(err as Error, res);
     }
