@@ -126,8 +126,12 @@ export class DbStorage implements IStorage {
   }
 
   async verifyOtp(phoneNumber: string, otp: string): Promise<boolean> {
+    console.log(`Verifying OTP for ${phoneNumber}: entered code ${otp}`);
+    
     // Allow "123456" as a default OTP for testing
     if (otp === "123456") {
+      console.log(`Using default OTP for ${phoneNumber}`);
+      // Optional: Update the verification record if it exists
       const verification = await this.getOtpVerification(phoneNumber);
       if (verification) {
         await db.update(otpVerifications)
@@ -137,16 +141,25 @@ export class DbStorage implements IStorage {
       return true;
     }
 
+    console.log(`Checking database for OTP verification record for ${phoneNumber}`);
     const verification = await this.getOtpVerification(phoneNumber);
-    if (!verification) return false;
-
+    
+    if (!verification) {
+      console.log(`No OTP verification record found for ${phoneNumber}`);
+      return false;
+    }
+    
+    console.log(`Found OTP record for ${phoneNumber}, stored OTP: ${verification.otp}, expires: ${verification.expiresAt}`);
+    
     if (verification.otp === otp && verification.expiresAt > new Date()) {
+      console.log(`OTP verified successfully for ${phoneNumber}`);
       await db.update(otpVerifications)
         .set({ verified: true })
         .where(eq(otpVerifications.phoneNumber, phoneNumber));
       return true;
     }
-
+    
+    console.log(`OTP verification failed for ${phoneNumber} - either incorrect or expired`);
     return false;
   }
 }

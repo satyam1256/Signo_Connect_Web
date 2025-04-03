@@ -108,16 +108,13 @@ const LoginPage = () => {
     if (otp.length !== 6) return;
 
     setIsSubmitting(true);
-    try {
-      // Always use 123456 for testing
-      const testOtp = "123456";
-      
+    try {      
       const response = await apiRequest(
         "POST",
         "/api/verify-otp",
         {
           phoneNumber,
-          otp: testOtp, // Force the test OTP instead of using the input value
+          otp: otp, // Use the OTP entered by the user
         }
       );
 
