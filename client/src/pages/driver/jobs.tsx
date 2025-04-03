@@ -121,6 +121,8 @@ const DriverJobsPage = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [savedJobs, setSavedJobs] = useState<number[]>([]);
+  const [appliedJobs, setAppliedJobs] = useState<number[]>([]);
 
   const jobTypes = ["Full-time", "Part-time", "Contract", "Temporary"];
   const vehicleTypes = ["Heavy Vehicle", "Medium Vehicle", "Light Vehicle", "Two-wheeler"];
@@ -132,6 +134,24 @@ const DriverJobsPage = () => {
       setActiveFilters(activeFilters.filter(f => f !== filter));
     } else {
       setActiveFilters([...activeFilters, filter]);
+    }
+  };
+  
+  // Handle saving a job
+  const handleSaveJob = (jobId: number) => {
+    if (savedJobs.includes(jobId)) {
+      // If already saved, remove it (unsave)
+      setSavedJobs(savedJobs.filter(id => id !== jobId));
+    } else {
+      // Add to saved jobs
+      setSavedJobs([...savedJobs, jobId]);
+    }
+  };
+
+  // Handle applying for a job
+  const handleApplyJob = (jobId: number) => {
+    if (!appliedJobs.includes(jobId)) {
+      setAppliedJobs([...appliedJobs, jobId]);
     }
   };
 
@@ -405,8 +425,20 @@ const DriverJobsPage = () => {
                           </div>
 
                           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-end mt-2">
-                            <Button variant="outline" className="sm:w-auto w-full">Save Job</Button>
-                            <Button className="sm:w-auto w-full">Apply Now</Button>
+                            <Button 
+                              variant="outline" 
+                              className="sm:w-auto w-full"
+                              onClick={() => handleSaveJob(job.id)}
+                            >
+                              {savedJobs.includes(job.id) ? "Unsave Job" : "Save Job"}
+                            </Button>
+                            <Button 
+                              className="sm:w-auto w-full"
+                              onClick={() => handleApplyJob(job.id)}
+                              disabled={appliedJobs.includes(job.id)}
+                            >
+                              {appliedJobs.includes(job.id) ? "Applied" : "Apply Now"}
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -423,28 +455,157 @@ const DriverJobsPage = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="saved">
-                <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
-                  <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
-                    <Truck className="h-6 w-6 text-neutral-400" />
+              <TabsContent value="saved" className="space-y-4 mt-0">
+                {savedJobs.length === 0 ? (
+                  <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
+                    <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
+                      <Truck className="h-6 w-6 text-neutral-400" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">No saved jobs yet</h3>
+                    <p className="text-neutral-500 max-w-md mx-auto">
+                      Jobs you save will appear here for easy access. Start browsing jobs and save the ones you're interested in.
+                    </p>
                   </div>
-                  <h3 className="text-lg font-medium mb-2">No saved jobs yet</h3>
-                  <p className="text-neutral-500 max-w-md mx-auto">
-                    Jobs you save will appear here for easy access. Start browsing jobs and save the ones you're interested in.
-                  </p>
-                </div>
+                ) : (
+                  mockJobs.filter(job => savedJobs.includes(job.id)).map(job => (
+                    <Card key={job.id} className="overflow-hidden hover:border-primary transition-colors duration-200">
+                      <CardContent className="p-0">
+                        <div className="p-4 sm:p-6">
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="text-xl font-semibold text-neutral-900">{job.title}</h3>
+                            <Badge variant={job.postedDate.includes("Just now") ? "default" : "outline"} className={job.postedDate.includes("Just now") ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
+                              {job.postedDate}
+                            </Badge>
+                          </div>
+
+                          <div className="flex items-center mb-3">
+                            <Building className="h-4 w-4 text-neutral-500 mr-2" />
+                            <span className="text-neutral-700 font-medium">{job.company}</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mb-4">
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
+                              <span className="text-neutral-600 text-sm">{job.location}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <Tag className="h-4 w-4 text-neutral-400 mr-2" />
+                              <span className="text-neutral-600 text-sm">{job.salary}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <Clock className="h-4 w-4 text-neutral-400 mr-2" />
+                              <span className="text-neutral-600 text-sm">{job.jobType}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <Truck className="h-4 w-4 text-neutral-400 mr-2" />
+                              <span className="text-neutral-600 text-sm">{job.distance}</span>
+                            </div>
+                          </div>
+
+                          <p className="text-neutral-600 mb-4">{job.description}</p>
+
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {job.tags.map((tag, index) => (
+                              <Badge key={index} variant="secondary" className="bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-800">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-end mt-2">
+                            <Button 
+                              variant="outline" 
+                              className="sm:w-auto w-full"
+                              onClick={() => handleSaveJob(job.id)}
+                            >
+                              Remove
+                            </Button>
+                            <Button 
+                              className="sm:w-auto w-full"
+                              onClick={() => handleApplyJob(job.id)}
+                              disabled={appliedJobs.includes(job.id)}
+                            >
+                              {appliedJobs.includes(job.id) ? "Applied" : "Apply Now"}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </TabsContent>
 
-              <TabsContent value="applied">
-                <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
-                  <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
-                    <Calendar className="h-6 w-6 text-neutral-400" />
+              <TabsContent value="applied" className="space-y-4 mt-0">
+                {appliedJobs.length === 0 ? (
+                  <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
+                    <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
+                      <Calendar className="h-6 w-6 text-neutral-400" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">No applications yet</h3>
+                    <p className="text-neutral-500 max-w-md mx-auto">
+                      Your job applications will be shown here. Start applying to jobs to track your application status.
+                    </p>
                   </div>
-                  <h3 className="text-lg font-medium mb-2">No applications yet</h3>
-                  <p className="text-neutral-500 max-w-md mx-auto">
-                    Your job applications will be shown here. Start applying to jobs to track your application status.
-                  </p>
-                </div>
+                ) : (
+                  mockJobs.filter(job => appliedJobs.includes(job.id)).map(job => (
+                    <Card key={job.id} className="overflow-hidden border-primary transition-colors duration-200">
+                      <CardContent className="p-0">
+                        <div className="p-4 sm:p-6">
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="text-xl font-semibold text-neutral-900">{job.title}</h3>
+                            <Badge variant="default" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                              Applied
+                            </Badge>
+                          </div>
+
+                          <div className="flex items-center mb-3">
+                            <Building className="h-4 w-4 text-neutral-500 mr-2" />
+                            <span className="text-neutral-700 font-medium">{job.company}</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mb-4">
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
+                              <span className="text-neutral-600 text-sm">{job.location}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <Tag className="h-4 w-4 text-neutral-400 mr-2" />
+                              <span className="text-neutral-600 text-sm">{job.salary}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <Clock className="h-4 w-4 text-neutral-400 mr-2" />
+                              <span className="text-neutral-600 text-sm">{job.jobType}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <Truck className="h-4 w-4 text-neutral-400 mr-2" />
+                              <span className="text-neutral-600 text-sm">{job.distance}</span>
+                            </div>
+                          </div>
+
+                          <p className="text-neutral-600 mb-4">{job.description}</p>
+
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {job.tags.map((tag, index) => (
+                              <Badge key={index} variant="secondary" className="bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-800">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center px-4 py-3 bg-blue-50 rounded-md border border-blue-100 mb-2">
+                            <div className="flex-grow">
+                              <div className="text-sm font-medium text-blue-800">Application Status</div>
+                              <div className="text-sm text-blue-600">In Review</div>
+                            </div>
+                            <Button variant="outline" size="sm">
+                              View Details
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </TabsContent>
 
               <TabsContent value="matching">
@@ -456,7 +617,7 @@ const DriverJobsPage = () => {
                   <p className="text-neutral-500 max-w-md mx-auto">
                     To get personalized job matches, please complete your profile with your skills, experience, and preferences.
                   </p>
-                  <Button className="mt-4">Complete Profile</Button>
+                  <Button className="mt-4" onClick={() => navigate("/driver/profile")}>Complete Profile</Button>
                 </div>
               </TabsContent>
             </Tabs>
