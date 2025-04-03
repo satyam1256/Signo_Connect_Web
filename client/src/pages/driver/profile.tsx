@@ -72,6 +72,31 @@ interface UserProfile {
   completionPercentage: number;
 }
 
+// Interface for profile update data including files
+interface ProfileUpdateData {
+  // Partial of UserProfile except profileImage which will be handled separately 
+  fullName?: string;
+  phoneNumber?: string;
+  email?: string;
+  language?: string;
+  location?: string;
+  about?: string;
+  experience?: string;
+  preferredLocations?: string[];
+  vehicleTypes?: string[];
+  drivingLicense?: string | null;
+  identityProof?: string | null;
+  availability?: 'full-time' | 'part-time' | 'weekends';
+  skills?: string[];
+  joinedDate?: string;
+  completionPercentage?: number;
+  
+  // File uploads
+  profileImage?: File | null;
+  licenseFile?: File | null;
+  identityFile?: File | null;
+}
+
 // API response type for user profile data
 interface UserProfileResponse {
   user: UserType;
@@ -165,36 +190,81 @@ const DriverProfilePage = () => {
 
   // Mutation for updating driver profile
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: Partial<UserProfile>) => {
+    mutationFn: async (data: ProfileUpdateData) => {
       if (!user?.id) throw new Error("User ID is required");
+      
+      // Handle file uploads first
+      let profileImageUrl = profile.profileImage;
+      if (data.profileImage) {
+        // In a real implementation, we would upload the file to a storage service
+        // and get back a URL. For now, we'll create a data URL for demonstration.
+        profileImageUrl = await fileToDataUrl(data.profileImage);
+      }
+
+      let drivingLicenseDoc = profile.drivingLicense;
+      if (data.licenseFile) {
+        // In a real app, we'd upload this file to storage and get a URL back
+        // Here we just update the license number with file name for demo
+        drivingLicenseDoc = data.drivingLicense || `License-${data.licenseFile.name}`;
+      }
+
+      let identityProofDoc = profile.identityProof;
+      if (data.identityFile) {
+        // In a real app, we'd upload this file to storage and get a URL back
+        // Here we just update the identity proof with file name for demo
+        identityProofDoc = data.identityProof || `ID-${data.identityFile.name}`;
+      }
       
       // Create a driver profile update object with the data from form
       const driverProfileData = {
         userId: user.id,
         preferredLocations: data.preferredLocations || profile.preferredLocations,
-        drivingLicense: data.drivingLicense || profile.drivingLicense,
-        identityProof: data.identityProof || profile.identityProof
+        drivingLicense: drivingLicenseDoc,
+        identityProof: identityProofDoc,
+        profileImage: profileImageUrl,
+        about: data.about || profile.about,
+        email: data.email || profile.email
       };
       
       const response = await apiRequest("POST", "/api/driver-profile", driverProfileData);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Invalidate user query to refresh the data
       queryClient.invalidateQueries({ queryKey: ['/api/user', user?.id] });
+      
+      // Reset file state
+      setProfileImage(null);
+      setLicenseFile(null);
+      setIdentityFile(null);
     },
     onError: (error) => {
       console.error("Profile update error:", error);
+      toast({
+        title: "Update failed",
+        description: "There was an error updating your profile. Please try again.",
+        variant: "destructive"
+      });
     }
   });
+  
+  // Helper function to convert File to data URL for profile images
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
   // Handle profile update
   const handleProfileUpdate = () => {
     // Check for required fields
     const fieldValidation = {
       email: editedProfile.email || profile.email,
-      drivingLicense: editedProfile.drivingLicense || profile.drivingLicense,
-      identityProof: editedProfile.identityProof || profile.identityProof,
+      drivingLicense: (editedProfile.drivingLicense || profile.drivingLicense) || licenseFile !== null,
+      identityProof: (editedProfile.identityProof || profile.identityProof) || identityFile !== null,
       about: editedProfile.about || profile.about
     };
 
@@ -214,12 +284,26 @@ const DriverProfilePage = () => {
       return; // Don't save the profile if required fields are missing
     }
 
-    if (Object.keys(editedProfile).length > 0) {
-      // Update local state immediately for a responsive UI
-      setProfile({ ...profile, ...editedProfile });
+    // Prepare data for update
+    const hasChanges = Object.keys(editedProfile).length > 0 || 
+                       profileImage !== null || 
+                       licenseFile !== null || 
+                       identityFile !== null;
+
+    if (hasChanges) {
+      // Show loading toast
+      toast({
+        title: "Updating profile",
+        description: "Your profile is being updated...",
+      });
       
-      // Save to server
-      updateProfileMutation.mutate(editedProfile);
+      // Save to server - include files in the mutation
+      updateProfileMutation.mutate({
+        ...editedProfile,
+        profileImage: profileImage,
+        licenseFile: licenseFile,
+        identityFile: identityFile
+      });
 
       // Clear the edited profile
       setEditedProfile({});
