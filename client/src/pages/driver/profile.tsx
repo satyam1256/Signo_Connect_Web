@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import {
   User,
   MapPin,
@@ -82,6 +83,7 @@ const DriverProfilePage = () => {
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   // Default profile data (used as fallback while loading)
   const [profile, setProfile] = useState<UserProfile>({
@@ -188,6 +190,30 @@ const DriverProfilePage = () => {
 
   // Handle profile update
   const handleProfileUpdate = () => {
+    // Check for required fields
+    const fieldValidation = {
+      email: editedProfile.email || profile.email,
+      drivingLicense: editedProfile.drivingLicense || profile.drivingLicense,
+      identityProof: editedProfile.identityProof || profile.identityProof,
+      about: editedProfile.about || profile.about
+    };
+
+    const missingRequiredFields = Object.entries(fieldValidation)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key === 'drivingLicense' ? 'Driving License' : 
+                       key === 'identityProof' ? 'Identity Proof' : 
+                       key === 'about' ? 'About Section' : 
+                       key.charAt(0).toUpperCase() + key.slice(1));
+
+    if (missingRequiredFields.length > 0) {
+      toast({
+        title: "Required fields missing",
+        description: `Please complete these fields: ${missingRequiredFields.join(", ")}`,
+        variant: "destructive"
+      });
+      return; // Don't save the profile if required fields are missing
+    }
+
     if (Object.keys(editedProfile).length > 0) {
       // Update local state immediately for a responsive UI
       setProfile({ ...profile, ...editedProfile });
@@ -197,6 +223,11 @@ const DriverProfilePage = () => {
 
       // Clear the edited profile
       setEditedProfile({});
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been successfully updated."
+      });
     }
 
     setIsEditingProfile(false);
@@ -213,7 +244,7 @@ const DriverProfilePage = () => {
     return null;
   }
 
-  const missingItems = [];
+  const missingItems: string[] = [];
   if (!profile.email) missingItems.push("Email");
   if (!profile.drivingLicense) missingItems.push("Driving License");
   if (!profile.identityProof) missingItems.push("Identity Proof");
@@ -556,7 +587,21 @@ const DriverProfilePage = () => {
                   </div>
                 )}
 
-                <Button className="w-full">Complete Profile</Button>
+                <Button 
+                  className="w-full" 
+                  onClick={() => {
+                    if (missingItems.length > 0) {
+                      toast({
+                        title: "Required fields missing",
+                        description: `Please complete these fields: ${missingItems.join(", ")}`,
+                        variant: "destructive"
+                      });
+                    }
+                    setIsEditingProfile(true);
+                  }}
+                >
+                  Complete Profile
+                </Button>
               </CardContent>
             </Card>
 
