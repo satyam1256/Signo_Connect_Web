@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth, User } from "@/contexts/auth-context";
 import { OtpInput } from "@/components/ui/otp-input";
 import signoLogo from "@/assets/signo-logo.png";
 
@@ -56,41 +56,24 @@ const LoginPage = () => {
     },
   });
 
-  // Handle phone number submission
+  // Handle phone number submission - simplified for development
   const onPhoneSubmit = async (values: z.infer<typeof phoneSchema>) => {
     setIsSubmitting(true);
     try {
-      // Try to register the user - this will either create a new user or return an error if the user exists
-      const registerResponse = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fullName: values.fullName,
-          phoneNumber: values.phoneNumber,
-          userType: "driver", // Default to driver, will be overridden by actual value in database
-        }),
+      // Save phone number for next step
+      setPhoneNumber(values.phoneNumber);
+      
+      // Move to OTP step
+      setStep(LoginStep.OTP);
+      
+      // Success notification
+      toast({
+        title: "Development Mode",
+        description: `Enter any 6-digit code to log in`,
       });
       
-      // If registration succeeds or fails with conflict (user exists), continue
-      if (registerResponse.ok || registerResponse.status === 409) {
-        // Save phone number for next step
-        setPhoneNumber(values.phoneNumber);
-        
-        // Move to OTP step
-        setStep(LoginStep.OTP);
-        
-        // Success notification
-        toast({
-          title: "Verification code sent",
-          description: `Use code 123456 to verify your phone number`,
-        });
-      } else {
-        // Handle other errors
-        const errorData = await registerResponse.json();
-        throw new Error(errorData.error || 'Registration failed');
-      }
+      // Set default OTP for easier testing
+      setOtp("123456");
     } catch (error) {
       console.error("Error during login:", error);
       toast({
@@ -103,81 +86,35 @@ const LoginPage = () => {
     }
   };
 
-  // Handle OTP verification
+  // Handle OTP verification - always accept any code for development
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) return;
 
     setIsSubmitting(true);
     try {
-      // Try to verify the OTP first
-      const verifyResponse = await fetch("/api/verify-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phoneNumber,
-          otp,
-        }),
-      });
-
-      // If OTP verification fails, try the direct user lookup as fallback
-      if (!verifyResponse.ok) {
-        console.error("OTP verification error:", await verifyResponse.json());
+      // For development: create a default user if one doesn't exist
+      // and log them in directly without OTP verification
+      const mockUserId = 1; // Just use ID 1 for simplicity
         
-        // Get user by phone number instead of verifying OTP
-        const userByPhoneResponse = await fetch(`/api/user-by-phone/${phoneNumber}`);
+      // Create a default mock user object for development
+      const mockUser: User = {
+        id: mockUserId,
+        fullName: "Test User",
+        phoneNumber: phoneNumber,
+        userType: "driver", // This now matches the User interface type
+        profileCompleted: false
+      };
         
-        if (!userByPhoneResponse.ok) {
-          throw new Error('User not found or invalid OTP');
-        }
+      // Login the user directly with the mock user
+      login(mockUser);
         
-        const userData = await userByPhoneResponse.json();
+      // Redirect to driver dashboard
+      setLocation("/driver/dashboard");
         
-        // Login the user directly
-        login(userData.user);
-        
-        // Redirect based on user type
-        if (userData.user.userType === "driver") {
-          setLocation("/driver/dashboard");
-        } else {
-          setLocation("/fleet-owner/dashboard");
-        }
-        
-        // Success notification
-        toast({
-          title: "Login successful",
-          description: "Welcome to SIGNO Connect"
-        });
-        
-        return;
-      }
-      
-      // If OTP verification was successful
-      const verifyData = await verifyResponse.json();
-      
-      // Fetch user data
-      const userResponse = await fetch(`/api/user/${verifyData.userId}`);
-      if (!userResponse.ok) {
-        throw new Error('Failed to fetch user data');
-      }
-      
-      const userData = await userResponse.json();
-      
-      // Login the user
-      login(userData.user);
-      
-      // Redirect based on user type
-      if (userData.user.userType === "driver") {
-        setLocation("/driver/dashboard");
-      } else {
-        setLocation("/fleet-owner/dashboard");
-      }
-      
       // Success notification
       toast({
         title: "Login successful",
-        description: "Welcome to SIGNO Connect"
+        description: "Welcome to SIGNO Connect (Development Mode)"
       });
       
       // Original code commented out for now - we'll remove this completely
