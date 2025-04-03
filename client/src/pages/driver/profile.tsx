@@ -193,6 +193,8 @@ const DriverProfilePage = () => {
     mutationFn: async (data: ProfileUpdateData) => {
       if (!user?.id) throw new Error("User ID is required");
       
+      console.log("Updating profile with data:", data);
+      
       // Handle file uploads first
       let profileImageUrl = profile.profileImage;
       if (data.profileImage) {
@@ -226,17 +228,74 @@ const DriverProfilePage = () => {
         email: data.email || profile.email
       };
       
+      console.log("Sending profile data to server:", driverProfileData);
+      
       const response = await apiRequest("POST", "/api/driver-profile", driverProfileData);
-      return response.json();
+      const responseData = await response.json();
+      console.log("Server response:", responseData);
+      return responseData;
     },
-    onSuccess: (data) => {
-      // Invalidate user query to refresh the data
+    onSuccess: (responseData) => {
+      console.log("Profile update successful:", responseData);
+      
+      // Update profile locally before query invalidation to prevent flicker
+      const updatedProfile = {
+        ...profile,
+        ...responseData,
+        // Ensure we handle specific fields that might be in the response
+        drivingLicense: responseData.drivingLicense || profile.drivingLicense,
+        identityProof: responseData.identityProof || profile.identityProof,
+        email: responseData.email || profile.email,
+        profileImage: responseData.profileImage || profile.profileImage,
+        about: responseData.about || profile.about,
+        preferredLocations: responseData.preferredLocations || profile.preferredLocations,
+      };
+      
+      // Update completion percentage
+      if (user) {
+        const userForCalculation: UserType = {
+          id: user.id,
+          fullName: user.fullName,
+          phoneNumber: user.phoneNumber,
+          userType: user.userType as "driver" | "fleet_owner",
+          email: updatedProfile.email || null,
+          language: user.language || null,
+          profileCompleted: user.profileCompleted,
+          createdAt: null // Not needed for calculation
+        };
+        
+        // Pass Driver compatible object
+        const driverForCalculation = responseData ? {
+          id: responseData.id || 0,
+          userId: user.id,
+          preferredLocations: updatedProfile.preferredLocations || [],
+          drivingLicense: updatedProfile.drivingLicense || null,
+          identityProof: updatedProfile.identityProof || null,
+          experience: updatedProfile.experience || null,
+          vehicleTypes: updatedProfile.vehicleTypes || []
+        } : null;
+        
+        updatedProfile.completionPercentage = calculateProfileCompletion(
+          userForCalculation,
+          driverForCalculation
+        );
+      }
+      
+      // Update local state immediately
+      setProfile(updatedProfile);
+      
+      // Then invalidate query to refresh from server
       queryClient.invalidateQueries({ queryKey: ['/api/user', user?.id] });
       
       // Reset file state
       setProfileImage(null);
       setLicenseFile(null);
       setIdentityFile(null);
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been successfully updated.",
+      });
     },
     onError: (error) => {
       console.error("Profile update error:", error);
@@ -292,7 +351,7 @@ const DriverProfilePage = () => {
 
     if (hasChanges) {
       // Show loading toast
-      toast({
+      const loadingToast = toast({
         title: "Updating profile",
         description: "Your profile is being updated...",
       });
@@ -307,11 +366,6 @@ const DriverProfilePage = () => {
 
       // Clear the edited profile
       setEditedProfile({});
-      
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been successfully updated."
-      });
     }
 
     setIsEditingProfile(false);
