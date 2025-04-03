@@ -147,8 +147,11 @@ const DriverProfilePage = () => {
         fullName: userData.user.fullName,
         phoneNumber: userData.user.phoneNumber,
         email: userData.user.email || "",
+        location: prevProfile.location, // Location is stored locally, not in DB schema
         // If driver profile exists, update with real data
         preferredLocations: driverProfile?.preferredLocations || [],
+        vehicleTypes: driverProfile?.vehicleTypes || prevProfile.vehicleTypes,
+        experience: driverProfile?.experience || prevProfile.experience,
         drivingLicense: driverProfile?.drivingLicense || null,
         identityProof: driverProfile?.identityProof || null,
         // Calculate profile completion percentage
@@ -950,15 +953,7 @@ const DriverProfilePage = () => {
                   </select>
                 </div>
 
-                <div className="space-y-2 col-span-1 sm:col-span-2">
-                  <Label htmlFor="location">Current Location</Label>
-                  <Input 
-                    id="location" 
-                    defaultValue={profile.location}
-                    onChange={(e) => setEditedProfile({...editedProfile, location: e.target.value})}
-                    placeholder="Enter your current city"
-                  />
-                </div>
+
 
                 <div className="space-y-2 col-span-1 sm:col-span-2">
                   <Label htmlFor="vehicleTypes">Vehicle Types</Label>
@@ -967,11 +962,12 @@ const DriverProfilePage = () => {
                       <div key={type} className="flex items-center space-x-2">
                         <Checkbox 
                           id={`vehicle-${type.toLowerCase().replace(/\s+/g, '-')}`}
-                          checked={profile.vehicleTypes?.includes(type)}
-                          onCheckedChange={(checked) => {
+                          checked={(editedProfile.vehicleTypes || profile.vehicleTypes || []).includes(type)}
+                          onCheckedChange={(checked: boolean) => {
                             const currentTypes = editedProfile.vehicleTypes || profile.vehicleTypes || [];
+                            // Check if type already exists to avoid duplicates
                             const newTypes = checked 
-                              ? [...currentTypes, type]
+                              ? (currentTypes.includes(type) ? currentTypes : [...currentTypes, type])
                               : currentTypes.filter(t => t !== type);
                             setEditedProfile({...editedProfile, vehicleTypes: newTypes});
                           }}
