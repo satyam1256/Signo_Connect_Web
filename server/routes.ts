@@ -154,10 +154,16 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   app.post("/api/driver-profile", async (req: Request, res: Response) => {
     try {
       // Extract all data from request
-      const { email, ...driverRequestData } = req.body;
+      const { email, location, about, availability, skills, ...driverRequestData } = req.body;
       
-      // Parse only driver fields using the schema
-      const driverData = driverInsertSchema.parse(driverRequestData);
+      // Create driver data object with all fields
+      const driverData = {
+        ...driverInsertSchema.parse(driverRequestData),
+        location: location,
+        about: about,
+        availability: availability,
+        skills: skills || []
+      };
 
       // Check if user exists
       const user = await storage.getUser(driverData.userId);
@@ -192,10 +198,14 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       // Update user record with email and completion status
       const updatedUser = await storage.updateUser(user.id, userUpdateData);
 
-      // Return combined data including email
+      // Return combined data including email and all the profile fields
       return res.status(200).json({
         ...driver,
-        email: updatedUser?.email
+        email: updatedUser?.email,
+        location: driverData.location,
+        about: driverData.about,
+        availability: driverData.availability,
+        skills: driverData.skills
       });
     } catch (err) {
       return handleError(err as Error, res);

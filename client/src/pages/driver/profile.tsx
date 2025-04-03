@@ -71,6 +71,8 @@ interface UserProfile {
   skills: string[];
   joinedDate: string;
   completionPercentage: number;
+  // To track profile ownership
+  userId?: number;
 }
 
 // Interface for profile update data including files
@@ -306,7 +308,9 @@ const DriverProfilePage = () => {
         email: data.email || profile.email,
         location: data.location || profile.location,
         experience: data.experience || profile.experience,
-        vehicleTypes: data.vehicleTypes || profile.vehicleTypes
+        vehicleTypes: data.vehicleTypes || profile.vehicleTypes,
+        availability: data.availability || profile.availability,
+        skills: data.skills || profile.skills
       };
       
       console.log("Sending profile data to server:", driverProfileData);
@@ -333,6 +337,8 @@ const DriverProfilePage = () => {
         location: responseData.location || profile.location,
         experience: responseData.experience || profile.experience,
         vehicleTypes: responseData.vehicleTypes || profile.vehicleTypes,
+        availability: responseData.availability || profile.availability,
+        skills: responseData.skills || profile.skills,
       };
       
       // Update completion percentage
@@ -358,7 +364,12 @@ const DriverProfilePage = () => {
           drivingLicense: updatedProfile.drivingLicense || null,
           identityProof: updatedProfile.identityProof || null,
           experience: updatedProfile.experience || null,
-          vehicleTypes: updatedProfile.vehicleTypes || []
+          vehicleTypes: updatedProfile.vehicleTypes || [],
+          profileImage: updatedProfile.profileImage || null,
+          about: updatedProfile.about || null,
+          location: updatedProfile.location || null,
+          availability: updatedProfile.availability || null,
+          skills: updatedProfile.skills || []
         } : null;
         
         updatedProfile.completionPercentage = calculateProfileCompletion(
