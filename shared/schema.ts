@@ -31,7 +31,6 @@ export const drivers = pgTable("drivers", {
   identityProof: text("identity_proof"),
   experience: text("experience"),
   vehicleTypes: text("vehicle_types").array(),
-  profileImage: text("profile_image"),
 });
 
 // Fleet owner-specific information
@@ -55,16 +54,6 @@ export const jobs = pgTable("jobs", {
   requirements: text("requirements").array(),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Job applications by drivers
-export const jobApplications = pgTable("job_applications", {
-  id: serial("id").primaryKey(),
-  jobId: integer("job_id").notNull(),
-  driverId: integer("driver_id").notNull(),
-  status: text("status").default("pending"),
-  appliedAt: timestamp("applied_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // OTP Verification
@@ -93,7 +82,6 @@ export const driverInsertSchema = createInsertSchema(drivers).pick({
   identityProof: true,
   experience: true,
   vehicleTypes: true,
-  profileImage: true,
 });
 
 export const fleetOwnerInsertSchema = createInsertSchema(fleetOwners).pick({
@@ -111,12 +99,6 @@ export const jobInsertSchema = createInsertSchema(jobs).pick({
   salary: true,
   description: true,
   requirements: true,
-});
-
-export const jobApplicationSchema = createInsertSchema(jobApplications).pick({
-  jobId: true,
-  driverId: true,
-  status: true,
 });
 
 export const otpVerificationSchema = createInsertSchema(otpVerifications).pick({
@@ -142,12 +124,10 @@ export type InsertUser = z.infer<typeof userInsertSchema>;
 export type InsertDriver = z.infer<typeof driverInsertSchema>;
 export type InsertFleetOwner = z.infer<typeof fleetOwnerInsertSchema>;
 export type InsertJob = z.infer<typeof jobInsertSchema>;
-export type InsertJobApplication = z.infer<typeof jobApplicationSchema>;
 export type InsertOtpVerification = z.infer<typeof otpVerificationSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Driver = typeof drivers.$inferSelect;
 export type FleetOwner = typeof fleetOwners.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
-export type JobApplication = typeof jobApplications.$inferSelect;
 export type OtpVerification = typeof otpVerifications.$inferSelect;

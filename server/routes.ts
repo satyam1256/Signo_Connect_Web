@@ -8,7 +8,6 @@ import {
   driverInsertSchema, 
   fleetOwnerInsertSchema,
   jobInsertSchema,
-  jobApplicationSchema,
   UserType
 } from "@shared/schema";
 import { ZodError } from "zod";
@@ -99,14 +98,8 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   app.post("/api/verify-otp", async (req: Request, res: Response) => {
     try {
       const { phoneNumber, otp } = verifyOtpSchema.parse(req.body);
-      
-      // For development purposes, always accept 123456 as valid OTP
-      const isVerified = otp === "123456" || await storage.verifyOtp(phoneNumber, otp);
-      console.log(`Verifying OTP for ${phoneNumber}: entered code ${otp}`);
-      
-      if (otp === "123456") {
-        console.log(`Using default OTP for ${phoneNumber}`);
-      }
+
+      const isVerified = await storage.verifyOtp(phoneNumber, otp);
 
       if (isVerified) {
         const user = await storage.getUserByPhone(phoneNumber);
@@ -159,17 +152,7 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   // Create or update driver profile
   app.post("/api/driver-profile", async (req: Request, res: Response) => {
     try {
-      // Handle potential file uploads from the request
-      // Extract non-file data for validation with Zod schema
-      const {
-        profileImage,
-        licenseFile,
-        identityFile,
-        ...nonFileData
-      } = req.body;
-
-      // Validate the standard profile data
-      const driverData = driverInsertSchema.parse(nonFileData);
+      const driverData = driverInsertSchema.parse(req.body);
 
       // Check if user exists
       const user = await storage.getUser(driverData.userId);
@@ -181,38 +164,16 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
         return res.status(403).json({ error: "User is not a driver" });
       }
 
-      // Add any image data that was passed in the request
-      const profileToUpdate = { ...driverData };
-      
-      // Handle profile image
-      if (profileImage) {
-        profileToUpdate.profileImage = profileImage;
-      }
-      
-      // Handle license document
-      if (licenseFile && driverData.drivingLicense) {
-        // We're just storing the license number, the actual file would typically 
-        // be uploaded to cloud storage and a URL saved here
-        console.log("License file received");
-      }
-      
-      // Handle identity document
-      if (identityFile && driverData.identityProof) {
-        // We're just storing the ID number, the actual file would typically 
-        // be uploaded to cloud storage and a URL saved here
-        console.log("Identity file received");
-      }
-      
       // Check if driver profile already exists
       const existingDriver = await storage.getDriver(driverData.userId);
 
       let driver;
       if (existingDriver) {
         // Update existing profile
-        driver = await storage.updateDriver(driverData.userId, profileToUpdate);
+        driver = await storage.updateDriver(driverData.userId, driverData);
       } else {
         // Create new profile
-        driver = await storage.createDriver(profileToUpdate);
+        driver = await storage.createDriver(driverData);
       }
 
       // Update user's profile completion status
@@ -255,38 +216,6 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       await storage.updateUser(user.id, { profileCompleted: true });
 
       return res.status(200).json(fleetOwner);
-    } catch (err) {
-      return handleError(err as Error, res);
-    }
-  });
-
-  // Get user by phone number
-  app.get("/api/user-by-phone/:phoneNumber", async (req: Request, res: Response) => {
-    try {
-      const phoneNumber = req.params.phoneNumber;
-
-      if (!phoneNumber) {
-        return res.status(400).json({ error: "Phone number is required" });
-      }
-
-      const user = await storage.getUserByPhone(phoneNumber);
-      
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      let profileData = null;
-
-      if (user.userType === UserType.DRIVER) {
-        profileData = await storage.getDriver(user.id);
-      } else if (user.userType === UserType.FLEET_OWNER) {
-        profileData = await storage.getFleetOwner(user.id);
-      }
-
-      return res.status(200).json({
-        user,
-        profile: profileData
-      });
     } catch (err) {
       return handleError(err as Error, res);
     }
@@ -371,174 +300,6 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       const jobs = await storage.getJobsByFleetOwner(fleetOwnerId);
 
       return res.status(200).json(jobs);
-    } catch (err) {
-      return handleError(err as Error, res);
-    }
-  });
-
-  // Apply for a job
-  app.post("/api/job-applications", async (req: Request, res: Response) => {
-    try {
-      const applicationData = jobApplicationSchema.parse(req.body);
-
-      // Check if driver exists
-      const driver = await storage.getDriver(applicationData.driverId);
-      if (!driver) {
-        return res.status(404).json({ error: "Driver not found" });
-      }
-
-      // Check if job exists
-      const job = await storage.getJob(applicationData.jobId);
-      if (!job) {
-        return res.status(404).json({ error: "Job not found" });
-      }
-
-      // Check if application already exists
-      const existingApplication = await storage.getJobApplicationByDriverAndJob(
-        applicationData.driverId,
-        applicationData.jobId
-      );
-
-      if (existingApplication) {
-        return res.status(409).json({ 
-          error: "Already applied to this job",
-          application: existingApplication
-        });
-      }
-
-      // Create the application
-      const application = await storage.createJobApplication(applicationData);
-
-      return res.status(201).json(application);
-    } catch (err) {
-      return handleError(err as Error, res);
-    }
-  });
-
-  // Get job applications for a driver
-  app.get("/api/driver/:driverId/job-applications", async (req: Request, res: Response) => {
-    try {
-      const driverId = parseInt(req.params.driverId);
-
-      if (isNaN(driverId)) {
-        return res.status(400).json({ error: "Invalid driver ID" });
-      }
-
-      // Check if driver exists
-      const driver = await storage.getDriver(driverId);
-      if (!driver) {
-        return res.status(404).json({ error: "Driver not found" });
-      }
-
-      const applications = await storage.getJobApplicationsByDriver(driverId);
-
-      // Get job details for each application
-      const applicationsWithJobs = await Promise.all(
-        applications.map(async (application) => {
-          const job = await storage.getJob(application.jobId);
-          return {
-            ...application,
-            job
-          };
-        })
-      );
-
-      return res.status(200).json(applicationsWithJobs);
-    } catch (err) {
-      return handleError(err as Error, res);
-    }
-  });
-
-  // Get job applications for a job
-  app.get("/api/jobs/:jobId/applications", async (req: Request, res: Response) => {
-    try {
-      const jobId = parseInt(req.params.jobId);
-
-      if (isNaN(jobId)) {
-        return res.status(400).json({ error: "Invalid job ID" });
-      }
-
-      // Check if job exists
-      const job = await storage.getJob(jobId);
-      if (!job) {
-        return res.status(404).json({ error: "Job not found" });
-      }
-
-      const applications = await storage.getJobApplicationsByJob(jobId);
-
-      // Get driver details for each application
-      const applicationsWithDrivers = await Promise.all(
-        applications.map(async (application) => {
-          const driver = await storage.getDriver(application.driverId);
-          // Get user data for the driver
-          const user = driver ? await storage.getUser(driver.userId) : null;
-          
-          return {
-            ...application,
-            driver,
-            driverName: user ? user.fullName : null
-          };
-        })
-      );
-
-      return res.status(200).json(applicationsWithDrivers);
-    } catch (err) {
-      return handleError(err as Error, res);
-    }
-  });
-
-  // Check if a driver has applied to a specific job
-  app.get("/api/job-applications/check", async (req: Request, res: Response) => {
-    try {
-      const { driverId, jobId } = req.query;
-      
-      if (!driverId || !jobId) {
-        return res.status(400).json({ error: "driverId and jobId are required parameters" });
-      }
-
-      const driverIdNum = parseInt(driverId as string);
-      const jobIdNum = parseInt(jobId as string);
-
-      if (isNaN(driverIdNum) || isNaN(jobIdNum)) {
-        return res.status(400).json({ error: "Invalid ID format" });
-      }
-
-      const application = await storage.getJobApplicationByDriverAndJob(driverIdNum, jobIdNum);
-      
-      return res.status(200).json({
-        hasApplied: !!application,
-        application: application || null
-      });
-    } catch (err) {
-      return handleError(err as Error, res);
-    }
-  });
-
-  // Update job application status
-  app.patch("/api/job-applications/:id", async (req: Request, res: Response) => {
-    try {
-      const applicationId = parseInt(req.params.id);
-      
-      if (isNaN(applicationId)) {
-        return res.status(400).json({ error: "Invalid application ID" });
-      }
-
-      const application = await storage.getJobApplication(applicationId);
-      if (!application) {
-        return res.status(404).json({ error: "Job application not found" });
-      }
-
-      const { status } = req.body;
-      if (!status) {
-        return res.status(400).json({ error: "Status is required" });
-      }
-
-      const updatedApplication = await storage.updateJobApplication(applicationId, { 
-        status,
-        updatedAt: new Date()
-      });
-
-      return res.status(200).json(updatedApplication);
     } catch (err) {
       return handleError(err as Error, res);
     }

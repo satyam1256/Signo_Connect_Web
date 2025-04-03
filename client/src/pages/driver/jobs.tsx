@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { 
   MapPin, 
   Filter,
@@ -149,87 +148,10 @@ const DriverJobsPage = () => {
     }
   };
 
-  // API query to check if user has already applied to jobs
-  const { data: applicationStatus } = useQuery<any[]>({
-    queryKey: ['/api/driver/' + user?.id + '/job-applications'],
-    enabled: !!user?.id,
-    initialData: [],
-  });
-
-  // Use effect to set applied jobs based on API response
-  useEffect(() => {
-    if (Array.isArray(applicationStatus)) {
-      const appliedJobIds = applicationStatus.map((app: any) => app.jobId);
-      setAppliedJobs(appliedJobIds);
-    }
-  }, [applicationStatus]);
-
-  // Apply for job mutation
-  const applyMutation = useMutation({
-    mutationFn: async (jobId: number) => {
-      if (!user) throw new Error("User not logged in");
-      
-      // Get driver profile based on user ID
-      const userProfile = await apiRequest('GET', `/api/user/${user.id}`);
-      const userData = await userProfile.json();
-      
-      if (!userData.profile) throw new Error("Driver profile not found");
-      
-      // Submit job application
-      const response = await apiRequest('POST', '/api/job-applications', {
-        jobId: jobId,
-        driverId: userData.profile.id,
-        status: 'pending'
-      });
-      
-      return response.json();
-    },
-    onSuccess: (data) => {
-      // Add to applied jobs
-      if (!appliedJobs.includes(data.jobId)) {
-        setAppliedJobs([...appliedJobs, data.jobId]);
-      }
-      
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/driver/' + user?.id + '/job-applications'] });
-    }
-  });
-
-  // Check if user has applied to a specific job
-  const checkIfApplied = async (jobId: number) => {
-    if (!user) return false;
-    
-    try {
-      const userProfile = await apiRequest('GET', `/api/user/${user.id}`);
-      const userData = await userProfile.json();
-      
-      if (!userData.profile) return false;
-      
-      const driverId = userData.profile.id;
-      const response = await apiRequest('GET', `/api/job-applications/check?driverId=${driverId}&jobId=${jobId}`);
-      const data = await response.json();
-      
-      return data.hasApplied;
-    } catch (error) {
-      console.error("Error checking application status:", error);
-      return false;
-    }
-  };
-  
   // Handle applying for a job
   const handleApplyJob = (jobId: number) => {
-    if (!user) {
-      navigate("/login");
-      return;
-    }
-    
-    if (!user.profileCompleted) {
-      navigate("/driver/profile");
-      return;
-    }
-    
     if (!appliedJobs.includes(jobId)) {
-      applyMutation.mutate(jobId);
+      setAppliedJobs([...appliedJobs, jobId]);
     }
   };
 

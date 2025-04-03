@@ -3,7 +3,6 @@ import {
   drivers, type Driver, type InsertDriver,
   fleetOwners, type FleetOwner, type InsertFleetOwner,
   jobs, type Job, type InsertJob,
-  jobApplications, type JobApplication, type InsertJobApplication,
   otpVerifications, type OtpVerification, type InsertOtpVerification
 } from "@shared/schema";
 import { IStorage } from "./storage";
@@ -32,7 +31,7 @@ export class DbStorage implements IStorage {
       .set(userData)
       .where(eq(users.id, id))
       .returning();
-
+    
     return result[0];
   }
 
@@ -55,7 +54,7 @@ export class DbStorage implements IStorage {
       .set(driverData)
       .where(eq(drivers.id, driver.id))
       .returning();
-
+    
     return result[0];
   }
 
@@ -78,7 +77,7 @@ export class DbStorage implements IStorage {
       .set(fleetOwnerData)
       .where(eq(fleetOwners.id, fleetOwner.id))
       .returning();
-
+    
     return result[0];
   }
 
@@ -106,45 +105,7 @@ export class DbStorage implements IStorage {
       .set(jobData)
       .where(eq(jobs.id, id))
       .returning();
-
-    return result[0];
-  }
-
-  // Job application operations
-  async createJobApplication(application: InsertJobApplication): Promise<JobApplication> {
-    const result = await db.insert(jobApplications).values(application).returning();
-    return result[0];
-  }
-
-  async getJobApplication(id: number): Promise<JobApplication | undefined> {
-    const result = await db.select().from(jobApplications).where(eq(jobApplications.id, id));
-    return result[0];
-  }
-
-  async getJobApplicationByDriverAndJob(driverId: number, jobId: number): Promise<JobApplication | undefined> {
-    const result = await db.select().from(jobApplications).where(
-      and(
-        eq(jobApplications.driverId, driverId),
-        eq(jobApplications.jobId, jobId)
-      )
-    );
-    return result[0];
-  }
-
-  async getJobApplicationsByDriver(driverId: number): Promise<JobApplication[]> {
-    return await db.select().from(jobApplications).where(eq(jobApplications.driverId, driverId));
-  }
-
-  async getJobApplicationsByJob(jobId: number): Promise<JobApplication[]> {
-    return await db.select().from(jobApplications).where(eq(jobApplications.jobId, jobId));
-  }
-
-  async updateJobApplication(id: number, data: Partial<JobApplication>): Promise<JobApplication | undefined> {
-    const result = await db.update(jobApplications)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(jobApplications.id, id))
-      .returning();
-
+    
     return result[0];
   }
 
@@ -153,11 +114,8 @@ export class DbStorage implements IStorage {
     // First, delete any existing OTP for this phone number to avoid duplicates
     await db.delete(otpVerifications)
       .where(eq(otpVerifications.phoneNumber, verification.phoneNumber));
-
-    // Override the OTP with "123456"
-    const modifiedVerification = { ...verification, otp: "123456" };
-
-    const result = await db.insert(otpVerifications).values(modifiedVerification).returning();
+    
+    const result = await db.insert(otpVerifications).values(verification).returning();
     return result[0];
   }
 
@@ -168,12 +126,8 @@ export class DbStorage implements IStorage {
   }
 
   async verifyOtp(phoneNumber: string, otp: string): Promise<boolean> {
-    console.log(`Verifying OTP for ${phoneNumber}: entered code ${otp}`);
-
-    // Always allow "123456" as the default OTP
+    // Allow "123456" as a default OTP for testing
     if (otp === "123456") {
-      console.log(`Using default OTP for ${phoneNumber}`);
-      // Optional: Update the verification record if it exists
       const verification = await this.getOtpVerification(phoneNumber);
       if (verification) {
         await db.update(otpVerifications)
@@ -183,25 +137,16 @@ export class DbStorage implements IStorage {
       return true;
     }
 
-    console.log(`Checking database for OTP verification record for ${phoneNumber}`);
     const verification = await this.getOtpVerification(phoneNumber);
-
-    if (!verification) {
-      console.log(`No OTP verification record found for ${phoneNumber}`);
-      return false;
-    }
-
-    console.log(`Found OTP record for ${phoneNumber}, stored OTP: ${verification.otp}, expires: ${verification.expiresAt}`);
+    if (!verification) return false;
 
     if (verification.otp === otp && verification.expiresAt > new Date()) {
-      console.log(`OTP verified successfully for ${phoneNumber}`);
       await db.update(otpVerifications)
         .set({ verified: true })
         .where(eq(otpVerifications.phoneNumber, phoneNumber));
       return true;
     }
 
-    console.log(`OTP verification failed for ${phoneNumber} - either incorrect or expired`);
     return false;
   }
 }

@@ -3,7 +3,6 @@ import {
   drivers, type Driver, type InsertDriver,
   fleetOwners, type FleetOwner, type InsertFleetOwner,
   jobs, type Job, type InsertJob,
-  jobApplications, type JobApplication, type InsertJobApplication,
   otpVerifications, type OtpVerification, type InsertOtpVerification
 } from "@shared/schema";
 
@@ -32,14 +31,6 @@ export interface IStorage {
   createJob(job: InsertJob): Promise<Job>;
   updateJob(id: number, job: Partial<Job>): Promise<Job | undefined>;
 
-  // Job application operations
-  createJobApplication(application: InsertJobApplication): Promise<JobApplication>;
-  getJobApplication(id: number): Promise<JobApplication | undefined>;
-  getJobApplicationByDriverAndJob(driverId: number, jobId: number): Promise<JobApplication | undefined>;
-  getJobApplicationsByDriver(driverId: number): Promise<JobApplication[]>;
-  getJobApplicationsByJob(jobId: number): Promise<JobApplication[]>;
-  updateJobApplication(id: number, data: Partial<JobApplication>): Promise<JobApplication | undefined>;
-
   // OTP verification operations
   createOtpVerification(verification: InsertOtpVerification): Promise<OtpVerification>;
   getOtpVerification(phoneNumber: string): Promise<OtpVerification | undefined>;
@@ -51,14 +42,12 @@ export class MemStorage implements IStorage {
   private drivers = new Map<number, Driver>();
   private fleetOwners = new Map<number, FleetOwner>();
   private jobs = new Map<number, Job>();
-  private jobApplications = new Map<number, JobApplication>();
   private otpVerifications = new Map<string, OtpVerification>();
 
   private userId = 1;
   private driverId = 1;
   private fleetOwnerId = 1;
   private jobId = 1;
-  private jobApplicationId = 1;
   private otpId = 1;
 
   constructor() {
@@ -71,14 +60,12 @@ export class MemStorage implements IStorage {
     this.drivers = new Map();
     this.fleetOwners = new Map();
     this.jobs = new Map();
-    this.jobApplications = new Map();
     this.otpVerifications = new Map();
 
     this.userId = 1;
     this.driverId = 1;
     this.fleetOwnerId = 1;
     this.jobId = 1;
-    this.jobApplicationId = 1;
     this.otpId = 1;
 
     console.log('[MemStorage] Data has been reset');
@@ -136,8 +123,7 @@ export class MemStorage implements IStorage {
       drivingLicense: insertDriver.drivingLicense ?? null,
       identityProof: insertDriver.identityProof ?? null,
       experience: insertDriver.experience ?? null,
-      vehicleTypes: insertDriver.vehicleTypes ?? null,
-      profileImage: insertDriver.profileImage ?? null
+      vehicleTypes: insertDriver.vehicleTypes ?? null
     };
     this.drivers.set(id, driver);
     return driver;
@@ -246,56 +232,6 @@ export class MemStorage implements IStorage {
 
   async getOtpVerification(phoneNumber: string): Promise<OtpVerification | undefined> {
     return this.otpVerifications.get(phoneNumber);
-  }
-
-  // Job application methods
-  async createJobApplication(application: InsertJobApplication): Promise<JobApplication> {
-    const id = this.jobApplicationId++;
-    const now = new Date();
-    const jobApplication: JobApplication = {
-      ...application,
-      id,
-      appliedAt: now,
-      updatedAt: now,
-      status: application.status ?? "pending"
-    };
-    this.jobApplications.set(id, jobApplication);
-    return jobApplication;
-  }
-
-  async getJobApplication(id: number): Promise<JobApplication | undefined> {
-    return this.jobApplications.get(id);
-  }
-
-  async getJobApplicationByDriverAndJob(driverId: number, jobId: number): Promise<JobApplication | undefined> {
-    return Array.from(this.jobApplications.values()).find(
-      (application) => application.driverId === driverId && application.jobId === jobId
-    );
-  }
-
-  async getJobApplicationsByDriver(driverId: number): Promise<JobApplication[]> {
-    return Array.from(this.jobApplications.values()).filter(
-      (application) => application.driverId === driverId
-    );
-  }
-
-  async getJobApplicationsByJob(jobId: number): Promise<JobApplication[]> {
-    return Array.from(this.jobApplications.values()).filter(
-      (application) => application.jobId === jobId
-    );
-  }
-
-  async updateJobApplication(id: number, data: Partial<JobApplication>): Promise<JobApplication | undefined> {
-    const application = this.jobApplications.get(id);
-    if (!application) return undefined;
-
-    const updatedApplication = { 
-      ...application, 
-      ...data,
-      updatedAt: new Date()
-    };
-    this.jobApplications.set(id, updatedApplication);
-    return updatedApplication;
   }
 
   async verifyOtp(phoneNumber: string, otp: string): Promise<boolean> {

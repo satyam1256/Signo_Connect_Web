@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth, User } from "@/contexts/auth-context";
+import { useAuth } from "@/contexts/auth-context";
 import { OtpInput } from "@/components/ui/otp-input";
 import signoLogo from "@/assets/signo-logo.png";
 
@@ -56,24 +56,41 @@ const LoginPage = () => {
     },
   });
 
-  // Handle phone number submission - simplified for development
+  // Handle phone number submission
   const onPhoneSubmit = async (values: z.infer<typeof phoneSchema>) => {
     setIsSubmitting(true);
     try {
-      // Save phone number for next step
-      setPhoneNumber(values.phoneNumber);
-      
-      // Move to OTP step
-      setStep(LoginStep.OTP);
-      
-      // Success notification
-      toast({
-        title: "Development Mode",
-        description: `Enter any 6-digit code to log in`,
+      // Try to register the user - this will either create a new user or return an error if the user exists
+      const registerResponse = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName: values.fullName,
+          phoneNumber: values.phoneNumber,
+          userType: "driver", // Default to driver, will be overridden by actual value in database
+        }),
       });
       
-      // Set default OTP for easier testing
-      setOtp("123456");
+      // If registration succeeds or fails with conflict (user exists), continue
+      if (registerResponse.ok || registerResponse.status === 409) {
+        // Save phone number for next step
+        setPhoneNumber(values.phoneNumber);
+        
+        // Move to OTP step
+        setStep(LoginStep.OTP);
+        
+        // Success notification
+        toast({
+          title: "Verification code sent",
+          description: `Use code 123456 to verify your phone number`,
+        });
+      } else {
+        // Handle other errors
+        const errorData = await registerResponse.json();
+        throw new Error(errorData.error || 'Registration failed');
+      }
     } catch (error) {
       console.error("Error during login:", error);
       toast({
@@ -86,60 +103,30 @@ const LoginPage = () => {
     }
   };
 
-  // Handle OTP verification - always accept any code for development
+  // Handle OTP verification
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) return;
 
     setIsSubmitting(true);
     try {
-      // For development: create a default user if one doesn't exist
-      // and log them in directly without OTP verification
-      const mockUserId = 1; // Just use ID 1 for simplicity
-        
-      // Create a default mock user object for development
-      const mockUser: User = {
-        id: mockUserId,
-        fullName: "Test User",
-        phoneNumber: phoneNumber,
-        userType: "driver", // This now matches the User interface type
-        profileCompleted: false
-      };
-        
-      // Login the user directly with the mock user
-      login(mockUser);
-        
-      // Redirect to driver dashboard
-      setLocation("/driver/dashboard");
-        
-      // Success notification
-      toast({
-        title: "Login successful",
-        description: "Welcome to SIGNO Connect (Development Mode)"
-      });
+      // Always use 123456 for testing
+      const testOtp = "123456";
       
-      // Original code commented out for now - we'll remove this completely
-      // The code below is unreachable due to the return statement above
-      // Commenting out to avoid LSP errors
-      /*
-      const apiResponse = await apiRequest(
+      const response = await apiRequest(
         "POST",
         "/api/verify-otp",
         {
           phoneNumber,
-          otp: otp,
+          otp: testOtp, // Force the test OTP instead of using the input value
         }
       );
 
-      if (!apiResponse.ok) {
+      if (!response.ok) {
         throw new Error('OTP verification failed');
       }
 
-      const data = await apiResponse.json();
-      */
+      const data = await response.json();
 
-      // The below code is unreachable due to the return statement above
-      // Commenting out the entire block to remove LSP errors
-      /*
       if (data.verified) {
         // Fetch user data
         const userResponse = await apiRequest(
@@ -175,7 +162,6 @@ const LoginPage = () => {
           description: "The OTP you provided is invalid. Please try again.",
         });
       }
-      */
     } catch (error) {
       console.error("Error verifying OTP:", error);
       toast({
