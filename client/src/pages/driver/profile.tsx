@@ -111,11 +111,12 @@ const DriverProfilePage = () => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  // Default profile data (used as fallback while loading)
-  const [profile, setProfile] = useState<UserProfile>({
+  // Try to get saved profile data from localStorage first
+  const savedProfile = localStorage.getItem("driverProfile");
+  let initialProfile: UserProfile = {
     fullName: user?.fullName || "",
     phoneNumber: user?.phoneNumber || "",
-    email: "",
+    email: user?.email || "",
     language: "English",
     location: "",
     about: "Professional driver looking for opportunities",
@@ -128,7 +129,22 @@ const DriverProfilePage = () => {
     skills: ["Driving"],
     joinedDate: new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
     completionPercentage: 20
-  });
+  };
+  
+  // If we have a saved profile, use it instead
+  if (savedProfile) {
+    try {
+      const parsedProfile = JSON.parse(savedProfile);
+      initialProfile = { ...initialProfile, ...parsedProfile };
+      console.log("Loaded saved profile from localStorage", initialProfile);
+    } catch (error) {
+      console.error("Failed to parse saved profile:", error);
+      localStorage.removeItem("driverProfile");
+    }
+  }
+  
+  // Initialize profile state with either saved or default data
+  const [profile, setProfile] = useState<UserProfile>(initialProfile);
 
   // Fetch real user data from API
   const { data: userData, isLoading } = useQuery<UserProfileResponse>({
@@ -142,23 +158,38 @@ const DriverProfilePage = () => {
       // Initialize profile with data from API
       const driverProfile = userData.profile;
       
-      setProfile(prevProfile => ({
-        ...prevProfile,
-        fullName: userData.user.fullName,
-        phoneNumber: userData.user.phoneNumber,
-        email: userData.user.email || "",
-        location: prevProfile.location, // Location is stored locally, not in DB schema
-        // If driver profile exists, update with real data
-        preferredLocations: driverProfile?.preferredLocations || [],
-        vehicleTypes: driverProfile?.vehicleTypes || prevProfile.vehicleTypes,
-        experience: driverProfile?.experience || prevProfile.experience,
-        drivingLicense: driverProfile?.drivingLicense || null,
-        identityProof: driverProfile?.identityProof || null,
-        // Calculate profile completion percentage
-        completionPercentage: calculateProfileCompletion(userData.user, driverProfile)
-      }));
+      setProfile(prevProfile => {
+        // Create updated profile by merging previously saved data with API data
+        const updatedProfile = {
+          ...prevProfile,
+          fullName: userData.user.fullName,
+          phoneNumber: userData.user.phoneNumber,
+          email: userData.user.email || prevProfile.email || "",
+          location: prevProfile.location, // Location is stored locally, not in DB schema
+          // If driver profile exists, update with real data
+          preferredLocations: driverProfile?.preferredLocations || prevProfile.preferredLocations || [],
+          vehicleTypes: driverProfile?.vehicleTypes || prevProfile.vehicleTypes,
+          experience: driverProfile?.experience || prevProfile.experience,
+          drivingLicense: driverProfile?.drivingLicense || prevProfile.drivingLicense,
+          identityProof: driverProfile?.identityProof || prevProfile.identityProof,
+          // Calculate profile completion percentage
+          completionPercentage: calculateProfileCompletion(userData.user, driverProfile)
+        };
+        
+        // Save the merged profile to localStorage for persistence
+        localStorage.setItem("driverProfile", JSON.stringify(updatedProfile));
+        
+        console.log("Updated profile with API data:", updatedProfile);
+        
+        // Also update auth context if email changed
+        if (updatedProfile.email && updatedProfile.email !== userData.user.email) {
+          updateUser({ email: updatedProfile.email });
+        }
+        
+        return updatedProfile;
+      });
     }
-  }, [userData]);
+  }, [userData, updateUser]);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
@@ -295,6 +326,14 @@ const DriverProfilePage = () => {
       
       // Update local state immediately
       setProfile(updatedProfile);
+      
+      // Update email in auth context if it has changed
+      if (responseData.email && responseData.email !== user?.email) {
+        updateUser({ email: responseData.email });
+      }
+      
+      // Save profile to localStorage for persistence between page changes
+      localStorage.setItem("driverProfile", JSON.stringify(updatedProfile));
       
       // Then invalidate query to refresh from server
       queryClient.invalidateQueries({ queryKey: ['/api/user', user?.id] });
