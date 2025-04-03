@@ -113,12 +113,17 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
           // Check if driver profile exists
           const existingDriver = await storage.getDriver(user.id);
           if (!existingDriver) {
-            // Create initial driver profile
+            // Create initial driver profile with all required fields
             await storage.createDriver({
               userId: user.id,
               preferredLocations: [],
               experience: "0", // Use string type as per schema
-              vehicleTypes: []
+              vehicleTypes: [],
+              // Include the additional fields with default values
+              about: "Professional driver looking for opportunities",
+              location: "",
+              availability: "full-time",
+              skills: ["Driving"]
             });
             console.log(`Created initial driver profile for user ${user.id}`);
           }
@@ -126,12 +131,17 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
           // Check if fleet owner profile exists
           const existingFleetOwner = await storage.getFleetOwner(user.id);
           if (!existingFleetOwner) {
-            // Create initial fleet owner profile
+            // Create initial fleet owner profile with all required fields
             await storage.createFleetOwner({
               userId: user.id,
               companyName: "",
               fleetSize: "0", // Use string type as per schema
-              preferredLocations: []
+              preferredLocations: [],
+              // Include the additional fields with default values
+              about: "Fleet owner looking for reliable drivers",
+              location: "",
+              businessType: "Transportation",
+              regNumber: ""
             });
             console.log(`Created initial fleet owner profile for user ${user.id}`);
           }
@@ -154,15 +164,16 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   app.post("/api/driver-profile", async (req: Request, res: Response) => {
     try {
       // Extract all data from request
-      const { email, location, about, availability, skills, ...driverRequestData } = req.body;
+      const { email, location, about, availability, skills, profileImage, ...driverRequestData } = req.body;
       
       // Create driver data object with all fields
       const driverData = {
         ...driverInsertSchema.parse(driverRequestData),
-        location: location,
-        about: about,
-        availability: availability,
-        skills: skills || []
+        location: location || "",
+        about: about || "Professional driver looking for opportunities",
+        availability: availability || "full-time",
+        skills: skills || ["Driving"],
+        profileImage: profileImage || null
       };
 
       // Check if user exists
@@ -205,7 +216,8 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
         location: driverData.location,
         about: driverData.about,
         availability: driverData.availability,
-        skills: driverData.skills
+        skills: driverData.skills,
+        profileImage: driverData.profileImage
       });
     } catch (err) {
       return handleError(err as Error, res);
@@ -216,10 +228,17 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   app.post("/api/fleet-owner-profile", async (req: Request, res: Response) => {
     try {
       // Extract all data from request
-      const { email, ...fleetOwnerRequestData } = req.body;
+      const { email, location, about, businessType, regNumber, profileImage, ...fleetOwnerRequestData } = req.body;
       
-      // Parse only fleet owner fields using the schema
-      const fleetOwnerData = fleetOwnerInsertSchema.parse(fleetOwnerRequestData);
+      // Create fleet owner data object with all fields
+      const fleetOwnerData = {
+        ...fleetOwnerInsertSchema.parse(fleetOwnerRequestData),
+        location: location || "",
+        about: about || "Fleet owner looking for reliable drivers",
+        businessType: businessType || "Transportation",
+        regNumber: regNumber || "",
+        profileImage: profileImage || null
+      };
 
       // Check if user exists
       const user = await storage.getUser(fleetOwnerData.userId);
@@ -254,10 +273,15 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       // Update user record with email and completion status
       const updatedUser = await storage.updateUser(user.id, userUpdateData);
 
-      // Return combined data including email
+      // Return combined data including email and all profile fields
       return res.status(200).json({
         ...fleetOwner,
-        email: updatedUser?.email
+        email: updatedUser?.email,
+        location: fleetOwnerData.location,
+        about: fleetOwnerData.about,
+        businessType: fleetOwnerData.businessType,
+        regNumber: fleetOwnerData.regNumber,
+        profileImage: fleetOwnerData.profileImage
       });
     } catch (err) {
       return handleError(err as Error, res);

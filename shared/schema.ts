@@ -47,6 +47,12 @@ export const fleetOwners = pgTable("fleet_owners", {
   fleetSize: text("fleet_size"),
   preferredLocations: text("preferred_locations").array(),
   registrationDoc: text("registration_doc"),
+  // Additional profile fields
+  profileImage: text("profile_image"),
+  about: text("about"),
+  location: text("location"),
+  businessType: text("business_type"),
+  regNumber: text("reg_number"),
 });
 
 // Job postings by fleet owners
@@ -101,6 +107,11 @@ export const fleetOwnerInsertSchema = createInsertSchema(fleetOwners).pick({
   fleetSize: true,
   preferredLocations: true,
   registrationDoc: true,
+  profileImage: true,
+  about: true,
+  location: true,
+  businessType: true,
+  regNumber: true,
 });
 
 export const jobInsertSchema = createInsertSchema(jobs).pick({
