@@ -3,6 +3,7 @@ import {
   drivers, type Driver, type InsertDriver,
   fleetOwners, type FleetOwner, type InsertFleetOwner,
   jobs, type Job, type InsertJob,
+  jobApplications, type JobApplication, type InsertJobApplication,
   otpVerifications, type OtpVerification, type InsertOtpVerification
 } from "@shared/schema";
 import { IStorage } from "./storage";
@@ -104,6 +105,44 @@ export class DbStorage implements IStorage {
     const result = await db.update(jobs)
       .set(jobData)
       .where(eq(jobs.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  // Job application operations
+  async createJobApplication(application: InsertJobApplication): Promise<JobApplication> {
+    const result = await db.insert(jobApplications).values(application).returning();
+    return result[0];
+  }
+
+  async getJobApplication(id: number): Promise<JobApplication | undefined> {
+    const result = await db.select().from(jobApplications).where(eq(jobApplications.id, id));
+    return result[0];
+  }
+
+  async getJobApplicationByDriverAndJob(driverId: number, jobId: number): Promise<JobApplication | undefined> {
+    const result = await db.select().from(jobApplications).where(
+      and(
+        eq(jobApplications.driverId, driverId),
+        eq(jobApplications.jobId, jobId)
+      )
+    );
+    return result[0];
+  }
+
+  async getJobApplicationsByDriver(driverId: number): Promise<JobApplication[]> {
+    return await db.select().from(jobApplications).where(eq(jobApplications.driverId, driverId));
+  }
+
+  async getJobApplicationsByJob(jobId: number): Promise<JobApplication[]> {
+    return await db.select().from(jobApplications).where(eq(jobApplications.jobId, jobId));
+  }
+
+  async updateJobApplication(id: number, data: Partial<JobApplication>): Promise<JobApplication | undefined> {
+    const result = await db.update(jobApplications)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(jobApplications.id, id))
       .returning();
     
     return result[0];

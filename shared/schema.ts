@@ -57,6 +57,16 @@ export const jobs = pgTable("jobs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Job applications by drivers
+export const jobApplications = pgTable("job_applications", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").notNull(),
+  driverId: integer("driver_id").notNull(),
+  status: text("status").default("pending"),
+  appliedAt: timestamp("applied_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // OTP Verification
 export const otpVerifications = pgTable("otp_verifications", {
   id: serial("id").primaryKey(),
@@ -103,6 +113,12 @@ export const jobInsertSchema = createInsertSchema(jobs).pick({
   requirements: true,
 });
 
+export const jobApplicationSchema = createInsertSchema(jobApplications).pick({
+  jobId: true,
+  driverId: true,
+  status: true,
+});
+
 export const otpVerificationSchema = createInsertSchema(otpVerifications).pick({
   phoneNumber: true,
   otp: true,
@@ -126,10 +142,12 @@ export type InsertUser = z.infer<typeof userInsertSchema>;
 export type InsertDriver = z.infer<typeof driverInsertSchema>;
 export type InsertFleetOwner = z.infer<typeof fleetOwnerInsertSchema>;
 export type InsertJob = z.infer<typeof jobInsertSchema>;
+export type InsertJobApplication = z.infer<typeof jobApplicationSchema>;
 export type InsertOtpVerification = z.infer<typeof otpVerificationSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Driver = typeof drivers.$inferSelect;
 export type FleetOwner = typeof fleetOwners.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
+export type JobApplication = typeof jobApplications.$inferSelect;
 export type OtpVerification = typeof otpVerifications.$inferSelect;
