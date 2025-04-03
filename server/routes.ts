@@ -152,7 +152,17 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   // Create or update driver profile
   app.post("/api/driver-profile", async (req: Request, res: Response) => {
     try {
-      const driverData = driverInsertSchema.parse(req.body);
+      // Handle potential file uploads from the request
+      // Extract non-file data for validation with Zod schema
+      const {
+        profileImage,
+        licenseFile,
+        identityFile,
+        ...nonFileData
+      } = req.body;
+
+      // Validate the standard profile data
+      const driverData = driverInsertSchema.parse(nonFileData);
 
       // Check if user exists
       const user = await storage.getUser(driverData.userId);
@@ -164,16 +174,38 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
         return res.status(403).json({ error: "User is not a driver" });
       }
 
+      // Add any image data that was passed in the request
+      const profileToUpdate = { ...driverData };
+      
+      // Handle profile image
+      if (profileImage) {
+        profileToUpdate.profileImage = profileImage;
+      }
+      
+      // Handle license document
+      if (licenseFile && driverData.drivingLicense) {
+        // We're just storing the license number, the actual file would typically 
+        // be uploaded to cloud storage and a URL saved here
+        console.log("License file received");
+      }
+      
+      // Handle identity document
+      if (identityFile && driverData.identityProof) {
+        // We're just storing the ID number, the actual file would typically 
+        // be uploaded to cloud storage and a URL saved here
+        console.log("Identity file received");
+      }
+      
       // Check if driver profile already exists
       const existingDriver = await storage.getDriver(driverData.userId);
 
       let driver;
       if (existingDriver) {
         // Update existing profile
-        driver = await storage.updateDriver(driverData.userId, driverData);
+        driver = await storage.updateDriver(driverData.userId, profileToUpdate);
       } else {
         // Create new profile
-        driver = await storage.createDriver(driverData);
+        driver = await storage.createDriver(profileToUpdate);
       }
 
       // Update user's profile completion status

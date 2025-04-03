@@ -242,7 +242,7 @@ const DriverProfilePage = () => {
       console.error("Profile update error:", error);
       toast({
         title: "Update failed",
-        description: "There was an error updating your profile. Please try again.",
+        description: "There was an error updating your profile. Try using smaller image files or retry later.",
         variant: "destructive"
       });
     }
@@ -259,7 +259,7 @@ const DriverProfilePage = () => {
   };
 
   // Handle profile update
-  const handleProfileUpdate = () => {
+  const handleProfileUpdate = async () => {
     // Check for required fields
     const fieldValidation = {
       email: editedProfile.email || profile.email,
@@ -291,30 +291,53 @@ const DriverProfilePage = () => {
                        identityFile !== null;
 
     if (hasChanges) {
-      // Show loading toast
-      toast({
-        title: "Updating profile",
-        description: "Your profile is being updated...",
-      });
-      
-      // Save to server - include files in the mutation
-      updateProfileMutation.mutate({
-        ...editedProfile,
-        profileImage: profileImage,
-        licenseFile: licenseFile,
-        identityFile: identityFile
-      });
+      try {
+        // Show loading toast
+        toast({
+          title: "Updating profile",
+          description: "Your profile is being updated. This may take a moment if uploading photos...",
+        });
 
-      // Clear the edited profile
-      setEditedProfile({});
-      
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been successfully updated."
-      });
+        // Check if the files are too large
+        if (profileImage && profileImage.size > 5000000) { // 5MB limit
+          toast({
+            title: "File too large",
+            description: "Profile image should be less than 5MB. Please choose a smaller file.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        // Save to server - include files in the mutation
+        await updateProfileMutation.mutateAsync({
+          ...editedProfile,
+          profileImage: profileImage,
+          licenseFile: licenseFile,
+          identityFile: identityFile
+        });
+
+        // Clear the edited profile
+        setEditedProfile({});
+        
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been successfully updated."
+        });
+
+        // Close the dialog
+        setIsEditingProfile(false);
+      } catch (error) {
+        console.error("Profile update failed:", error);
+        toast({
+          title: "Update failed",
+          description: "There was an error updating your profile. Please try again with smaller image files.",
+          variant: "destructive"
+        });
+      }
+    } else {
+      // No changes were made, just close the dialog
+      setIsEditingProfile(false);
     }
-
-    setIsEditingProfile(false);
   };
 
   // If no user is logged in, redirect to welcome page
