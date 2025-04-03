@@ -57,8 +57,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const login = (userData: User) => {
+    // First, clear any existing profile data to prevent mixing data between users
+    localStorage.removeItem("driverProfile");
+    localStorage.removeItem("fleetOwnerProfile");
+    
+    // Set the new user data
     setUser(userData);
     localStorage.setItem("signoUser", JSON.stringify(userData));
+
+    // Log the user login for debugging
+    console.log("User logged in:", userData);
 
     // Redirect based on user type and profile completion
     if (userData.userType === "driver") {
@@ -75,7 +83,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const logout = () => {
     setUser(null);
+    
+    // Clear all user-related data from localStorage
     localStorage.removeItem("signoUser");
+    localStorage.removeItem("driverProfile");
+    localStorage.removeItem("fleetOwnerProfile");
+    
+    // Clear any other cached data that might be user-specific
+    console.log("User logged out, cleared all profile data");
+    
     navigate("/");
 
     toast({

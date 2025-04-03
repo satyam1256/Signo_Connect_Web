@@ -111,8 +111,7 @@ const DriverProfilePage = () => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  // Try to get saved profile data from localStorage first
-  const savedProfile = localStorage.getItem("driverProfile");
+  // Create default profile data
   let initialProfile: UserProfile = {
     fullName: user?.fullName || "",
     phoneNumber: user?.phoneNumber || "",
@@ -128,19 +127,34 @@ const DriverProfilePage = () => {
     availability: "full-time",
     skills: ["Driving"],
     joinedDate: new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
-    completionPercentage: 20
+    completionPercentage: 20,
+    userId: user?.id // Add userId to track profile ownership
   };
   
-  // If we have a saved profile, use it instead
-  if (savedProfile) {
+  // Try to get saved profile data from localStorage
+  const savedProfile = localStorage.getItem("driverProfile");
+  
+  // Only use saved profile if it belongs to the current user
+  if (savedProfile && user?.id) {
     try {
       const parsedProfile = JSON.parse(savedProfile);
-      initialProfile = { ...initialProfile, ...parsedProfile };
-      console.log("Loaded saved profile from localStorage", initialProfile);
+      
+      // Check if the saved profile belongs to the current user
+      if (parsedProfile.userId === user.id) {
+        console.log("Loaded saved profile for current user:", user.id);
+        initialProfile = { ...initialProfile, ...parsedProfile };
+      } else {
+        console.log("Saved profile belongs to a different user, ignoring it");
+        // Clear the saved profile since it's for a different user
+        localStorage.removeItem("driverProfile");
+      }
     } catch (error) {
       console.error("Failed to parse saved profile:", error);
       localStorage.removeItem("driverProfile");
     }
+  } else if (savedProfile && !user?.id) {
+    // If no user is logged in but we have a saved profile, clear it
+    localStorage.removeItem("driverProfile");
   }
   
   // Initialize profile state with either saved or default data
@@ -158,20 +172,49 @@ const DriverProfilePage = () => {
       // Initialize profile with data from API
       const driverProfile = userData.profile;
       
+      // Get the current logged in user ID
+      const currentUserId = user?.id;
+      
+      // Check if the user ID from localStorage matches the current user
+      // If it doesn't match, we'll ignore any saved profile data
+      const savedProfile = localStorage.getItem("driverProfile");
+      let savedProfileData = null;
+      
+      if (savedProfile) {
+        try {
+          const parsedProfile = JSON.parse(savedProfile);
+          // Only use saved profile if it belongs to the current user
+          if (parsedProfile.userId === currentUserId) {
+            savedProfileData = parsedProfile;
+            console.log("Using saved profile for current user:", currentUserId);
+          } else {
+            console.log("Saved profile is for different user, ignoring it");
+            localStorage.removeItem("driverProfile");
+          }
+        } catch (error) {
+          console.error("Failed to parse saved profile:", error);
+          localStorage.removeItem("driverProfile");
+        }
+      }
+      
       setProfile(prevProfile => {
-        // Create updated profile by merging previously saved data with API data
+        // Create updated profile prioritizing API data over saved data
         const updatedProfile = {
           ...prevProfile,
+          // Always use API data for these fields
           fullName: userData.user.fullName,
           phoneNumber: userData.user.phoneNumber,
-          email: userData.user.email || prevProfile.email || "",
-          location: prevProfile.location, // Location is stored locally, not in DB schema
-          // If driver profile exists, update with real data
-          preferredLocations: driverProfile?.preferredLocations || prevProfile.preferredLocations || [],
+          email: userData.user.email || "",
+          // Use saved location if it exists for the current user
+          location: savedProfileData?.location || prevProfile.location, 
+          // If driver profile exists, use API data, otherwise fallback to saved data
+          preferredLocations: driverProfile?.preferredLocations || [],
           vehicleTypes: driverProfile?.vehicleTypes || prevProfile.vehicleTypes,
           experience: driverProfile?.experience || prevProfile.experience,
-          drivingLicense: driverProfile?.drivingLicense || prevProfile.drivingLicense,
-          identityProof: driverProfile?.identityProof || prevProfile.identityProof,
+          drivingLicense: driverProfile?.drivingLicense || null,
+          identityProof: driverProfile?.identityProof || null,
+          // Set the user ID to ensure we can verify profile ownership
+          userId: currentUserId,
           // Calculate profile completion percentage
           completionPercentage: calculateProfileCompletion(userData.user, driverProfile)
         };
@@ -179,7 +222,7 @@ const DriverProfilePage = () => {
         // Save the merged profile to localStorage for persistence
         localStorage.setItem("driverProfile", JSON.stringify(updatedProfile));
         
-        console.log("Updated profile with API data:", updatedProfile);
+        console.log("Updated profile with API data for user:", currentUserId, updatedProfile);
         
         // Also update auth context if email changed
         if (updatedProfile.email && updatedProfile.email !== userData.user.email) {
@@ -189,7 +232,7 @@ const DriverProfilePage = () => {
         return updatedProfile;
       });
     }
-  }, [userData, updateUser]);
+  }, [userData, updateUser, user?.id]);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
