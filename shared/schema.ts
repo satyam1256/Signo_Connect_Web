@@ -31,12 +31,6 @@ export const drivers = pgTable("drivers", {
   identityProof: text("identity_proof"),
   experience: text("experience"),
   vehicleTypes: text("vehicle_types").array(),
-  // Additional profile fields
-  profileImage: text("profile_image"),
-  about: text("about"),
-  location: text("location"),
-  availability: text("availability"),
-  skills: text("skills").array(),
 });
 
 // Fleet owner-specific information
@@ -47,12 +41,6 @@ export const fleetOwners = pgTable("fleet_owners", {
   fleetSize: text("fleet_size"),
   preferredLocations: text("preferred_locations").array(),
   registrationDoc: text("registration_doc"),
-  // Additional profile fields
-  profileImage: text("profile_image"),
-  about: text("about"),
-  location: text("location"),
-  businessType: text("business_type"),
-  regNumber: text("reg_number"),
 });
 
 // Job postings by fleet owners
@@ -94,11 +82,6 @@ export const driverInsertSchema = createInsertSchema(drivers).pick({
   identityProof: true,
   experience: true,
   vehicleTypes: true,
-  profileImage: true,
-  about: true,
-  location: true,
-  availability: true,
-  skills: true,
 });
 
 export const fleetOwnerInsertSchema = createInsertSchema(fleetOwners).pick({
@@ -107,11 +90,6 @@ export const fleetOwnerInsertSchema = createInsertSchema(fleetOwners).pick({
   fleetSize: true,
   preferredLocations: true,
   registrationDoc: true,
-  profileImage: true,
-  about: true,
-  location: true,
-  businessType: true,
-  regNumber: true,
 });
 
 export const jobInsertSchema = createInsertSchema(jobs).pick({
