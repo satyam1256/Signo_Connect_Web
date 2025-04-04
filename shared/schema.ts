@@ -5,9 +5,28 @@ import { z } from "zod";
 // Define status constants
 export const TripStatus = {
   UPCOMING: "Upcoming",
-  IN_PROGRESS: "In Progress",
+  WAITING: "Waiting",
+  RUNNING: "Running",
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
+} as const;
+
+export const ExpenseStatus = {
+  PENDING: "Pending",
+  PAID: "Paid", 
+  REJECTED: "Rejected",
+} as const;
+
+export const JobApplicationStatus = {
+  APPLIED: "Applied",
+  SHORTLISTED: "Shortlisted",
+  HIRED: "Hired",
+  REJECTED: "Rejected",
+} as const;
+
+export const StartedBy = {
+  DRIVER: "Driver",
+  TRANSPORTER: "Transporter",
 } as const;
 
 export const AssessmentStatus = {
