@@ -165,12 +165,13 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
             try {
               await storage.createDriver({
                 userId: user.id,
-                name1: user.fullName, // Use the same name as user
-                phoneNumber: user.phoneNumber, // Use the same phone as user
-                email: user.email, // Use the same email as user
                 preferredLocations: [],
                 experience: "0", // Use string type as per schema
-                vehicleTypes: []
+                vehicleTypes: [],
+                about: `Professional driver looking for opportunities`,
+                location: "",
+                availability: "full-time",
+                skills: ["Driving"]
               });
               console.log(`Created initial driver profile for user ${user.id}`);
             } catch (error) {
@@ -193,12 +194,12 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
             try {
               await storage.createFleetOwner({
                 userId: user.id,
-                name1: user.fullName, // Use the same name as user
-                phoneNumber: user.phoneNumber, // Use the same phone as user
-                email: user.email, // Use the same email as user
                 companyName: "",
                 fleetSize: "0", // Use string type as per schema
-                preferredLocations: []
+                preferredLocations: [],
+                about: `Fleet owner looking for reliable drivers`,
+                location: "",
+                contactEmail: user.email
               });
               console.log(`Created initial fleet owner profile for user ${user.id}`);
             } catch (error) {
@@ -226,24 +227,31 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
     try {
       // Extract all data from request
       const { 
-        userId, 
-        name1, 
-        phoneNumber, 
-        email, 
-        preferredLocations = [], 
-        experience = "", 
-        vehicleTypes = []
+        userId,
+        email,
+        location = "",
+        experience = "",
+        vehicleTypes = [],
+        drivingLicense = null,
+        identityProof = null,
+        preferredLocations = [],
+        about = "Professional driver looking for opportunities",
+        availability = "full-time",
+        skills = ["Driving"]
       } = req.body;
       
       // Create driver data object with all required fields
       const driverData = {
         userId,
-        name1,
-        phoneNumber,
-        email,
         preferredLocations,
+        drivingLicense,
+        identityProof,
         experience,
-        vehicleTypes
+        vehicleTypes,
+        about,
+        location,
+        availability,
+        skills
       };
 
       // Check if user exists
@@ -294,26 +302,27 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
     try {
       // Extract all data from request
       const { 
-        userId, 
-        name1, 
-        phoneNumber, 
-        email, 
+        userId,
+        email,
         companyName = "",
         fleetSize = "",
         preferredLocations = [],
-        registrationDoc = null
+        registrationDoc = null,
+        about = "Fleet owner looking for reliable drivers",
+        location = "",
+        contactEmail = ""
       } = req.body;
       
       // Create fleet owner data object with all required fields
       const fleetOwnerData = {
         userId,
-        name1,
-        phoneNumber,
-        email,
         companyName,
         fleetSize,
         preferredLocations,
-        registrationDoc
+        registrationDoc,
+        about,
+        location,
+        contactEmail: contactEmail || email
       };
 
       // Check if user exists

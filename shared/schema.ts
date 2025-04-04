@@ -97,81 +97,35 @@ export const users = pgTable("users", {
 // Driver-specific information
 export const drivers = pgTable("drivers", {
   id: serial("id").primaryKey(),
-  name1: text("name1").notNull(),
   userId: integer("user_id").notNull(),
-  email: text("email"),
-  phoneNumber: text("phone_number").notNull(),
-  emergencyContactNumber: text("emergency_contact_number"),
-  address: text("address"),
-  lastLocation: text("last_location"),
-  experience: text("experience"),
-  remarks: text("remarks"),
-  catagory: text("catagory"),
-  fcmToken: text("fcm_token"),
-  latLong: text("lat_long"),
-  isActive: boolean("is_active").default(true),
-  referenceNumber: text("reference_number"),
-  
-  // KYC fields
-  profilePic: text("profile_pic"),
-  bankPic: text("bank_pic"),
-  dlFrontPic: text("dl_front_pic"),
-  dlBackPic: text("dl_back_pic"),
-  aadharFrontPic: text("aadhar_front_pic"),
-  aadharBackPic: text("aadhar_back_pic"),
-  pfPic: text("pf_pic"),
-  
-  // Bank details
-  bankAcNumber: text("bank_ac_number"),
-  bankIFSC: text("bank_ifsc"),
-  bankHolderName: text("bank_holder_name"),
-  upiId: text("upi_id"),
-  
-  // ID verification
-  dlNumber: text("dl_number"),
-  dob: timestamp("dob"),
-  aadharNumber: text("aadhar_number"),
-  
-  // Verification status
-  isBankVerified: boolean("is_bank_verified").default(false),
-  isKycVerified: boolean("is_kyc_verified").default(false),
-  isDlVerified: boolean("is_dl_verified").default(false),
-  isAadharVerified: boolean("is_aadhar_verified").default(false),
-  
-  // Original fields from previous schema
   preferredLocations: text("preferred_locations").array(),
+  drivingLicense: text("driving_license"),
+  identityProof: text("identity_proof"),
+  experience: text("experience"),
   vehicleTypes: text("vehicle_types").array(),
   
-  createdAt: timestamp("created_at").defaultNow(),
+  // These fields will be added in future migrations
+  // But we keep them in the TypeScript schema for future use
+  about: text("about"),
+  location: text("location"),
+  availability: text("availability"),
+  skills: text("skills").array(),
 });
 
 // Fleet owner-specific information (Transporters)
 export const fleetOwners = pgTable("fleet_owners", {
   id: serial("id").primaryKey(),
-  name1: text("name1").notNull(),
   userId: integer("user_id").notNull(),
-  email: text("email"),
   companyName: text("company_name"),
   fleetSize: text("fleet_size"),
-  phoneNumber: text("phone_number").notNull(),
-  emergencyContactNumber: text("emergency_contact_number"),
-  address: text("address"),
-  lastLocation: text("last_location"),
-  remarks: text("remarks"),
-  catagory: text("catagory"),
-  fcmToken: text("fcm_token"),
-  latLong: text("lat_long"),
-  
-  // Identification
-  logoPic: text("logo_pic"),
-  gst: text("gst"),
-  pan: text("pan"),
-  
-  // Original fields
   preferredLocations: text("preferred_locations").array(),
   registrationDoc: text("registration_doc"),
   
-  createdAt: timestamp("created_at").defaultNow(),
+  // These fields will be added in future migrations
+  // But we keep them in the TypeScript schema for future use
+  about: text("about"),
+  location: text("location"),
+  contactEmail: text("contact_email"),
 });
 
 // Job postings by fleet owners
@@ -564,23 +518,26 @@ export const userInsertSchema = createInsertSchema(users).pick({
 
 export const driverInsertSchema = createInsertSchema(drivers).pick({
   userId: true,
-  name1: true,
-  phoneNumber: true,
-  email: true,
   preferredLocations: true,
+  drivingLicense: true,
+  identityProof: true,
   experience: true,
   vehicleTypes: true,
+  about: true,
+  location: true,
+  availability: true,
+  skills: true,
 });
 
 export const fleetOwnerInsertSchema = createInsertSchema(fleetOwners).pick({
   userId: true,
-  name1: true,
-  phoneNumber: true,
-  email: true,
   companyName: true,
   fleetSize: true,
   preferredLocations: true,
   registrationDoc: true,
+  about: true,
+  location: true,
+  contactEmail: true,
 });
 
 export const jobInsertSchema = createInsertSchema(jobs).pick({
