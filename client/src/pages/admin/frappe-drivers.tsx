@@ -5,6 +5,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -138,7 +139,7 @@ function AdminFrappeDrivers() {
 
   // Query to fetch drivers with pagination and filters
   const { data: driversData, isLoading: isLoadingDrivers, error: driversError } = useQuery({
-    queryKey: ['/api/frappe-drivers', filters, page, limit],
+    queryKey: ['/api/frappe-drivers', filters, page, limit, apiKey],
     queryFn: async () => {
       // Build query string from filters
       const queryParams = new URLSearchParams();
@@ -165,11 +166,12 @@ function AdminFrappeDrivers() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch drivers');
+        throw new Error(`Failed to fetch drivers: ${response.status} ${response.statusText}`);
       }
       
       return response.json();
-    }
+    },
+    enabled: !!apiKey // Only run query when API key is provided
   });
 
   // Mutation to create a new driver
@@ -180,7 +182,7 @@ function AdminFrappeDrivers() {
         headers: {
           'X-API-Key': apiKey
         },
-        body: JSON.stringify(data)
+        body: data
       });
     },
     onSuccess: () => {
@@ -209,7 +211,7 @@ function AdminFrappeDrivers() {
         headers: {
           'X-API-Key': apiKey
         },
-        body: JSON.stringify(data)
+        body: data
       });
     },
     onSuccess: () => {
@@ -336,7 +338,7 @@ function AdminFrappeDrivers() {
         <CardContent>
           <div className="flex gap-4">
             <div className="w-1/2">
-              <FormLabel htmlFor="apiKey">API Key</FormLabel>
+              <Label htmlFor="apiKey">API Key</Label>
               <Input
                 id="apiKey"
                 type="text"
@@ -350,7 +352,7 @@ function AdminFrappeDrivers() {
               </p>
             </div>
             <div className="w-1/2">
-              <FormLabel>Filters</FormLabel>
+              <Label>Filters</Label>
               <div className="flex space-x-2 mt-1">
                 <Select 
                   onValueChange={handleActiveFilterChange}

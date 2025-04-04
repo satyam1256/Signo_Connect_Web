@@ -15,7 +15,7 @@ import FleetOwnerDashboard from "@/pages/fleet-owner/dashboard";
 import FleetOwnerJobs from "@/pages/fleet-owner/jobs";
 import FleetOwnerProfile from "@/pages/fleet-owner/profile";
 import FleetOwnerDrivers from "@/pages/fleet-owner/drivers";
-import AdminFrappeDrivers from "@/pages/admin/frappe-drivers";
+import AdminFrappeDrivers from "./pages/admin/frappe-drivers";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { WebSocketProvider } from "@/contexts/websocket-context";
 import { WebSocketTest } from "@/components/websocket-test";
