@@ -170,12 +170,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <WebSocketProvider>
-          <div className={`app-container ${isFullyReady ? 'app-visible' : 'app-initializing'}`}>
-            <Router />
-            <Toaster />
-          </div>
-        </WebSocketProvider>
+        {/* Temporarily disable WebSocketProvider to fix initial page rendering */}
+        <div className={`app-container ${isFullyReady ? 'app-visible' : 'app-initializing'}`}>
+          <Router />
+          <Toaster />
+        </div>
       </AuthProvider>
     </QueryClientProvider>
   );
