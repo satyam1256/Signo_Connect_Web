@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, log } from "./vite";
-import { storage as memStorage } from "./storage";
+import { createStorage } from "./storage-factory";
 
 // Create a simple Express app
 const app = express();
@@ -29,12 +29,13 @@ app.use((req, res, next) => {
   try {
     console.log("Starting simplified server initialization...");
     
-    // ONLY use memory storage
-    console.log("Using memory storage only...");
+    // Create storage using factory (will try database first, then fall back to memory)
+    console.log("Creating storage using factory...");
+    const storage = await createStorage();
     
-    // Register routes with memory storage
+    // Register routes with storage from factory
     console.log("Registering routes...");
-    const server = await registerRoutes(app, memStorage);
+    const server = await registerRoutes(app, storage);
     console.log("Routes registered successfully");
     
     // Add global error handler

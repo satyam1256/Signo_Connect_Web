@@ -1,9 +1,6 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import * as schema from '@shared/schema';
-
-// Configure neon to use fetch
-neonConfig.fetchConnectionCache = true;
 
 let db: any;
 let dbInitialized = false;
@@ -22,7 +19,10 @@ export async function initializeDatabase() {
   
   try {
     // Create a SQL database connection
-    const sql = neon(process.env.DATABASE_URL!);
+    const sql = postgres(process.env.DATABASE_URL!, { 
+      ssl: { rejectUnauthorized: false },
+      max: 10
+    });
     console.log("SQL client created successfully");
 
     // Create a Drizzle instance with our schema
@@ -59,7 +59,10 @@ try {
   console.log("Initializing database connection...");
 
   // Create a SQL database connection
-  const sql = neon(process.env.DATABASE_URL!);
+  const sql = postgres(process.env.DATABASE_URL!, { 
+    ssl: { rejectUnauthorized: false },
+    max: 10
+  });
   console.log("SQL client created");
 
   // Create a Drizzle instance with our schema
