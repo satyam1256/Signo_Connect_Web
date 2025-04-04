@@ -11,3 +11,30 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* Hydration and initialization styling */
+.app-initializing {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+.app-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Additional styling for smooth transition */
+.app-container {
+  @apply min-h-screen flex flex-col;
+  transition: opacity 0.3s ease-out;
+}
+
+/* Handle initial loading state */
+html:not(.app-ready) {
+  @apply overflow-hidden;
+}
+
+html:not(.app-ready) body {
+  @apply overflow-hidden;
+}

@@ -134,15 +134,35 @@ function Router() {
 }
 
 function App() {
-  // Initialize app state
+  // Two-stage initialization to prevent flash of content
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isFullyReady, setIsFullyReady] = useState(false);
   
-  // Make sure app is initialized after the component mounts
+  // First stage initialization - make sure DOM is ready
   useEffect(() => {
-    setIsInitialized(true);
+    // Use requestAnimationFrame to ensure we're in the next paint cycle
+    const initFrame = requestAnimationFrame(() => {
+      setIsInitialized(true);
+    });
+    
+    return () => cancelAnimationFrame(initFrame);
   }, []);
   
-  // Show loading spinner while initializing
+  // Second stage initialization - allow components to mount
+  useEffect(() => {
+    if (isInitialized) {
+      // Add a slight delay to ensure all child components have a chance to initialize
+      const timer = setTimeout(() => {
+        setIsFullyReady(true);
+        // Add a class to the document to signal app is ready for styling
+        document.documentElement.classList.add('app-ready');
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialized]);
+  
+  // Show loading spinner during initialization
   if (!isInitialized) {
     return <LoadingFallback />;
   }
@@ -151,8 +171,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <WebSocketProvider>
-          <Router />
-          <Toaster />
+          <div className={`app-container ${isFullyReady ? 'app-visible' : 'app-initializing'}`}>
+            <Router />
+            <Toaster />
+          </div>
         </WebSocketProvider>
       </AuthProvider>
     </QueryClientProvider>
