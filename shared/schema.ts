@@ -97,7 +97,6 @@ export const users = pgTable("users", {
 // Driver-specific information
 export const drivers = pgTable("drivers", {
   id: serial("id").primaryKey(),
-  namingSeries: text("naming_series").default("SIG"),
   name1: text("name1").notNull(),
   userId: integer("user_id").notNull(),
   email: text("email"),
@@ -149,7 +148,6 @@ export const drivers = pgTable("drivers", {
 // Fleet owner-specific information (Transporters)
 export const fleetOwners = pgTable("fleet_owners", {
   id: serial("id").primaryKey(),
-  namingSeries: text("naming_series").default("SIG"),
   name1: text("name1").notNull(),
   userId: integer("user_id").notNull(),
   email: text("email"),
@@ -576,6 +574,9 @@ export const driverInsertSchema = createInsertSchema(drivers).pick({
 
 export const fleetOwnerInsertSchema = createInsertSchema(fleetOwners).pick({
   userId: true,
+  name1: true,
+  phoneNumber: true,
+  email: true,
   companyName: true,
   fleetSize: true,
   preferredLocations: true,
