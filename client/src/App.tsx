@@ -17,7 +17,8 @@ import FleetOwnerJobs from "@/pages/fleet-owner/jobs";
 import FleetOwnerProfile from "@/pages/fleet-owner/profile";
 import FleetOwnerDrivers from "@/pages/fleet-owner/drivers";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
-import { WebSocketProvider } from "@/contexts/websocket-context";
+// Import the SimpleWebSocketProvider instead of the standard one
+import { SimpleWebSocketProvider } from "@/contexts/simple-websocket-context";
 import { WebSocketTest } from "@/components/websocket-test";
 
 // Protected route that redirects logged-in users from auth pages to their dashboard
@@ -173,17 +174,16 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         {isFullyReady ? (
-          <WebSocketProvider 
-            autoConnect={true}
+          <SimpleWebSocketProvider 
+            autoReconnect={true}
             reconnectInterval={5000} 
             maxReconnectAttempts={10}
-            initialConnectionDelay={2500} // Even longer initial delay
           >
             <div className="app-container app-visible">
               <Router />
               <Toaster />
             </div>
-          </WebSocketProvider>
+          </SimpleWebSocketProvider>
         ) : (
           <div className="app-container app-initializing">
             <Router />
