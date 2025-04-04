@@ -1,15 +1,37 @@
-import { 
-  users, type User, type InsertUser,
-  drivers, type Driver, type InsertDriver,
-  fleetOwners, type FleetOwner, type InsertFleetOwner,
-  jobs, type Job, type InsertJob,
-  otpVerifications, type OtpVerification, type InsertOtpVerification,
-  fuelPumps, type FuelPump, type InsertFuelPump,
-  vehicles, type Vehicle, type InsertVehicle,
-  driverAssessments, type DriverAssessment, type InsertDriverAssessment,
-  notifications, type Notification, type InsertNotification,
-  referrals, type Referral, type InsertReferral,
-  tolls, type Toll, type InsertToll
+import {
+  users,
+  type User,
+  type InsertUser,
+  drivers,
+  type Driver,
+  type InsertDriver,
+  fleetOwners,
+  type FleetOwner,
+  type InsertFleetOwner,
+  jobs,
+  type Job,
+  type InsertJob,
+  otpVerifications,
+  type OtpVerification,
+  type InsertOtpVerification,
+  fuelPumps,
+  type FuelPump,
+  type InsertFuelPump,
+  vehicles,
+  type Vehicle,
+  type InsertVehicle,
+  driverAssessments,
+  type DriverAssessment,
+  type InsertDriverAssessment,
+  notifications,
+  type Notification,
+  type InsertNotification,
+  referrals,
+  type Referral,
+  type InsertReferral,
+  tolls,
+  type Toll,
+  type InsertToll,
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
@@ -23,7 +45,10 @@ export class DbStorage implements IStorage {
   }
 
   async getUserByPhone(phoneNumber: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.phoneNumber, phoneNumber));
+    const result = await db
+      .select()
+      .from(users)
+      .where(eq(users.phoneNumber, phoneNumber));
     return result[0];
   }
 
@@ -32,12 +57,16 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
-    const result = await db.update(users)
+  async updateUser(
+    id: number,
+    userData: Partial<User>,
+  ): Promise<User | undefined> {
+    const result = await db
+      .update(users)
       .set(userData)
       .where(eq(users.id, id))
       .returning();
-    
+
     return result[0];
   }
 
@@ -45,22 +74,28 @@ export class DbStorage implements IStorage {
   async getDriver(userId: number): Promise<Driver | undefined> {
     try {
       // First try to get all columns
-      const result = await db.select().from(drivers).where(eq(drivers.userId, userId));
+      const result = await db
+        .select()
+        .from(drivers)
+        .where(eq(drivers.userId, userId));
       return result[0];
     } catch (err) {
       try {
         // If that fails, try with only the base columns
         console.error("Error in getDriver with all columns:", err);
-        const partialResult = await db.select({
-          id: drivers.id,
-          userId: drivers.userId,
-          preferredLocations: drivers.preferredLocations,
-          drivingLicense: drivers.drivingLicense,
-          identityProof: drivers.identityProof,
-          experience: drivers.experience,
-          vehicleTypes: drivers.vehicleTypes
-        }).from(drivers).where(eq(drivers.userId, userId));
-        
+        const partialResult = await db
+          .select({
+            id: drivers.id,
+            userId: drivers.userId,
+            preferredLocations: drivers.preferredLocations,
+            drivingLicense: drivers.drivingLicense,
+            identityProof: drivers.identityProof,
+            experience: drivers.experience,
+            vehicleTypes: drivers.vehicleTypes,
+          })
+          .from(drivers)
+          .where(eq(drivers.userId, userId));
+
         if (partialResult[0]) {
           // Add empty values for the missing columns to match the type
           return {
@@ -69,7 +104,7 @@ export class DbStorage implements IStorage {
             about: null,
             location: null,
             availability: null,
-            skills: null
+            skills: null,
           } as Driver;
         }
         return undefined;
@@ -85,15 +120,19 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateDriver(userId: number, driverData: Partial<InsertDriver>): Promise<Driver | undefined> {
+  async updateDriver(
+    userId: number,
+    driverData: Partial<InsertDriver>,
+  ): Promise<Driver | undefined> {
     const driver = await this.getDriver(userId);
     if (!driver) return undefined;
 
-    const result = await db.update(drivers)
+    const result = await db
+      .update(drivers)
       .set(driverData)
       .where(eq(drivers.id, driver.id))
       .returning();
-    
+
     return result[0];
   }
 
@@ -101,21 +140,27 @@ export class DbStorage implements IStorage {
   async getFleetOwner(userId: number): Promise<FleetOwner | undefined> {
     try {
       // First try to get all columns
-      const result = await db.select().from(fleetOwners).where(eq(fleetOwners.userId, userId));
+      const result = await db
+        .select()
+        .from(fleetOwners)
+        .where(eq(fleetOwners.userId, userId));
       return result[0];
     } catch (err) {
       try {
         // If that fails, try with only the base columns
         console.error("Error in getFleetOwner with all columns:", err);
-        const partialResult = await db.select({
-          id: fleetOwners.id,
-          userId: fleetOwners.userId,
-          companyName: fleetOwners.companyName,
-          fleetSize: fleetOwners.fleetSize,
-          preferredLocations: fleetOwners.preferredLocations,
-          registrationDoc: fleetOwners.registrationDoc
-        }).from(fleetOwners).where(eq(fleetOwners.userId, userId));
-        
+        const partialResult = await db
+          .select({
+            id: fleetOwners.id,
+            userId: fleetOwners.userId,
+            companyName: fleetOwners.companyName,
+            fleetSize: fleetOwners.fleetSize,
+            preferredLocations: fleetOwners.preferredLocations,
+            registrationDoc: fleetOwners.registrationDoc,
+          })
+          .from(fleetOwners)
+          .where(eq(fleetOwners.userId, userId));
+
         if (partialResult[0]) {
           // Add empty values for the missing columns to match the type
           return {
@@ -124,12 +169,15 @@ export class DbStorage implements IStorage {
             about: null,
             location: null,
             businessType: null,
-            regNumber: null
+            regNumber: null,
           } as FleetOwner;
         }
         return undefined;
       } catch (secondErr) {
-        console.error("Error in getFleetOwner with partial columns:", secondErr);
+        console.error(
+          "Error in getFleetOwner with partial columns:",
+          secondErr,
+        );
         return undefined;
       }
     }
@@ -140,15 +188,19 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateFleetOwner(userId: number, fleetOwnerData: Partial<InsertFleetOwner>): Promise<FleetOwner | undefined> {
+  async updateFleetOwner(
+    userId: number,
+    fleetOwnerData: Partial<InsertFleetOwner>,
+  ): Promise<FleetOwner | undefined> {
     const fleetOwner = await this.getFleetOwner(userId);
     if (!fleetOwner) return undefined;
 
-    const result = await db.update(fleetOwners)
+    const result = await db
+      .update(fleetOwners)
       .set(fleetOwnerData)
       .where(eq(fleetOwners.id, fleetOwner.id))
       .returning();
-    
+
     return result[0];
   }
 
@@ -159,11 +211,17 @@ export class DbStorage implements IStorage {
   }
 
   async getJobsByFleetOwner(fleetOwnerId: number): Promise<Job[]> {
-    return await db.select().from(jobs).where(eq(jobs.fleetOwnerId, fleetOwnerId));
+    return await db
+      .select()
+      .from(jobs)
+      .where(eq(jobs.fleetOwnerId, fleetOwnerId));
   }
 
   async getJobsByLocation(location: string): Promise<Job[]> {
-    return await db.select().from(jobs).where(like(jobs.location, `%${location}%`));
+    return await db
+      .select()
+      .from(jobs)
+      .where(like(jobs.location, `%${location}%`));
   }
 
   async createJob(job: InsertJob): Promise<Job> {
@@ -172,26 +230,37 @@ export class DbStorage implements IStorage {
   }
 
   async updateJob(id: number, jobData: Partial<Job>): Promise<Job | undefined> {
-    const result = await db.update(jobs)
+    const result = await db
+      .update(jobs)
       .set(jobData)
       .where(eq(jobs.id, id))
       .returning();
-    
+
     return result[0];
   }
 
   // OTP verification operations
-  async createOtpVerification(verification: InsertOtpVerification): Promise<OtpVerification> {
+  async createOtpVerification(
+    verification: InsertOtpVerification,
+  ): Promise<OtpVerification> {
     // First, delete any existing OTP for this phone number to avoid duplicates
-    await db.delete(otpVerifications)
+    await db
+      .delete(otpVerifications)
       .where(eq(otpVerifications.phoneNumber, verification.phoneNumber));
-    
-    const result = await db.insert(otpVerifications).values(verification).returning();
+
+    const result = await db
+      .insert(otpVerifications)
+      .values(verification)
+      .returning();
     return result[0];
   }
 
-  async getOtpVerification(phoneNumber: string): Promise<OtpVerification | undefined> {
-    const result = await db.select().from(otpVerifications)
+  async getOtpVerification(
+    phoneNumber: string,
+  ): Promise<OtpVerification | undefined> {
+    const result = await db
+      .select()
+      .from(otpVerifications)
       .where(eq(otpVerifications.phoneNumber, phoneNumber));
     return result[0];
   }
@@ -203,7 +272,8 @@ export class DbStorage implements IStorage {
         // Create a verification entry if it doesn't exist
         const verification = await this.getOtpVerification(phoneNumber);
         if (verification) {
-          await db.update(otpVerifications)
+          await db
+            .update(otpVerifications)
             .set({ verified: true })
             .where(eq(otpVerifications.phoneNumber, phoneNumber));
         } else {
@@ -213,7 +283,7 @@ export class DbStorage implements IStorage {
           await this.createOtpVerification({
             phoneNumber,
             otp: "123456",
-            expiresAt
+            expiresAt,
           });
         }
         return true;
@@ -229,7 +299,8 @@ export class DbStorage implements IStorage {
       if (!verification) return false;
 
       if (verification.otp === otp && verification.expiresAt > new Date()) {
-        await db.update(otpVerifications)
+        await db
+          .update(otpVerifications)
           .set({ verified: true })
           .where(eq(otpVerifications.phoneNumber, phoneNumber));
         return true;
@@ -243,7 +314,9 @@ export class DbStorage implements IStorage {
   }
 
   // Fuel pump operations
-  async getNearbyFuelPumps(coordinates: [number, number][]): Promise<FuelPump[]> {
+  async getNearbyFuelPumps(
+    coordinates: [number, number][],
+  ): Promise<FuelPump[]> {
     // A simplified implementation without geospatial filtering
     return await db.select().from(fuelPumps);
   }
@@ -254,14 +327,20 @@ export class DbStorage implements IStorage {
   }
 
   // Vehicle operations
-  async getVehicleByRegistration(registrationNumber: string): Promise<Vehicle | undefined> {
-    const result = await db.select().from(vehicles)
+  async getVehicleByRegistration(
+    registrationNumber: string,
+  ): Promise<Vehicle | undefined> {
+    const result = await db
+      .select()
+      .from(vehicles)
       .where(eq(vehicles.registrationNumber, registrationNumber));
     return result[0];
   }
 
   async getVehiclesByTransporter(transporterId: number): Promise<Vehicle[]> {
-    return await db.select().from(vehicles)
+    return await db
+      .select()
+      .from(vehicles)
       .where(eq(vehicles.transporterId, transporterId));
   }
 
@@ -270,75 +349,114 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateVehicle(id: number, vehicleData: Partial<Vehicle>): Promise<Vehicle | undefined> {
-    const result = await db.update(vehicles)
+  async updateVehicle(
+    id: number,
+    vehicleData: Partial<Vehicle>,
+  ): Promise<Vehicle | undefined> {
+    const result = await db
+      .update(vehicles)
       .set(vehicleData)
       .where(eq(vehicles.id, id))
       .returning();
-    
+
     return result[0];
   }
 
   // Driver assessment operations
   async getDriverAssessment(id: number): Promise<DriverAssessment | undefined> {
-    const result = await db.select().from(driverAssessments)
+    const result = await db
+      .select()
+      .from(driverAssessments)
       .where(eq(driverAssessments.id, id));
     return result[0];
   }
 
-  async getDriverAssessmentsByDriver(driverId: number, status?: string): Promise<DriverAssessment[]> {
+  async getDriverAssessmentsByDriver(
+    driverId: number,
+    status?: string,
+  ): Promise<DriverAssessment[]> {
     if (status) {
-      return await db.select().from(driverAssessments)
-        .where(and(
-          eq(driverAssessments.driverId, driverId),
-          eq(driverAssessments.status, status)
-        ));
+      return await db
+        .select()
+        .from(driverAssessments)
+        .where(
+          and(
+            eq(driverAssessments.driverId, driverId),
+            eq(driverAssessments.status, status),
+          ),
+        );
     }
-    
-    return await db.select().from(driverAssessments)
+
+    return await db
+      .select()
+      .from(driverAssessments)
       .where(eq(driverAssessments.driverId, driverId));
   }
 
-  async createDriverAssessment(assessment: InsertDriverAssessment): Promise<DriverAssessment> {
-    const result = await db.insert(driverAssessments).values(assessment).returning();
+  async createDriverAssessment(
+    assessment: InsertDriverAssessment,
+  ): Promise<DriverAssessment> {
+    const result = await db
+      .insert(driverAssessments)
+      .values(assessment)
+      .returning();
     return result[0];
   }
 
-  async updateDriverAssessment(id: number, assessmentData: Partial<DriverAssessment>): Promise<DriverAssessment | undefined> {
-    const result = await db.update(driverAssessments)
+  async updateDriverAssessment(
+    id: number,
+    assessmentData: Partial<DriverAssessment>,
+  ): Promise<DriverAssessment | undefined> {
+    const result = await db
+      .update(driverAssessments)
       .set(assessmentData)
       .where(eq(driverAssessments.id, id))
       .returning();
-    
+
     return result[0];
   }
 
   // Notification operations
-  async getNotifications(userId: number, userType: string): Promise<Notification[]> {
-    return await db.select().from(notifications)
-      .where(and(
-        eq(notifications.userId, userId),
-        eq(notifications.userType, userType)
-      ));
+  async getNotifications(
+    userId: number,
+    userType: string,
+  ): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.userType, userType),
+        ),
+      );
   }
 
-  async createNotification(notification: InsertNotification): Promise<Notification> {
-    const result = await db.insert(notifications).values(notification).returning();
+  async createNotification(
+    notification: InsertNotification,
+  ): Promise<Notification> {
+    const result = await db
+      .insert(notifications)
+      .values(notification)
+      .returning();
     return result[0];
   }
 
   async markNotificationAsRead(id: number): Promise<Notification | undefined> {
-    const result = await db.update(notifications)
+    const result = await db
+      .update(notifications)
       .set({ read: true })
       .where(eq(notifications.id, id))
       .returning();
-    
+
     return result[0];
   }
 
   // Referral operations
   async getReferralsByReferrer(referrerId: number): Promise<Referral[]> {
-    return await db.select().from(referrals)
+    return await db
+      .select()
+      .from(referrals)
       .where(eq(referrals.referrerId, referrerId));
   }
 
@@ -347,12 +465,16 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateReferral(id: number, referralData: Partial<Referral>): Promise<Referral | undefined> {
-    const result = await db.update(referrals)
+  async updateReferral(
+    id: number,
+    referralData: Partial<Referral>,
+  ): Promise<Referral | undefined> {
+    const result = await db
+      .update(referrals)
       .set(referralData)
       .where(eq(referrals.id, id))
       .returning();
-    
+
     return result[0];
   }
 
