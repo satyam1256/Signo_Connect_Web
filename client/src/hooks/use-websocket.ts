@@ -76,7 +76,7 @@ export function useWebSocket({
         console.log('WebSocket connection closed', event.code, event.reason);
         setStatus('closed');
         
-        // Attempt to reconnect if enabled and not a clean close
+        // Attempt to reconnect if enabled
         if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttemptsRef.current += 1;
@@ -90,10 +90,22 @@ export function useWebSocket({
       socket.addEventListener('error', (error) => {
         console.error('WebSocket connection error:', error);
         setStatus('error');
+        
+        // We don't want to block the app due to WebSocket errors
+        // Just continue in error state and allow reconnection attempts
       });
     } catch (error) {
       console.error('Error creating WebSocket connection:', error);
       setStatus('error');
+      
+      // If we can't even create the connection, retry after a delay
+      if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
+        reconnectTimeoutRef.current = setTimeout(() => {
+          reconnectAttemptsRef.current += 1;
+          console.log(`Attempting to reconnect after initial error (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`);
+          connect();
+        }, reconnectInterval);
+      }
     }
   }, [autoReconnect, maxReconnectAttempts, onMessage, reconnectInterval]);
 

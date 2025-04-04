@@ -61,7 +61,7 @@ function Router() {
         {(params) => <AuthRoute component={FleetOwnerRegistration} params={params} />}
       </Route>
 
-      {/* Driver Routes */}
+      {/* Driver Routes - We'll handle authentication within these components */}
       <Route path="/driver/dashboard" component={DriverDashboard} />
       <Route path="/driver/jobs" component={DriverJobs} />
       <Route path="/driver/alerts" component={DriverAlerts} />
@@ -76,8 +76,15 @@ function Router() {
       {/* WebSocket Test Routes */}
       <Route path="/test/websocket" component={WebSocketTest} />
 
-      {/* Fallback */}
-      <Route component={NotFound} />
+      {/* Catch-all route */}
+      <Route path="/:rest*">
+        {() => {
+          // This ensures that any route will at least render something
+          // Fixes the issue of the app not showing any content when refreshing on a non-root route
+          console.log("Route not found, redirecting to home");
+          return <Redirect to="/" />;
+        }}
+      </Route>
     </Switch>
   );
 }
