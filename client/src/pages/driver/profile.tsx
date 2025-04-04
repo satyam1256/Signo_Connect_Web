@@ -54,32 +54,45 @@ import { useToast } from "@/hooks/use-toast";
 const calculateProfileCompletion = (profile: any): number => {
   if (!profile) return 0;
   
-  const requiredFields = [
-    'fullName', 
-    'phoneNumber', 
-    'email',
-    'location',
-    'about',
-    'experience',
-    'preferredLocations',
-    'vehicleTypes',
-    'drivingLicense',
-    'identityProof'
+  // Field weights add up to 100 points
+  const fieldWeights = [
+    { field: 'fullName', weight: 10 },
+    { field: 'phoneNumber', weight: 10 },
+    { field: 'email', weight: 10 },
+    { field: 'location', weight: 10 },
+    { field: 'about', weight: 10 },
+    { field: 'experience', weight: 10 },
+    { field: 'preferredLocations', weight: 10 },
+    { field: 'vehicleTypes', weight: 10 },
+    { field: 'drivingLicense', weight: 10 },
+    { field: 'identityProof', weight: 10 }
   ];
   
-  let completedFields = 0;
+  let totalPoints = 0;
+  const totalPossiblePoints = fieldWeights.reduce((sum, item) => sum + item.weight, 0);
   
-  requiredFields.forEach(field => {
-    if (profile[field]) {
-      if (Array.isArray(profile[field])) {
-        if (profile[field].length > 0) completedFields++;
+  fieldWeights.forEach(({ field, weight }) => {
+    const value = profile[field];
+    
+    if (value) {
+      if (Array.isArray(value)) {
+        // For array fields like vehicleTypes, skills, preferredLocations
+        if (value.length > 0) {
+          totalPoints += weight;
+        }
+      } else if (typeof value === 'string') {
+        // For string fields, ensure they're not empty strings
+        if (value.trim() !== '') {
+          totalPoints += weight;
+        }
       } else {
-        completedFields++;
+        // For other types
+        totalPoints += weight;
       }
     }
   });
   
-  return Math.round((completedFields / requiredFields.length) * 100);
+  return Math.round((totalPoints / totalPossiblePoints) * 100);
 };
 
 interface UserProfile {
@@ -770,14 +783,21 @@ const DriverProfilePage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="experience">Experience</Label>
-                  <Input 
-                    id="experience" 
-                    defaultValue={profile.experience}
+                  <Label htmlFor="experience">Experience (Years)</Label>
+                  <select
+                    id="experience"
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    value={editedProfile.experience || profile.experience}
                     onChange={(e) => setEditedProfile({...editedProfile, experience: e.target.value})}
                     disabled={isUpdatingProfile}
-                    placeholder="e.g., 5 years of professional driving"
-                  />
+                  >
+                    <option value="">Select experience</option>
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map(year => (
+                      <option key={year} value={`${year} year${year > 1 ? 's' : ''}`}>
+                        {year} year{year > 1 ? 's' : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -830,6 +850,36 @@ const DriverProfilePage = () => {
                     <option value="part-time">Part Time</option>
                     <option value="weekends">Weekends Only</option>
                   </select>
+                </div>
+
+                <div className="space-y-2 col-span-1 sm:col-span-2">
+                  <Label htmlFor="vehicleTypes">Vehicle Types</Label>
+                  <div className="border border-input rounded-md p-2 bg-background">
+                    {['Heavy Vehicle', 'Medium Vehicle', 'Light Vehicle', 'Truck', 'Bus', 'Van', 'Pickup'].map((type) => (
+                      <div key={type} className="flex items-center mb-2">
+                        <input
+                          type="checkbox"
+                          id={`vehicle-${type}`}
+                          className="mr-2 h-4 w-4"
+                          checked={editedProfile.vehicleTypes?.includes(type) || profile.vehicleTypes.includes(type)}
+                          onChange={(e) => {
+                            const updatedTypes = e.target.checked
+                              ? [...(editedProfile.vehicleTypes || profile.vehicleTypes), type]
+                              : (editedProfile.vehicleTypes || profile.vehicleTypes).filter(t => t !== type);
+                            
+                            setEditedProfile({
+                              ...editedProfile,
+                              vehicleTypes: updatedTypes
+                            });
+                          }}
+                          disabled={isUpdatingProfile}
+                        />
+                        <Label htmlFor={`vehicle-${type}`} className="text-sm cursor-pointer">
+                          {type}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
