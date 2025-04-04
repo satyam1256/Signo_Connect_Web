@@ -22,8 +22,21 @@ import {
   UserType,
   User
 } from "@shared/schema";
+
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+
+/**
+ * Generates a Frappe-style document name based on the naming series
+ * Format: {series}{5-digit sequential number}
+ * Example: SIG00001, SIG00002, etc.
+ */
+function generateFrappeDocName(series: string): string {
+  // Generate a 5-digit random number between 10000 and 99999
+  // In a real implementation, this would use a database sequence
+  const randomNum = Math.floor(10000 + Math.random() * 90000);
+  return `${series}${randomNum}`;
+}
 
 function generateOTP(): string {
   // Always return "123456" for testing
