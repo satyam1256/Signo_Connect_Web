@@ -27,12 +27,19 @@ function generateOTP(): string {
 }
 
 export async function registerRoutes(app: Express, customStorage?: IStorage): Promise<Server> {
+  console.log("RegisterRoutes: Starting route registration process...");
+  
   // Use the provided storage or fall back to memory storage
+  console.log("RegisterRoutes: Storage type received:", customStorage ? customStorage.constructor.name : "none");
   const storage = customStorage || memStorage;
+  console.log("RegisterRoutes: Final storage selection:", storage.constructor.name);
   
   // Only reset memory storage if we're not using the DB storage
   if (!customStorage || !(customStorage instanceof DbStorage)) {
+    console.log("RegisterRoutes: Using memory storage, resetting data...");
     (memStorage as any).resetData();
+  } else {
+    console.log("RegisterRoutes: Using database storage, not resetting memory data");
   }
   
   // TypeScript type annotations for sum & toll in reduce function
@@ -929,6 +936,10 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
     }
   });
 
+  console.log("RegisterRoutes: Creating HTTP server...");
   const httpServer = createServer(app);
+  console.log("RegisterRoutes: HTTP server created successfully");
+  
+  console.log("RegisterRoutes: Route registration complete, returning server");
   return httpServer;
 }
