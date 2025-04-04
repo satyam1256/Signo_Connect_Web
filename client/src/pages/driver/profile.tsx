@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   User,
   MapPin,
@@ -17,8 +17,10 @@ import {
   Bell,
   Truck,
   Edit,
-  Camera
+  Camera,
+  Loader2
 } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +48,39 @@ import { Chatbot } from "@/components/features/chatbot";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguageStore } from "@/lib/i18n";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
+
+// Calculate profile completion percentage
+const calculateProfileCompletion = (profile: any): number => {
+  if (!profile) return 0;
+  
+  const requiredFields = [
+    'fullName', 
+    'phoneNumber', 
+    'email',
+    'location',
+    'about',
+    'experience',
+    'preferredLocations',
+    'vehicleTypes',
+    'drivingLicense',
+    'identityProof'
+  ];
+  
+  let completedFields = 0;
+  
+  requiredFields.forEach(field => {
+    if (profile[field]) {
+      if (Array.isArray(profile[field])) {
+        if (profile[field].length > 0) completedFields++;
+      } else {
+        completedFields++;
+      }
+    }
+  });
+  
+  return Math.round((completedFields / requiredFields.length) * 100);
+};
 
 interface UserProfile {
   fullName: string;
@@ -73,23 +108,64 @@ const DriverProfilePage = () => {
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
 
+  // Initialize with empty profile, will be filled from API
   const [profile, setProfile] = useState<UserProfile>({
-    fullName: "Rahul Kumar",
-    phoneNumber: "+91 9876543210",
-    email: "rahul.kumar@example.com",
-    language: "English",
-    location: "Delhi NCR",
-    about: "Experienced driver with over 5 years in logistics and transportation. Specialized in long-haul driving across North India.",
-    experience: "5+ years",
-    preferredLocations: ["Delhi", "Mumbai", "Jaipur", "North India"],
-    vehicleTypes: ["Heavy Vehicle", "Medium Vehicle"],
-    drivingLicense: "DL-1234567890",
-    identityProof: "ABCDE1234F",
-    availability: "full-time",
-    skills: ["Long Distance Driving", "Fleet Management", "GPS Navigation", "Load Securing", "Basic Vehicle Maintenance"],
-    joinedDate: "January 2023",
-    completionPercentage: 85
+    fullName: "",
+    phoneNumber: "",
+    email: "",
+    language: "English", // Default language
+    location: "",
+    about: "",
+    experience: "",
+    preferredLocations: [],
+    vehicleTypes: [],
+    drivingLicense: null,
+    identityProof: null,
+    availability: "full-time", // Default availability
+    skills: [],
+    joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }), // Current date formatted
+    completionPercentage: 0
   });
+
+  // Remove unused query - using direct fetch in useEffect instead
+  
+  // Handle profile data when it's fetched
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user) return;
+      try {
+        const response = await fetch(`/api/resource/Drivers/${user.id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile data');
+        }
+        const data = await response.json();
+        
+        const profileData: UserProfile = {
+          fullName: data.fullName || user?.fullName || "",
+          phoneNumber: data.phoneNumber || user?.phoneNumber || "",
+          email: data.email || user?.email || "",
+          language: data.language || "English",
+          location: data.location || "",
+          about: data.about || "",
+          experience: data.experience || "",
+          preferredLocations: data.preferredLocations || [],
+          vehicleTypes: data.vehicleTypes || [],
+          drivingLicense: data.drivingLicense || null,
+          identityProof: data.identityProof || null,
+          availability: data.availability || "full-time",
+          skills: data.skills || [],
+          joinedDate: data.joinedDate || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+          completionPercentage: calculateProfileCompletion(data)
+        };
+        
+        setProfile(profileData);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      }
+    };
+    
+    fetchProfileData();
+  }, [user]);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
@@ -103,17 +179,67 @@ const DriverProfilePage = () => {
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
   const [languageSettingsOpen, setLanguageSettingsOpen] = useState(false);
 
+  // Toast notifications
+  const { toast } = useToast();
+  
+  // State to track profile update request
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  
   // Handle profile update
-  const handleProfileUpdate = () => {
-    if (Object.keys(editedProfile).length > 0) {
-      setProfile({ ...profile, ...editedProfile });
-      // In a real app, send this to the server
+  const handleProfileUpdate = async () => {
+    if (Object.keys(editedProfile).length > 0 && user) {
+      setIsUpdatingProfile(true);
+      try {
+        // Update local state
+        const updatedProfile = { ...profile, ...editedProfile };
+        setProfile(updatedProfile);
 
-      // Clear the edited profile
-      setEditedProfile({});
+        // Send data to the API
+        const response = await fetch(`/api/resource/Drivers/${user.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...editedProfile,
+            userId: user.id,
+            fullName: editedProfile.fullName || profile.fullName,
+            phoneNumber: editedProfile.phoneNumber || profile.phoneNumber,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update profile');
+        }
+
+        // Update user context if name was changed
+        if (editedProfile.fullName && user) {
+          updateUser({ fullName: editedProfile.fullName });
+        }
+
+        // Show success notification
+        toast({
+          title: "Profile updated",
+          description: "Your profile information has been updated successfully.",
+        });
+
+        // Clear the edited profile
+        setEditedProfile({});
+        setIsEditingProfile(false);
+      } catch (error) {
+        console.error("Error updating profile:", error);
+        toast({
+          variant: "destructive",
+          title: "Update failed",
+          description: "We couldn't update your profile. Please try again.",
+        });
+      } finally {
+        setIsUpdatingProfile(false);
+      }
+    } else {
+      // No changes or no user
+      setIsEditingProfile(false);
     }
-
-    setIsEditingProfile(false);
   };
 
   // If no user is logged in, redirect to welcome page
@@ -123,8 +249,38 @@ const DriverProfilePage = () => {
     }
   }, [user, navigate]);
 
+  // Loading states
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  
+  // Update loading state when fetching profile data
+  useEffect(() => {
+    if (user) {
+      setIsProfileLoading(false);
+    }
+  }, [profile, user]);
+  
   if (!user) {
     return null;
+  }
+  
+  // Show loading state while fetching profile data
+  if (isProfileLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-neutral-50">
+        <Header>
+          <h1 className="text-xl font-bold text-neutral-800 ml-2">
+            {t("profile")}
+          </h1>
+        </Header>
+        
+        <div className="flex-1 flex flex-col items-center justify-center p-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-neutral-600">Loading profile...</p>
+        </div>
+        
+        <BottomNavigation userType="driver" />
+      </div>
+    );
   }
 
   const missingItems = [];
@@ -609,6 +765,18 @@ const DriverProfilePage = () => {
                     id="location" 
                     defaultValue={profile.location}
                     onChange={(e) => setEditedProfile({...editedProfile, location: e.target.value})}
+                    disabled={isUpdatingProfile}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="experience">Experience</Label>
+                  <Input 
+                    id="experience" 
+                    defaultValue={profile.experience}
+                    onChange={(e) => setEditedProfile({...editedProfile, experience: e.target.value})}
+                    disabled={isUpdatingProfile}
+                    placeholder="e.g., 5 years of professional driving"
                   />
                 </div>
               </div>
@@ -621,6 +789,7 @@ const DriverProfilePage = () => {
                   defaultValue={profile.about}
                   onChange={(e) => setEditedProfile({...editedProfile, about: e.target.value})}
                   placeholder="Tell employers about your experience and skills"
+                  disabled={isUpdatingProfile}
                 />
               </div>
             </div>
@@ -632,11 +801,17 @@ const DriverProfilePage = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="experience">Experience</Label>
-                  <Input 
-                    id="experience" 
-                    defaultValue={profile.experience}
-                    onChange={(e) => setEditedProfile({...editedProfile, experience: e.target.value})}
+                  <Label htmlFor="skills">Skills</Label>
+                  <Textarea
+                    id="skills"
+                    rows={2}
+                    placeholder="Enter your skills (e.g., Long-distance driving, GPS navigation, First aid)"
+                    defaultValue={profile.skills.join(", ")}
+                    onChange={(e) => setEditedProfile({
+                      ...editedProfile, 
+                      skills: e.target.value.split(",").map(skill => skill.trim())
+                    })}
+                    disabled={isUpdatingProfile}
                   />
                 </div>
 
@@ -671,6 +846,7 @@ const DriverProfilePage = () => {
                     id="drivingLicense" 
                     defaultValue={profile.drivingLicense || ""}
                     onChange={(e) => setEditedProfile({...editedProfile, drivingLicense: e.target.value})}
+                    disabled={isUpdatingProfile}
                   />
                 </div>
 
@@ -681,6 +857,7 @@ const DriverProfilePage = () => {
                   onChange={setLicenseFile}
                   value={licenseFile}
                   helpText="Upload a clear photo or scan of your license"
+                  className={isUpdatingProfile ? "opacity-60 pointer-events-none" : ""}
                 />
 
                 <div className="space-y-2">
@@ -689,6 +866,7 @@ const DriverProfilePage = () => {
                     id="identityProof" 
                     defaultValue={profile.identityProof || ""}
                     onChange={(e) => setEditedProfile({...editedProfile, identityProof: e.target.value})}
+                    disabled={isUpdatingProfile}
                   />
                 </div>
 
@@ -699,6 +877,7 @@ const DriverProfilePage = () => {
                   onChange={setIdentityFile}
                   value={identityFile}
                   helpText="Upload Aadhaar, PAN, or Voter ID"
+                  className={isUpdatingProfile ? "opacity-60 pointer-events-none" : ""}
                 />
               </div>
             </div>
@@ -708,8 +887,18 @@ const DriverProfilePage = () => {
             <Button variant="outline" onClick={() => setIsEditingProfile(false)}>
               Cancel
             </Button>
-            <Button onClick={handleProfileUpdate}>
-              Save Changes
+            <Button 
+              onClick={handleProfileUpdate} 
+              disabled={isUpdatingProfile}
+            >
+              {isUpdatingProfile ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

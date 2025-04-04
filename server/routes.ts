@@ -7,7 +7,9 @@ import {
   driverInsertSchema, 
   fleetOwnerInsertSchema,
   jobInsertSchema,
-  UserType
+  UserType,
+  type User,
+  type Driver
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -253,6 +255,215 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all drivers
+  app.get("/api/resource/Drivers", async (req: Request, res: Response) => {
+    try {
+      // Get all drivers (implement a method to get all drivers in a real application)
+      // Since we don't have a direct method to get all users, we'll use a workaround
+      // In a real application with a database, we would use a proper query
+      
+      // Collect drivers by trying user IDs (simplified for demo)
+      const drivers = [];
+      // Assume we have a reasonable number of users to check (for demo purposes)
+      for (let i = 1; i <= 100; i++) {
+        const user = await storage.getUser(i);
+        if (user && user.userType === UserType.DRIVER) {
+          const driverProfile = await storage.getDriver(user.id);
+          drivers.push({
+            id: user.id,
+            fullName: user.fullName,
+            phoneNumber: user.phoneNumber,
+            profileCompleted: user.profileCompleted,
+            ...(driverProfile || {}) // Include driver-specific details if exists
+          });
+        }
+      }
+      
+      return res.status(200).json(drivers);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
+  // Get a specific driver by ID
+  app.get("/api/resource/Drivers/:id", async (req: Request, res: Response) => {
+    try {
+      const driverId = parseInt(req.params.id);
+      
+      if (isNaN(driverId)) {
+        return res.status(400).json({ error: "Invalid driver ID" });
+      }
+      
+      const user = await storage.getUser(driverId);
+      if (!user) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      if (user.userType !== UserType.DRIVER) {
+        return res.status(400).json({ error: "User is not a driver" });
+      }
+      
+      const driverProfile = await storage.getDriver(driverId);
+      
+      return res.status(200).json({
+        id: user.id,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        profileCompleted: user.profileCompleted,
+        ...driverProfile
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
+  // Create a new driver (registration endpoint)
+  app.post("/api/resource/Drivers", async (req: Request, res: Response) => {
+    try {
+      // Extract the required fields from the request body
+      const { fullName, phoneNumber } = req.body;
+      
+      // Validate input
+      if (!fullName || !phoneNumber) {
+        return res.status(400).json({ error: "Full Name and Mobile Number are required" });
+      }
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByPhone(phoneNumber);
+      if (existingUser) {
+        return res.status(409).json({ error: "User with this phone number already exists" });
+      }
+      
+      // Create the user with driver type
+      const user = await storage.createUser({
+        fullName,
+        phoneNumber,
+        userType: UserType.DRIVER,
+        language: "en"
+      });
+      
+      // Generate OTP for verification
+      const otp = generateOTP();
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 15); // OTP valid for 15 minutes
+      
+      await storage.createOtpVerification({
+        phoneNumber: user.phoneNumber,
+        otp,
+        expiresAt
+      });
+      
+      // In a real application, we would send SMS with OTP
+      // For demo purposes, return the OTP directly
+      return res.status(201).json({ 
+        userId: user.id, 
+        message: "Driver registered successfully. OTP sent to your phone number", 
+        otpForDemo: otp 
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
+  // Update driver information
+  app.put("/api/resource/Drivers/:id", async (req: Request, res: Response) => {
+    try {
+      const driverId = parseInt(req.params.id);
+      
+      if (isNaN(driverId)) {
+        return res.status(400).json({ error: "Invalid driver ID" });
+      }
+      
+      const user = await storage.getUser(driverId);
+      if (!user) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      if (user.userType !== UserType.DRIVER) {
+        return res.status(400).json({ error: "User is not a driver" });
+      }
+      
+      // Update user information if provided
+      const { fullName, phoneNumber, ...driverInfo } = req.body;
+      
+      let updatedUser = user;
+      if (fullName || phoneNumber) {
+        const userUpdates: Partial<User> = {};
+        if (fullName) userUpdates.fullName = fullName;
+        if (phoneNumber) userUpdates.phoneNumber = phoneNumber;
+        
+        // Check if the new phone number is already in use
+        if (phoneNumber && phoneNumber !== user.phoneNumber) {
+          const existingUser = await storage.getUserByPhone(phoneNumber);
+          if (existingUser) {
+            return res.status(409).json({ error: "Phone number already in use" });
+          }
+        }
+        
+        updatedUser = await storage.updateUser(driverId, userUpdates) as User;
+      }
+      
+      // Update driver-specific information if any is provided
+      let driverProfile = await storage.getDriver(driverId);
+      
+      if (Object.keys(driverInfo).length > 0) {
+        if (driverProfile) {
+          driverProfile = await storage.updateDriver(driverId, driverInfo) as Driver;
+        } else {
+          driverProfile = await storage.createDriver({
+            userId: driverId,
+            ...driverInfo
+          });
+        }
+        
+        // Update profile completion status
+        await storage.updateUser(driverId, { profileCompleted: true });
+        updatedUser = { ...updatedUser, profileCompleted: true };
+      }
+      
+      return res.status(200).json({
+        id: updatedUser.id,
+        fullName: updatedUser.fullName,
+        phoneNumber: updatedUser.phoneNumber,
+        profileCompleted: updatedUser.profileCompleted,
+        ...driverProfile
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
+  // Delete a driver
+  app.delete("/api/resource/Drivers/:id", async (req: Request, res: Response) => {
+    try {
+      const driverId = parseInt(req.params.id);
+      
+      if (isNaN(driverId)) {
+        return res.status(400).json({ error: "Invalid driver ID" });
+      }
+      
+      const user = await storage.getUser(driverId);
+      if (!user) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      if (user.userType !== UserType.DRIVER) {
+        return res.status(400).json({ error: "User is not a driver" });
+      }
+      
+      // In a real application with proper database, we would delete the user
+      // Since we don't have a method to delete users in our MemStorage interface,
+      // we'll return a success response for demonstration purposes
+      
+      return res.status(200).json({ 
+        message: "Driver deleted successfully",
+        note: "In a real implementation, the driver would be removed from the database"
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }
