@@ -1,50 +1,33 @@
-import { useState } from "react";
+import { Switch, Route } from "wouter";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import NotFound from "@/pages/not-found";
+import WelcomePage from "@/pages/welcome";
+import LoginPage from "@/pages/login";
+import { AuthProvider } from "@/contexts/auth-context";
 
-function App() {
-  const [count, setCount] = useState(0);
-  
+const Router = () => {
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column',
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      height: '100vh',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <h1>SIGNO Connect</h1>
-      <p>The application is working!</p>
-      <div>
-        <button 
-          onClick={() => setCount(count + 1)}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            margin: '10px'
-          }}
-        >
-          Count: {count}
-        </button>
-      </div>
-      <div>
-        <p>Frappe API is running</p>
-        <a 
-          href="/api/frappe-drivers" 
-          target="_blank"
-          style={{
-            color: '#0066cc',
-            textDecoration: 'underline'
-          }}
-        >
-          View Drivers API
-        </a>
-      </div>
-    </div>
+    <Switch>
+      <Route path="/" component={WelcomePage} />
+      <Route path="/login" component={LoginPage} />
+
+      {/* Fallback */}
+      <Route component={NotFound} />
+    </Switch>
   );
-}
+};
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
