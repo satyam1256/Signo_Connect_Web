@@ -1,92 +1,97 @@
-import { useState } from "react";
-import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Switch, Route } from "wouter";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/queryClient";
+import { Toaster } from "@/components/ui/toaster";
+import WelcomePage from "./pages/welcome";
+import NotFound from "./pages/not-found";
+import LoginPage from "./pages/login";
+import DriverRegistration from "./pages/driver/registration";
+import DriverDashboard from "./pages/driver/dashboard";
+import DriverJobs from "./pages/driver/jobs";
+import DriverAlerts from "./pages/driver/alerts";
+import DriverProfile from "./pages/driver/profile";
+import FleetOwnerRegistration from "./pages/fleet-owner/registration";
+import FleetOwnerDashboard from "./pages/fleet-owner/dashboard";
+import FleetOwnerJobs from "./pages/fleet-owner/jobs";
+import FleetOwnerProfile from "./pages/fleet-owner/profile";
+import FleetOwnerDrivers from "./pages/fleet-owner/drivers";
+import { create } from "zustand";
+
+// Create a simple auth store to replace the Auth context
+type User = {
+  id: number;
+  fullName: string;
+  phoneNumber: string;
+  userType: "driver" | "fleet_owner";
+  email?: string;
+  profileCompleted: boolean;
+};
+
+type AuthStore = {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (user: User) => void;
+  logout: () => void;
+  updateUser: (userData: Partial<User>) => void;
+};
+
+const useAuthStore = create<AuthStore>((set) => ({
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+  login: (user) => set({ user, isAuthenticated: true }),
+  logout: () => set({ user: null, isAuthenticated: false }),
+  updateUser: (userData) => set((state) => ({ 
+    user: state.user ? { ...state.user, ...userData } : null 
+  })),
+}));
+
+// Create a simple language store to replace the i18n context
+type LanguageStore = {
+  currentLanguage: string;
+  t: (key: string) => string;
+  setLanguage: (lang: string) => void;
+};
+
+const useLanguageStore = create<LanguageStore>((set) => ({
+  currentLanguage: "en",
+  t: (key) => key, // Simplified translation function
+  setLanguage: (lang) => set({ currentLanguage: lang }),
+}));
+
+const RouterComponent = () => {
+  return (
+    <Switch>
+      <Route path="/" component={WelcomePage} />
+      <Route path="/login" component={LoginPage} />
+      
+      {/* Driver Routes */}
+      <Route path="/driver/register" component={DriverRegistration} />
+      <Route path="/driver/dashboard" component={DriverDashboard} />
+      <Route path="/driver/jobs" component={DriverJobs} />
+      <Route path="/driver/alerts" component={DriverAlerts} />
+      <Route path="/driver/profile" component={DriverProfile} />
+      
+      {/* Fleet Owner Routes */}
+      <Route path="/fleet-owner/register" component={FleetOwnerRegistration} />
+      <Route path="/fleet-owner/dashboard" component={FleetOwnerDashboard} />
+      <Route path="/fleet-owner/jobs" component={FleetOwnerJobs} />
+      <Route path="/fleet-owner/profile" component={FleetOwnerProfile} />
+      <Route path="/fleet-owner/drivers" component={FleetOwnerDrivers} />
+      
+      {/* Fallback */}
+      <Route component={NotFound} />
+    </Switch>
+  );
+};
 
 const App = () => {
-  const [count, setCount] = useState(0);
-  
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-50">
-      <header className="bg-white border-b border-neutral-200 py-4">
-        <div className="container mx-auto px-4">
-          <h1 className="text-xl font-bold text-primary">SIGNO Connect</h1>
-        </div>
-      </header>
-
-      <div className="flex-grow container mx-auto px-4 py-6 max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-neutral-800 mb-2">
-            Welcome to SIGNO Connect
-          </h1>
-          <p className="text-neutral-500">
-            The logistics marketplace connecting drivers and transporters
-          </p>
-        </div>
-
-        <div className="flex justify-center mb-8">
-          <Button 
-            onClick={() => setCount(count + 1)}
-            className="bg-primary text-white hover:bg-primary/90"
-          >
-            Count: {count}
-          </Button>
-        </div>
-
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <h2 className="text-xl font-bold mb-4 text-neutral-800">
-              I am a...
-            </h2>
-
-            <div className="flex flex-col space-y-3">
-              <Link href="#driver">
-                <Button 
-                  className="w-full justify-between bg-primary text-white hover:bg-primary/90 h-14"
-                  size="lg"
-                >
-                  <span className="flex items-center">
-                    <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                    </svg>
-                    <span>Driver</span>
-                  </span>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Button>
-              </Link>
-
-              <Link href="#fleet-owner">
-                <Button 
-                  className="w-full justify-between bg-[#FF6D00] text-white hover:bg-[#E65100]/90 h-14"
-                  size="lg"
-                >
-                  <span className="flex items-center">
-                    <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
-                    </svg>
-                    <span>Fleet Owner/Transporter</span>
-                  </span>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="text-center text-neutral-500">
-          <p>
-            Already have an account?{" "}
-            <Link href="#login" className="text-primary font-medium">
-              Sign in
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <RouterComponent />
+      <Toaster />
+    </QueryClientProvider>
   );
 };
 

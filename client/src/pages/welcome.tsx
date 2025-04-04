@@ -1,12 +1,7 @@
 import { Link } from "wouter";
 import { TruckIcon } from "lucide-react";
-import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useLanguageStore } from "@/lib/i18n";
-import { SteeringWheelIcon } from "./icons/steering-wheel-icon";
-import { Chatbot } from "@/components/features/chatbot";
-import signoLogo from "@/assets/signo-logo.png";
 
 // Custom icon component
 export const TruckMovingIcon = () => (
@@ -21,28 +16,22 @@ export const TruckMovingIcon = () => (
 );
 
 const WelcomePage = () => {
-  const { t } = useLanguageStore();
-
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
-      <Header />
+      <header className="bg-white border-b border-neutral-200 py-4">
+        <div className="container mx-auto px-4">
+          <h1 className="text-xl font-bold text-primary">SIGNO Connect</h1>
+        </div>
+      </header>
 
       <div className="flex-grow container mx-auto px-4 py-6 max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-neutral-800 mb-2">
-            {t("welcome")}
+            Welcome to SIGNO Connect
           </h1>
           <p className="text-neutral-500">
-            {t("welcome_subtitle")}
+            The logistics marketplace connecting drivers and transporters
           </p>
-        </div>
-
-        <div className="flex flex-col space-y-4 mb-8">
-          <img
-            className="w-64 mx-auto h-auto"
-            src={signoLogo}
-            alt="SIGNO Logo"
-          />
         </div>
 
         <Card className="mb-6">
@@ -52,14 +41,21 @@ const WelcomePage = () => {
             </h2>
 
             <div className="flex flex-col space-y-3">
-              <Link to="/driver/register">
+              <Link href="/driver/register">
                 <Button 
-                  className="w-full justify-between bg-primary text-white hover:bg-primary-dark h-14"
+                  className="w-full justify-between bg-primary text-white hover:bg-primary/90 h-14"
                   size="lg"
                 >
                   <span className="flex items-center">
-                    <SteeringWheelIcon className="mr-3 h-5 w-5" />
-                    <span>{t("driver")}</span>
+                    <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+                      <path d="M12 4V8" stroke="currentColor" strokeWidth="2" />
+                      <path d="M4 12L8 12" stroke="currentColor" strokeWidth="2" />
+                      <path d="M12 16V20" stroke="currentColor" strokeWidth="2" />
+                      <path d="M16 12L20 12" stroke="currentColor" strokeWidth="2" />
+                    </svg>
+                    <span>Driver</span>
                   </span>
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -67,14 +63,14 @@ const WelcomePage = () => {
                 </Button>
               </Link>
 
-              <Link to="/fleet-owner/register">
+              <Link href="/fleet-owner/register">
                 <Button 
-                  className="w-full justify-between bg-[#FF6D00] text-white hover:bg-[#E65100] h-14"
+                  className="w-full justify-between bg-[#FF6D00] text-white hover:bg-[#E65100]/90 h-14"
                   size="lg"
                 >
                   <span className="flex items-center">
                     <TruckMovingIcon />
-                    <span className="ml-3">{t("fleet_owner")}</span>
+                    <span className="ml-3">Fleet Owner/Transporter</span>
                   </span>
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -87,15 +83,13 @@ const WelcomePage = () => {
 
         <div className="text-center text-neutral-500">
           <p>
-            {t("already_have_account")}{" "}
-            <Link to="/login" className="text-primary font-medium">
-              {t("sign_in")}
+            Already have an account?{" "}
+            <Link href="/login" className="text-primary font-medium">
+              Sign in
             </Link>
           </p>
         </div>
       </div>
-
-      <Chatbot />
     </div>
   );
 };
