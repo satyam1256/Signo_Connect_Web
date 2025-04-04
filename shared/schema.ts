@@ -513,7 +513,7 @@ export const frappeDriverCreateSchema = frappeDriverInsertSchema.omit({
 });
 
 export const frappeDriversQuerySchema = z.object({
-  isActive: z.coerce.boolean().optional(),
+  isActive: z.enum(['true', 'false']).transform(val => val === 'true').optional(),
   category: z.string().optional(),
   limit: z.coerce.number().optional(),
   offset: z.coerce.number().optional(),

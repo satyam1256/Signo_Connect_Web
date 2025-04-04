@@ -531,21 +531,33 @@ export class MemStorage implements IStorage {
     if (query) {
       // Filter by isActive if specified
       if (query.isActive !== undefined) {
-        drivers = drivers.filter(driver => driver.isActive === query.isActive);
+        console.log(`Filtering drivers by isActive=${query.isActive}`);
+        drivers = drivers.filter(driver => {
+          const matches = driver.isActive === query.isActive;
+          console.log(`Driver ${driver.docName} (${driver.name1}) with isActive=${driver.isActive} ${matches ? 'matches' : 'does not match'} filter`);
+          return matches;
+        });
       }
       
       // Filter by category if specified
       if (query.category) {
-        drivers = drivers.filter(driver => driver.category === query.category);
+        console.log(`Filtering drivers by category='${query.category}'`);
+        drivers = drivers.filter(driver => {
+          const matches = driver.category === query.category;
+          console.log(`Driver ${driver.docName} (${driver.name1}) with category='${driver.category}' ${matches ? 'matches' : 'does not match'} filter`);
+          return matches;
+        });
       }
       
       // Apply pagination if specified
       if (query.limit !== undefined) {
         const offset = query.offset || 0;
+        console.log(`Applying pagination: offset=${offset}, limit=${query.limit}`);
         drivers = drivers.slice(offset, offset + query.limit);
       }
     }
     
+    console.log(`Returning ${drivers.length} drivers after filtering`);
     return drivers;
   }
 
