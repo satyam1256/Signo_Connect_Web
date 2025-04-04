@@ -3,7 +3,6 @@ import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { useLanguageStore } from "@/lib/i18n";
-import { useAuth } from "@/contexts/auth-context";
 import signoLogo from "@/assets/signo-logo.png";
 
 interface HeaderProps {
@@ -15,20 +14,6 @@ interface HeaderProps {
 
 export const Header = ({ showBack = false, backTo = "/", backAction, children }: HeaderProps) => {
   const { t } = useLanguageStore();
-  const { user, isAuthenticated } = useAuth();
-
-  // Determine the home route based on authentication status and user type
-  const getHomeRoute = () => {
-    if (!isAuthenticated || !user) return "/";
-    
-    if (user.userType === "driver") {
-      return "/driver/dashboard";
-    } else if (user.userType === "fleet_owner") {
-      return "/fleet-owner/dashboard";
-    }
-    
-    return "/";
-  };
 
   const handleBack = () => {
     if (backAction) {
@@ -59,7 +44,7 @@ export const Header = ({ showBack = false, backTo = "/", backAction, children }:
               </Link>
             )
           ) : (
-            <Link to={getHomeRoute()}>
+            <Link to="/">
               <img src={signoLogo} alt="SIGNO Logo" className="h-10" />
             </Link>
           )}

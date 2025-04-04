@@ -101,7 +101,7 @@ const LoginPage = () => {
     try {
       // Always use 123456 for testing
       const testOtp = "123456";
-
+      
       const response = await apiRequest(
         "POST",
         "/api/verify-otp",
@@ -123,7 +123,7 @@ const LoginPage = () => {
           "GET",
           `/api/user/${data.userId}`
         );
-
+        
         if (!userResponse.ok) {
           throw new Error('User data fetch failed');
         }
