@@ -29,7 +29,8 @@ const AuthContext = createContext<AuthContextType>({
   updateUser: () => {},
 });
 
-export const useAuth = () => useContext(AuthContext);
+const useAuth = () => useContext(AuthContext);
+export { useAuth };
 
 interface AuthProviderProps {
   children: ReactNode;

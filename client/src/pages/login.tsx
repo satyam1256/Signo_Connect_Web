@@ -60,37 +60,27 @@ const LoginPage = () => {
   const onPhoneSubmit = async (values: z.infer<typeof phoneSchema>) => {
     setIsSubmitting(true);
     try {
-      // Try to register the user - this will either create a new user or return an error if the user exists
-      const registerResponse = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      await apiRequest(
+        "POST",
+        "/api/register",
+        {
           fullName: values.fullName,
           phoneNumber: values.phoneNumber,
           userType: "driver", // Default to driver, will be overridden by actual value in database
-        }),
+        }
+      );
+
+      // Save phone number for next step
+      setPhoneNumber(values.phoneNumber);
+
+      // Move to OTP step
+      setStep(LoginStep.OTP);
+
+      // Success notification
+      toast({
+        title: "Verification code sent",
+        description: `An OTP has been sent to ${values.phoneNumber}`,
       });
-      
-      // If registration succeeds or fails with conflict (user exists), continue
-      if (registerResponse.ok || registerResponse.status === 409) {
-        // Save phone number for next step
-        setPhoneNumber(values.phoneNumber);
-        
-        // Move to OTP step
-        setStep(LoginStep.OTP);
-        
-        // Success notification
-        toast({
-          title: "Verification code sent",
-          description: `Use code 123456 to verify your phone number`,
-        });
-      } else {
-        // Handle other errors
-        const errorData = await registerResponse.json();
-        throw new Error(errorData.error || 'Registration failed');
-      }
     } catch (error) {
       console.error("Error during login:", error);
       toast({
@@ -111,7 +101,7 @@ const LoginPage = () => {
     try {
       // Always use 123456 for testing
       const testOtp = "123456";
-      
+
       const response = await apiRequest(
         "POST",
         "/api/verify-otp",
@@ -126,54 +116,35 @@ const LoginPage = () => {
       }
 
       const data = await response.json();
-      
-      console.log("OTP verification successful:", data);
 
       if (data.verified) {
-        try {
-          // Fetch user data
-          const userResponse = await apiRequest(
-            "GET",
-            `/api/user/${data.userId}`
-          );
-          
-          if (!userResponse.ok) {
-            throw new Error('User data fetch failed');
-          }
+        // Fetch user data
+        const userResponse = await apiRequest(
+          "GET",
+          `/api/user/${data.userId}`
+        );
 
-          const userData = await userResponse.json();
-          console.log("User data fetched:", userData);
-
-          // Login user with the complete user data
-          login({
-            id: userData.user.id,
-            fullName: userData.user.fullName,
-            phoneNumber: userData.user.phoneNumber,
-            userType: userData.user.userType,
-            email: userData.user.email,
-            profileCompleted: userData.user.profileCompleted || false
-          });
-
-          console.log("User logged in, redirecting to dashboard");
-          
-          // Redirect based on user type - use setTimeout to ensure state updates before navigation
-          setTimeout(() => {
-            if (userData.user.userType === "driver") {
-              setLocation("/driver/dashboard");
-            } else {
-              setLocation("/fleet-owner/dashboard");
-            }
-          }, 300);
-
-          // Success notification
-          toast({
-            title: "Login successful",
-            description: "Welcome to SIGNO Connect",
-          });
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          throw error;
+        if (!userResponse.ok) {
+          throw new Error('User data fetch failed');
         }
+
+        const userData = await userResponse.json();
+
+        // Login user
+        login(userData.user);
+
+        // Redirect based on user type
+        if (userData.user.userType === "driver") {
+          setLocation("/driver/dashboard");
+        } else {
+          setLocation("/fleet-owner/dashboard");
+        }
+
+        // Success notification
+        toast({
+          title: "Login successful",
+          description: "Welcome to SIGNO Connect",
+        });
       } else {
         toast({
           variant: "destructive",
