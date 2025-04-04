@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, doublePrecision, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -237,6 +237,51 @@ export const serviceLocations = pgTable("service_locations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Frappe Drivers Doctype model (from Frappe ERP integration)
+export const frappeDrivers = pgTable("frappe_drivers", {
+  id: serial("id").primaryKey(),
+  docName: varchar("doc_name", { length: 20 }).notNull().unique(), // SIG01907 
+  owner: varchar("owner", { length: 140 }),
+  creation: timestamp("creation"),
+  modified: timestamp("modified"),
+  modifiedBy: varchar("modified_by", { length: 140 }),
+  docstatus: integer("docstatus").default(0),
+  idx: integer("idx").default(0),
+  namingSeries: varchar("naming_series", { length: 10 }),
+  name1: varchar("name1", { length: 140 }),
+  phoneNumber: varchar("phone_number", { length: 20 }),
+  email: varchar("email", { length: 140 }),
+  emergencyContactNumber: varchar("emergency_contact_number", { length: 20 }),
+  address: text("address"),
+  lastLocation: text("last_location"),
+  experience: varchar("experience", { length: 50 }),
+  remarks: text("remarks"),
+  category: varchar("category", { length: 30 }),
+  fcmToken: text("fcm_token"),
+  latLong: varchar("lat_long", { length: 100 }),
+  isActive: boolean("is_active").default(false),
+  referenceNumber: varchar("reference_number", { length: 20 }),
+  profilePic: text("profile_pic"), // Image URL
+  bankPic: text("bank_pic"), // Image URL
+  dlFrontPic: text("dl_front_pic"), // Image URL
+  dlBackPic: text("dl_back_pic"), // Image URL
+  aadharFrontPic: text("aadhar_front_pic"), // Image URL
+  aadharBackPic: text("aadhar_back_pic"), // Image URL
+  pfPic: text("pf_pic"), // Image URL
+  bankAcNumber: varchar("bank_ac_number", { length: 30 }),
+  bankIfsc: varchar("bank_ifsc", { length: 20 }),
+  bankHolderName: varchar("bank_holder_name", { length: 140 }),
+  upiId: varchar("upi_id", { length: 50 }),
+  dlNumber: varchar("dl_number", { length: 30 }),
+  dob: timestamp("dob"),
+  aadharNumber: varchar("aadhar_number", { length: 20 }),
+  isBankVerified: boolean("is_bank_verified").default(false),
+  isKycVerified: boolean("is_kyc_verified").default(false),
+  isDlVerified: boolean("is_dl_verified").default(false),
+  isAadharVerified: boolean("is_aadhar_verified").default(false),
+  lastSyncedOn: timestamp("last_synced_on"),
+});
+
 // Zod schemas for validation
 export const userInsertSchema = createInsertSchema(users).pick({
   fullName: true,
@@ -381,6 +426,49 @@ export const serviceLocationInsertSchema = createInsertSchema(serviceLocations).
   amenities: true,
 });
 
+export const frappeDriverInsertSchema = createInsertSchema(frappeDrivers).pick({
+  docName: true,
+  owner: true,
+  creation: true,
+  modified: true,
+  modifiedBy: true,
+  docstatus: true,
+  idx: true,
+  namingSeries: true,
+  name1: true,
+  phoneNumber: true,
+  email: true,
+  emergencyContactNumber: true,
+  address: true,
+  lastLocation: true,
+  experience: true,
+  remarks: true,
+  category: true,
+  fcmToken: true,
+  latLong: true,
+  isActive: true,
+  referenceNumber: true,
+  profilePic: true,
+  bankPic: true,
+  dlFrontPic: true,
+  dlBackPic: true,
+  aadharFrontPic: true,
+  aadharBackPic: true,
+  pfPic: true,
+  bankAcNumber: true,
+  bankIfsc: true,
+  bankHolderName: true,
+  upiId: true,
+  dlNumber: true,
+  dob: true,
+  aadharNumber: true,
+  isBankVerified: true,
+  isKycVerified: true,
+  isDlVerified: true,
+  isAadharVerified: true,
+  lastSyncedOn: true,
+});
+
 export const verifyOtpSchema = z.object({
   phoneNumber: z.string(),
   otp: z.string().length(6),
@@ -409,6 +497,28 @@ export const submitAssessmentSchema = z.object({
   feedbackNotes: z.string().optional(),
 });
 
+// Frappe Driver API Schemas
+export const frappeDriverUpdateSchema = frappeDriverInsertSchema.partial().omit({
+  docName: true,
+});
+
+export const frappeDriverCreateSchema = frappeDriverInsertSchema.omit({
+  docName: true,
+  creation: true,
+  modified: true,
+  lastSyncedOn: true
+}).extend({
+  name1: z.string().min(3).max(140),
+  phoneNumber: z.string().min(10).max(20),
+});
+
+export const frappeDriversQuerySchema = z.object({
+  isActive: z.coerce.boolean().optional(),
+  category: z.string().optional(),
+  limit: z.coerce.number().optional(),
+  offset: z.coerce.number().optional(),
+});
+
 // Types for TypeScript
 export type InsertUser = z.infer<typeof userInsertSchema>;
 export type InsertDriver = z.infer<typeof driverInsertSchema>;
@@ -424,6 +534,7 @@ export type InsertToll = z.infer<typeof tollInsertSchema>;
 export type InsertTrip = z.infer<typeof tripInsertSchema>;
 export type InsertChalan = z.infer<typeof chalanInsertSchema>;
 export type InsertServiceLocation = z.infer<typeof serviceLocationInsertSchema>;
+export type InsertFrappeDriver = z.infer<typeof frappeDriverInsertSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Driver = typeof drivers.$inferSelect;
@@ -439,3 +550,4 @@ export type Toll = typeof tolls.$inferSelect;
 export type Trip = typeof trips.$inferSelect;
 export type Chalan = typeof chalans.$inferSelect;
 export type ServiceLocation = typeof serviceLocations.$inferSelect;
+export type FrappeDriver = typeof frappeDrivers.$inferSelect;

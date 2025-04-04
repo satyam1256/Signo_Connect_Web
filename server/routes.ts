@@ -16,6 +16,9 @@ import {
   vehicleInsertSchema,
   referralInsertSchema,
   notificationInsertSchema,
+  frappeDriverCreateSchema,
+  frappeDriverUpdateSchema,
+  frappeDriversQuerySchema,
   UserType,
   User
 } from "@shared/schema";
@@ -36,11 +39,13 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   console.log("RegisterRoutes: Final storage selection:", storage.constructor.name);
   
   // Only reset memory storage if we're not using the DB storage
-  if (!customStorage || !(customStorage instanceof DbStorage)) {
+  if (!customStorage) {
     console.log("RegisterRoutes: Using memory storage, resetting data...");
     (memStorage as any).resetData();
-  } else {
+  } else if (customStorage instanceof DbStorage) {
     console.log("RegisterRoutes: Using database storage, not resetting memory data");
+  } else {
+    console.log("RegisterRoutes: Using custom storage, not resetting memory data");
   }
   
   // TypeScript type annotations for sum & toll in reduce function
@@ -934,6 +939,155 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       });
     } catch (err) {
       return handleError(err as Error, res);
+    }
+  });
+
+  // Frappe Driver API Routes
+  
+  // Get all Frappe drivers with optional filtering
+  app.get("/api/frappe-drivers", async (req: Request, res: Response) => {
+    try {
+      const { error, data } = frappeDriversQuerySchema.safeParse(req.query);
+      
+      if (error) {
+        return res.status(400).json({ 
+          error: "Invalid query parameters", 
+          details: error.format() 
+        });
+      }
+      
+      const drivers = await storage.getFrappeDrivers(data);
+      res.status(200).json(drivers);
+    } catch (err) {
+      handleError(err as Error, res);
+    }
+  });
+  
+  // Get a Frappe driver by phone number
+  app.get("/api/frappe-drivers/phone/:phoneNumber", async (req: Request, res: Response) => {
+    try {
+      const { phoneNumber } = req.params;
+      const driver = await storage.getFrappeDriverByPhone(phoneNumber);
+      
+      if (!driver) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      res.status(200).json(driver);
+    } catch (err) {
+      handleError(err as Error, res);
+    }
+  });
+
+  // Get a specific Frappe driver by docName
+  app.get("/api/frappe-drivers/:docName", async (req: Request, res: Response) => {
+    try {
+      const { docName } = req.params;
+      const driver = await storage.getFrappeDriver(docName);
+      
+      if (!driver) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      res.status(200).json(driver);
+    } catch (err) {
+      handleError(err as Error, res);
+    }
+  });
+  
+  // Create a new Frappe driver
+  app.post("/api/frappe-drivers", async (req: Request, res: Response) => {
+    try {
+      const { error, data } = frappeDriverCreateSchema.safeParse(req.body);
+      
+      if (error) {
+        return res.status(400).json({ 
+          error: "Invalid driver data", 
+          details: error.format() 
+        });
+      }
+      
+      // Check if a driver with this phone number already exists
+      if (data.phoneNumber) {
+        const existingDriver = await storage.getFrappeDriverByPhone(data.phoneNumber);
+        if (existingDriver) {
+          return res.status(409).json({ 
+            error: "A driver with this phone number already exists",
+            driver: existingDriver
+          });
+        }
+      }
+      
+      // Generate a unique docName using Frappe's naming convention: "SIG" followed by a sequential number
+      const docName = generateFrappeDocName("SIG");
+      
+      // Create the driver with generated docName
+      const newDriver = await storage.createFrappeDriver({
+        ...data,
+        docName
+      });
+      
+      res.status(201).json(newDriver);
+    } catch (err) {
+      handleError(err as Error, res);
+    }
+  });
+  
+  // Update an existing Frappe driver
+  app.patch("/api/frappe-drivers/:docName", async (req: Request, res: Response) => {
+    try {
+      const { docName } = req.params;
+      const { error, data } = frappeDriverUpdateSchema.safeParse(req.body);
+      
+      if (error) {
+        return res.status(400).json({ 
+          error: "Invalid driver data", 
+          details: error.format() 
+        });
+      }
+      
+      // Check if the driver exists
+      const existingDriver = await storage.getFrappeDriver(docName);
+      if (!existingDriver) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      // If phone number is being updated, make sure it doesn't conflict
+      if (data.phoneNumber && data.phoneNumber !== existingDriver.phoneNumber) {
+        const driverWithPhone = await storage.getFrappeDriverByPhone(data.phoneNumber);
+        if (driverWithPhone && driverWithPhone.docName !== docName) {
+          return res.status(409).json({ 
+            error: "Phone number already in use by another driver"
+          });
+        }
+      }
+      
+      const updatedDriver = await storage.updateFrappeDriver(docName, data);
+      res.status(200).json(updatedDriver);
+    } catch (err) {
+      handleError(err as Error, res);
+    }
+  });
+  
+  // Delete a Frappe driver
+  app.delete("/api/frappe-drivers/:docName", async (req: Request, res: Response) => {
+    try {
+      const { docName } = req.params;
+      
+      // Check if the driver exists
+      const existingDriver = await storage.getFrappeDriver(docName);
+      if (!existingDriver) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      const deleted = await storage.deleteFrappeDriver(docName);
+      if (deleted) {
+        res.status(204).send(); // No content
+      } else {
+        res.status(500).json({ error: "Failed to delete driver" });
+      }
+    } catch (err) {
+      handleError(err as Error, res);
     }
   });
 

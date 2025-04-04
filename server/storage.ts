@@ -9,7 +9,8 @@ import {
   driverAssessments, type DriverAssessment, type InsertDriverAssessment,
   notifications, type Notification, type InsertNotification,
   referrals, type Referral, type InsertReferral,
-  tolls, type Toll, type InsertToll
+  tolls, type Toll, type InsertToll,
+  frappeDrivers, type FrappeDriver, type InsertFrappeDriver
 } from "@shared/schema";
 
 // Interface for storage operations
@@ -71,6 +72,14 @@ export interface IStorage {
   // Toll operations
   getTollsAlongRoute(coordinates: [number, number][]): Promise<Toll[]>;
   createToll(toll: InsertToll): Promise<Toll>;
+  
+  // Frappe Driver operations
+  getFrappeDriver(docName: string): Promise<FrappeDriver | undefined>;
+  getFrappeDriverByPhone(phoneNumber: string): Promise<FrappeDriver | undefined>;
+  getFrappeDrivers(query?: { isActive?: boolean; category?: string; limit?: number; offset?: number }): Promise<FrappeDriver[]>;
+  createFrappeDriver(driver: InsertFrappeDriver): Promise<FrappeDriver>;
+  updateFrappeDriver(docName: string, driver: Partial<FrappeDriver>): Promise<FrappeDriver | undefined>;
+  deleteFrappeDriver(docName: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -85,6 +94,7 @@ export class MemStorage implements IStorage {
   private notifications = new Map<number, Notification>();
   private referrals = new Map<number, Referral>();
   private tolls = new Map<number, Toll>();
+  private frappeDrivers = new Map<string, FrappeDriver>();
 
   private userId = 1;
   private driverId = 1;
@@ -115,6 +125,7 @@ export class MemStorage implements IStorage {
     this.notifications = new Map();
     this.referrals = new Map();
     this.tolls = new Map();
+    this.frappeDrivers = new Map();
 
     this.userId = 1;
     this.driverId = 1;
@@ -501,6 +512,120 @@ export class MemStorage implements IStorage {
     };
     this.tolls.set(id, newToll);
     return newToll;
+  }
+
+  // Frappe Driver methods
+  async getFrappeDriver(docName: string): Promise<FrappeDriver | undefined> {
+    return this.frappeDrivers.get(docName);
+  }
+
+  async getFrappeDriverByPhone(phoneNumber: string): Promise<FrappeDriver | undefined> {
+    return Array.from(this.frappeDrivers.values()).find(
+      (driver) => driver.phoneNumber === phoneNumber
+    );
+  }
+
+  async getFrappeDrivers(query?: { isActive?: boolean; category?: string; limit?: number; offset?: number }): Promise<FrappeDriver[]> {
+    let drivers = Array.from(this.frappeDrivers.values());
+    
+    if (query) {
+      // Filter by isActive if specified
+      if (query.isActive !== undefined) {
+        drivers = drivers.filter(driver => driver.isActive === query.isActive);
+      }
+      
+      // Filter by category if specified
+      if (query.category) {
+        drivers = drivers.filter(driver => driver.category === query.category);
+      }
+      
+      // Apply pagination if specified
+      if (query.limit !== undefined) {
+        const offset = query.offset || 0;
+        drivers = drivers.slice(offset, offset + query.limit);
+      }
+    }
+    
+    return drivers;
+  }
+
+  async createFrappeDriver(driver: InsertFrappeDriver): Promise<FrappeDriver> {
+    const now = new Date();
+    const docNamePrefix = driver.namingSeries || "SIG";
+    const docId = Math.floor(Math.random() * 90000) + 10000; // Generate a random 5-digit number
+    const docName = `${docNamePrefix}${docId}`;
+    
+    const newDriver: FrappeDriver = {
+      ...driver,
+      id: this.frappeDrivers.size + 1,
+      docName,
+      creation: now,
+      modified: now,
+      lastSyncedOn: now,
+      owner: driver.owner ?? 'admin@example.com',
+      modifiedBy: driver.modifiedBy ?? 'admin@example.com',
+      docstatus: driver.docstatus ?? 0,
+      idx: driver.idx ?? 0,
+      namingSeries: driver.namingSeries ?? 'SIG',
+      name1: driver.name1 ?? null,
+      phoneNumber: driver.phoneNumber ?? null,
+      email: driver.email ?? null,
+      emergencyContactNumber: driver.emergencyContactNumber ?? null,
+      address: driver.address ?? null,
+      lastLocation: driver.lastLocation ?? null,
+      experience: driver.experience ?? null,
+      remarks: driver.remarks ?? null,
+      category: driver.category ?? null,
+      fcmToken: driver.fcmToken ?? null,
+      latLong: driver.latLong ?? null,
+      isActive: driver.isActive ?? false,
+      referenceNumber: driver.referenceNumber ?? null,
+      profilePic: driver.profilePic ?? null,
+      bankPic: driver.bankPic ?? null,
+      dlFrontPic: driver.dlFrontPic ?? null,
+      dlBackPic: driver.dlBackPic ?? null,
+      aadharFrontPic: driver.aadharFrontPic ?? null,
+      aadharBackPic: driver.aadharBackPic ?? null,
+      pfPic: driver.pfPic ?? null,
+      bankAcNumber: driver.bankAcNumber ?? null,
+      bankIfsc: driver.bankIfsc ?? null,
+      bankHolderName: driver.bankHolderName ?? null,
+      upiId: driver.upiId ?? null,
+      dlNumber: driver.dlNumber ?? null,
+      dob: driver.dob ?? null,
+      aadharNumber: driver.aadharNumber ?? null,
+      isBankVerified: driver.isBankVerified ?? false,
+      isKycVerified: driver.isKycVerified ?? false,
+      isDlVerified: driver.isDlVerified ?? false,
+      isAadharVerified: driver.isAadharVerified ?? false
+    };
+    
+    this.frappeDrivers.set(docName, newDriver);
+    return newDriver;
+  }
+
+  async updateFrappeDriver(docName: string, driverData: Partial<FrappeDriver>): Promise<FrappeDriver | undefined> {
+    const driver = this.frappeDrivers.get(docName);
+    if (!driver) return undefined;
+    
+    const now = new Date();
+    const updatedDriver = { 
+      ...driver, 
+      ...driverData,
+      modified: now,
+      modifiedBy: driverData.modifiedBy || driver.modifiedBy
+    };
+    
+    this.frappeDrivers.set(docName, updatedDriver);
+    return updatedDriver;
+  }
+
+  async deleteFrappeDriver(docName: string): Promise<boolean> {
+    if (!this.frappeDrivers.has(docName)) {
+      return false;
+    }
+    
+    return this.frappeDrivers.delete(docName);
   }
 }
 
