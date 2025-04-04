@@ -4,9 +4,6 @@ import { log } from './vite';
 import fs from 'fs';
 import path from 'path';
 
-// Import custom migrations
-import { addJobApplicationFields } from './migrations/add-job-application-fields';
-
 // This function runs the database migrations
 export async function runMigrations() {
   try {
@@ -17,36 +14,31 @@ export async function runMigrations() {
     await initializeDatabase();
     console.log("Migration: Database initialized successfully");
     
-    // First, run SQL migrations if available
+    // Read migration SQL file
     const migrationPath = path.join(process.cwd(), 'drizzle', '0000_initial_migration.sql');
     
-    if (fs.existsSync(migrationPath)) {
-      let migrationSQL = fs.readFileSync(migrationPath, 'utf8');
-      console.log("Migration: SQL file read successfully");
-      
-      // Execute each statement separately
-      const statements = migrationSQL.split(';').filter(stmt => stmt.trim().length > 0);
-      console.log(`Migration: Executing ${statements.length} SQL statements`);
-      
-      for (const statement of statements) {
-        try {
-          await db.execute(sql.raw(statement + ';'));
-        } catch (err) {
-          // Log but continue with other statements
-          log(`Migration statement error: ${err instanceof Error ? err.message : String(err)}`, 'db-migration');
-          console.error('Migration statement error:', err);
-        }
-      }
-    } else {
-      console.log(`Migration file not found at ${migrationPath}. Skipping SQL migrations.`);
-      log('No SQL migration file found, continuing with code migrations.', 'db-migration');
+    if (!fs.existsSync(migrationPath)) {
+      console.log(`Migration file not found at ${migrationPath}. Skipping migrations.`);
+      log('No migration file found, skipping migrations.', 'db-migration');
+      return true;
     }
     
-    // Now run code-based migrations
-    console.log("Running code-based migrations...");
+    let migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+    console.log("Migration: SQL file read successfully");
     
-    // Run the job application fields migration
-    await addJobApplicationFields();
+    // Execute each statement separately
+    const statements = migrationSQL.split(';').filter(stmt => stmt.trim().length > 0);
+    console.log(`Migration: Executing ${statements.length} SQL statements`);
+    
+    for (const statement of statements) {
+      try {
+        await db.execute(sql.raw(statement + ';'));
+      } catch (err) {
+        // Log but continue with other statements
+        log(`Migration statement error: ${err instanceof Error ? err.message : String(err)}`, 'db-migration');
+        console.error('Migration statement error:', err);
+      }
+    }
     
     log('Database migrations completed successfully!', 'db-migration');
     return true;

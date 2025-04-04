@@ -24,7 +24,6 @@ export interface IStorage {
   getDriver(userId: number): Promise<Driver | undefined>;
   createDriver(driver: InsertDriver): Promise<Driver>;
   updateDriver(userId: number, driver: Partial<InsertDriver>): Promise<Driver | undefined>;
-  getDriverRatings(driverId: number): Promise<any>;
 
   // Fleet owner operations
   getFleetOwner(userId: number): Promise<FleetOwner | undefined>;
@@ -44,7 +43,7 @@ export interface IStorage {
   verifyOtp(phoneNumber: string, otp: string): Promise<boolean>;
 
   // Fuel pump operations
-  getNearbyFuelPumps(coordinates: [number, number][]): Promise<any>;
+  getNearbyFuelPumps(coordinates: [number, number][]): Promise<FuelPump[]>;
   createFuelPump(fuelPump: InsertFuelPump): Promise<FuelPump>;
 
   // Vehicle operations
@@ -70,8 +69,8 @@ export interface IStorage {
   updateReferral(id: number, referral: Partial<Referral>): Promise<Referral | undefined>;
 
   // Toll operations
-  getTollsAlongRoute(coordinates: [number, number][]): Promise<any>;
-  createToll(toll: InsertToll): Promise<any>;
+  getTollsAlongRoute(coordinates: [number, number][]): Promise<Toll[]>;
+  createToll(toll: InsertToll): Promise<Toll>;
 }
 
 export class MemStorage implements IStorage {
@@ -320,46 +319,10 @@ export class MemStorage implements IStorage {
   }
 
   // Fuel pump methods
-  async getNearbyFuelPumps(coordinates: [number, number][]): Promise<any> {
-    // Return a hard-coded response matching the structure from Frappe API
-    return {
-      message: "Fuel pumps found successfully",
-      data: [
-        {
-          id: 1,
-          name: "Bharat Petroleum - Mumbai Central",
-          location: "Mumbai Central, Mumbai",
-          coordinates: [18.969266, 72.819591],
-          isOpen24Hours: true,
-          fuelTypes: ["Petrol", "Diesel", "CNG"],
-          amenities: ["Restroom", "Food", "ATM"],
-          rating: 4.2,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 2,
-          name: "Hindustan Petroleum - Bandra East",
-          location: "Bandra East, Mumbai",
-          coordinates: [19.059824, 72.855173],
-          isOpen24Hours: true,
-          fuelTypes: ["Petrol", "Diesel"],
-          amenities: ["Restroom", "Service Center"],
-          rating: 4.0,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 3,
-          name: "Indian Oil - Andheri West",
-          location: "Andheri West, Mumbai",
-          coordinates: [19.120101, 72.847859],
-          isOpen24Hours: false,
-          fuelTypes: ["Petrol", "Diesel", "Electric Charging"],
-          amenities: ["Restroom", "Food", "Convenience Store"],
-          rating: 4.5,
-          createdAt: new Date().toISOString()
-        }
-      ]
-    };
+  async getNearbyFuelPumps(coordinates: [number, number][]): Promise<FuelPump[]> {
+    // Mock implementation: return all fuel pumps
+    // In a real implementation, we would filter by proximity to each coordinate
+    return Array.from(this.fuelPumps.values());
   }
 
   async createFuelPump(fuelPump: InsertFuelPump): Promise<FuelPump> {
@@ -519,44 +482,10 @@ export class MemStorage implements IStorage {
   }
 
   // Toll methods
-  async getTollsAlongRoute(coordinates: [number, number][]): Promise<any> {
-    // Return a hard-coded response matching the structure from Frappe API
-    return {
-      message: "Tolls found successfully",
-      data: [
-        {
-          id: 1,
-          name: "Mumbai-Pune Expressway Toll",
-          location: "Mumbai-Pune Expressway",
-          coordinates: [19.033858, 73.103633],
-          feeAmount: 230,
-          highway: "Mumbai-Pune Expressway",
-          paymentMethods: ["Cash", "FASTag", "Credit Card"],
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 2,
-          name: "Vashi Toll Plaza",
-          location: "Vashi, Navi Mumbai",
-          coordinates: [19.075983, 72.991371],
-          feeAmount: 35,
-          highway: "Sion-Panvel Highway",
-          paymentMethods: ["Cash", "FASTag"],
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 3,
-          name: "Airoli Toll Plaza",
-          location: "Airoli, Navi Mumbai",
-          coordinates: [19.153688, 72.996262],
-          feeAmount: 30,
-          highway: "Eastern Express Highway",
-          paymentMethods: ["Cash", "FASTag", "UPI"],
-          createdAt: new Date().toISOString()
-        }
-      ],
-      total_toll_fee: 295
-    };
+  async getTollsAlongRoute(coordinates: [number, number][]): Promise<Toll[]> {
+    // Mock implementation: return all tolls
+    // In a real implementation, we would filter by proximity to the route
+    return Array.from(this.tolls.values());
   }
 
   async createToll(toll: InsertToll): Promise<Toll> {

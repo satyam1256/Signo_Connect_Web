@@ -3,8 +3,6 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { IStorage, storage as memStorage } from "./storage";
 import { DbStorage } from "./db-storage";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
 import { 
   userRegistrationSchema, 
   verifyOtpSchema, 
@@ -19,12 +17,8 @@ import {
   referralInsertSchema,
   notificationInsertSchema,
   UserType,
-  User,
-  fleetOwners
+  User
 } from "@shared/schema";
-import { registerDocumentRoutes } from "./document-routes";
-import { registerVehicleChecklistRoutes } from "./vehicle-checklist-routes";
-import { registerJobApplicationRoutes } from "./job-application-routes";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -172,11 +166,7 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
                 userId: user.id,
                 preferredLocations: [],
                 experience: "0", // Use string type as per schema
-                vehicleTypes: [],
-                about: `Professional driver looking for opportunities`,
-                location: "",
-                availability: "full-time",
-                skills: ["Driving"]
+                vehicleTypes: []
               });
               console.log(`Created initial driver profile for user ${user.id}`);
             } catch (error) {
@@ -201,10 +191,7 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
                 userId: user.id,
                 companyName: "",
                 fleetSize: "0", // Use string type as per schema
-                preferredLocations: [],
-                about: `Fleet owner looking for reliable drivers`,
-                location: "",
-                contactEmail: user.email
+                preferredLocations: []
               });
               console.log(`Created initial fleet owner profile for user ${user.id}`);
             } catch (error) {
@@ -231,32 +218,16 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   app.post("/api/driver-profile", async (req: Request, res: Response) => {
     try {
       // Extract all data from request
-      const { 
-        userId,
-        email,
-        location = "",
-        experience = "",
-        vehicleTypes = [],
-        drivingLicense = null,
-        identityProof = null,
-        preferredLocations = [],
-        about = "Professional driver looking for opportunities",
-        availability = "full-time",
-        skills = ["Driving"]
-      } = req.body;
+      const { email, location, about, availability, skills, profileImage, ...driverRequestData } = req.body;
       
-      // Create driver data object with all required fields
+      // Create driver data object with all fields
       const driverData = {
-        userId,
-        preferredLocations,
-        drivingLicense,
-        identityProof,
-        experience,
-        vehicleTypes,
-        about,
-        location,
-        availability,
-        skills
+        ...driverInsertSchema.parse(driverRequestData),
+        location: location || "",
+        about: about || "Professional driver looking for opportunities",
+        availability: availability || "full-time",
+        skills: skills || ["Driving"],
+        profileImage: profileImage || null
       };
 
       // Check if user exists
@@ -295,7 +266,12 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       // Return combined data including email and all the profile fields
       return res.status(200).json({
         ...driver,
-        email: updatedUser?.email
+        email: updatedUser?.email,
+        location: driverData.location,
+        about: driverData.about,
+        availability: driverData.availability,
+        skills: driverData.skills,
+        profileImage: driverData.profileImage
       });
     } catch (err) {
       return handleError(err as Error, res);
@@ -306,28 +282,16 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   app.post("/api/fleet-owner-profile", async (req: Request, res: Response) => {
     try {
       // Extract all data from request
-      const { 
-        userId,
-        email,
-        companyName = "",
-        fleetSize = "",
-        preferredLocations = [],
-        registrationDoc = null,
-        about = "Fleet owner looking for reliable drivers",
-        location = "",
-        contactEmail = ""
-      } = req.body;
+      const { email, location, about, businessType, regNumber, profileImage, ...fleetOwnerRequestData } = req.body;
       
-      // Create fleet owner data object with all required fields
+      // Create fleet owner data object with all fields
       const fleetOwnerData = {
-        userId,
-        companyName,
-        fleetSize,
-        preferredLocations,
-        registrationDoc,
-        about,
-        location,
-        contactEmail: contactEmail || email
+        ...fleetOwnerInsertSchema.parse(fleetOwnerRequestData),
+        location: location || "",
+        about: about || "Fleet owner looking for reliable drivers",
+        businessType: businessType || "Transportation",
+        regNumber: regNumber || "",
+        profileImage: profileImage || null
       };
 
       // Check if user exists
@@ -366,7 +330,12 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       // Return combined data including email and all profile fields
       return res.status(200).json({
         ...fleetOwner,
-        email: updatedUser?.email
+        email: updatedUser?.email,
+        location: fleetOwnerData.location,
+        about: fleetOwnerData.about,
+        businessType: fleetOwnerData.businessType,
+        regNumber: fleetOwnerData.regNumber,
+        profileImage: fleetOwnerData.profileImage
       });
     } catch (err) {
       return handleError(err as Error, res);
@@ -409,12 +378,9 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
     try {
       const jobData = jobInsertSchema.parse(req.body);
 
-      // Check if the fleet owner exists directly in the fleetOwners table
-      const [fleetOwnerExists] = await db.select({ id: fleetOwners.id })
-        .from(fleetOwners)
-        .where(eq(fleetOwners.id, jobData.fleetOwnerId));
-
-      if (!fleetOwnerExists) {
+      // Check if fleet owner exists
+      const fleetOwner = await storage.getFleetOwner(jobData.fleetOwnerId);
+      if (!fleetOwner) {
         return res.status(404).json({ error: "Fleet owner not found" });
       }
 
@@ -970,11 +936,6 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       return handleError(err as Error, res);
     }
   });
-
-  // Register document management routes
-  await registerDocumentRoutes(app);
-  await registerVehicleChecklistRoutes(app);
-  await registerJobApplicationRoutes(app);
 
   console.log("RegisterRoutes: Creating HTTP server...");
   const httpServer = createServer(app);

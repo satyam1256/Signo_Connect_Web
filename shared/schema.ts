@@ -11,22 +11,6 @@ export const TripStatus = {
   CANCELLED: "Cancelled",
 } as const;
 
-export const DocumentType = {
-  DL: "Driving License",
-  AADHAR: "Aadhar Card",
-  PAN: "PAN Card",
-  BANK: "Bank Details",
-  REGISTRATION: "Vehicle Registration",
-  PROFILE: "Profile Picture",
-  OTHER: "Other",
-} as const;
-
-export const VerificationStatus = {
-  PENDING: "Pending",
-  VERIFIED: "Verified",
-  REJECTED: "Rejected",
-} as const;
-
 export const ExpenseStatus = {
   PENDING: "Pending",
   PAID: "Paid", 
@@ -64,22 +48,6 @@ export const UserType = {
   FLEET_OWNER: "fleet_owner",
 } as const;
 
-export const DocType = {
-  DRIVING_LICENSE: "driving_license",
-  AADHAR_CARD: "aadhar_card",
-  PAN_CARD: "pan_card",
-  BANK_DETAILS: "bank_details",
-  VEHICLE_REGISTRATION: "vehicle_registration",
-  PROFILE_PIC: "profile_pic",
-  OTHER: "other",
-} as const;
-
-export const DocumentVerificationStatus = {
-  PENDING: "pending",
-  VERIFIED: "verified",
-  REJECTED: "rejected",
-} as const;
-
 export type UserTypeValue = typeof UserType[keyof typeof UserType];
 
 // Base users table with common fields
@@ -103,16 +71,9 @@ export const drivers = pgTable("drivers", {
   identityProof: text("identity_proof"),
   experience: text("experience"),
   vehicleTypes: text("vehicle_types").array(),
-  
-  // These fields will be added in future migrations
-  // But we keep them in the TypeScript schema for future use
-  about: text("about"),
-  location: text("location"),
-  availability: text("availability"),
-  skills: text("skills").array(),
 });
 
-// Fleet owner-specific information (Transporters)
+// Fleet owner-specific information
 export const fleetOwners = pgTable("fleet_owners", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
@@ -120,12 +81,6 @@ export const fleetOwners = pgTable("fleet_owners", {
   fleetSize: text("fleet_size"),
   preferredLocations: text("preferred_locations").array(),
   registrationDoc: text("registration_doc"),
-  
-  // These fields will be added in future migrations
-  // But we keep them in the TypeScript schema for future use
-  about: text("about"),
-  location: text("location"),
-  contactEmail: text("contact_email"),
 });
 
 // Job postings by fleet owners
@@ -171,17 +126,12 @@ export const vehicles = pgTable("vehicles", {
   registrationNumber: text("registration_number").notNull().unique(),
   transporterId: integer("transporter_id").notNull(),
   vehicleType: text("vehicle_type").notNull(),
-  driverId: integer("driver_id"),
-  isActive: boolean("is_active").default(true),
-  
-  // Original fields
   make: text("make").notNull(),
   model: text("model").notNull(),
   year: integer("year"),
   capacityTons: doublePrecision("capacity_tons"),
   insuranceStatus: text("insurance_status"),
   lastServiceDate: timestamp("last_service_date"),
-  
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -237,50 +187,25 @@ export const tolls = pgTable("tolls", {
 // Trips table for tracking trips
 export const trips = pgTable("trips", {
   id: serial("id").primaryKey(),
-  namingSeries: text("naming_series").default("TR-.#####."),
   tripId: text("trip_id").notNull().unique(), // Format: TR-00001
-  
-  // Vehicle details
-  vehicleId: text("vehicle_id").notNull(), // Registration number like SAH2831
-  vehicleType: text("vehicle_type"),
-  
-  // Driver details
   driverId: text("driver_id").notNull(), // Format: SIG00001
-  driverName: text("driver_name"),
-  driverPhoneNumber: text("driver_phone_number"),
-  
-  // Trip details
+  vehicleId: text("vehicle_id").notNull(), // Registration number like SAH2831
+  transporterId: text("transporter_id").notNull(), // Format: SIG00001
   origin: text("origin").notNull(),
   destination: text("destination").notNull(),
-  eta: timestamp("eta"),
-  etaStr: text("eta_str"),
-  
-  // Trip financials
+  status: text("status").notNull().default(TripStatus.UPCOMING),
   tripCost: doublePrecision("trip_cost").notNull(),
   paidAmount: doublePrecision("paid_amount").default(0),
   pendingAmount: doublePrecision("pending_amount"),
-  
-  // Trip metadata
-  status: text("status").notNull().default(TripStatus.UPCOMING),
-  createdOn: timestamp("created_on").defaultNow(),
+  odoStart: integer("odo_start"),
+  odoEnd: integer("odo_end"),
+  odoStartPic: text("odo_start_pic"),
+  odoEndPic: text("odo_end_pic"),
+  startedBy: text("started_by"),
   startedOn: timestamp("started_on"),
   endedOn: timestamp("ended_on"),
-  
-  // Transporter details
-  transporterId: text("transporter_id").notNull(), // Format: SIG00001
-  transporterName: text("transporter_name"),
-  
-  // Odometer readings
-  odoStart: text("odo_start"),
-  odoStartPic: text("odo_start_pic"),
-  odoEnd: text("odo_end"),
-  odoEndPic: text("odo_end_pic"),
-  
-  // Additional info
-  tripPic: text("trip_pic"),
-  shareText: text("share_text"),
-  startedBy: text("started_by"),
-  isActive: boolean("is_active").default(true),
+  etaStr: text("eta_str"),
+  createdOn: timestamp("created_on").defaultNow(),
 });
 
 // Chalans/Tickets for vehicles
@@ -312,200 +237,6 @@ export const serviceLocations = pgTable("service_locations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Documents table for storing user documents
-export const documents = pgTable("documents", {
-  id: serial("id").primaryKey(),
-  documentId: text("document_id").notNull().unique(),
-  userId: integer("user_id").notNull(),
-  type: text("type").notNull(), // Using the DocumentType enum
-  documentNumber: text("document_number"),
-  frontImage: text("front_image"),
-  backImage: text("back_image"),
-  isVerified: boolean("is_verified").default(false),
-  verifiedBy: text("verified_by"),
-  verifiedAt: timestamp("verified_at"),
-  expiryDate: timestamp("expiry_date"),
-  date: timestamp("date"),
-  remarks: text("remarks"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Vehicle type reference table
-export const vehicleTypes = pgTable("vehicle_types", {
-  id: serial("id").primaryKey(),
-  vehicleType: text("vehicle_type").notNull().unique(),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Vehicle checklist items for inspection
-export const vehicleChecklists = pgTable("vehicle_checklists", {
-  id: serial("id").primaryKey(),
-  item: text("item").notNull(),
-  isAvailable: boolean("is_available").default(false),
-  remarks: text("remarks"),
-  description: text("description"),
-  vehicleId: text("vehicle_id"),
-  tripId: text("trip_id"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Job image table for job postings
-export const jobImages = pgTable("job_images", {
-  id: serial("id").primaryKey(),
-  jobId: integer("job_id").notNull(),
-  url: text("url").notNull(),
-  preview: text("preview"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Job question child table
-export const jobQuestions = pgTable("job_questions", {
-  id: serial("id").primaryKey(),
-  jobId: integer("job_id"),
-  question: text("question").notNull(),
-  type: text("type"),
-  options: text("options"),
-  answer: text("answer"),
-  isRequired: boolean("is_required").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Job applications table
-export const jobApplications = pgTable("job_applications", {
-  id: serial("id").primaryKey(),
-  jobId: integer("job_id").notNull(),
-  driverId: integer("driver_id").notNull(),
-  status: text("status").default("pending"),
-  appliedAt: timestamp("applied_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  
-  // These fields may not exist in the DB yet, will add in migration
-  expectedSalary: integer("expected_salary"),
-  preferredJoiningDate: timestamp("preferred_joining_date"),
-  additionalNotes: text("additional_notes"),
-});
-
-// Job hired drivers table
-export const jobHiredDrivers = pgTable("job_hired_drivers", {
-  id: serial("id").primaryKey(),
-  namingSeries: text("naming_series").default("SIGJA-.####."),
-  feedId: integer("feed_id"),
-  jobId: integer("job_id").notNull(),
-  driverId: integer("driver_id").notNull(),
-  driverName: text("driver_name"),
-  remarks: text("remarks"),
-  transporterId: integer("transporter_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Driver attendance
-export const driverAttendance = pgTable("driver_attendance", {
-  id: serial("id").primaryKey(),
-  driverId: integer("driver_id").notNull(),
-  driverName: text("driver_name"),
-  date: timestamp("date").notNull(),
-  status: text("status").notNull(),
-  markedBy: text("marked_by"),
-  remarks: text("remarks"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Review table
-export const reviews = pgTable("reviews", {
-  id: serial("id").primaryKey(),
-  documentType: text("document_type").notNull(),
-  documentName: text("document_name").notNull(),
-  reviewDate: timestamp("review_date").defaultNow(),
-  rating: doublePrecision("rating"),
-  comments: text("comments"),
-  reviewBy: text("review_by"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Driver feed
-export const driverFeed = pgTable("driver_feed", {
-  id: serial("id").primaryKey(),
-  namingSeries: text("naming_series").default("SIGDF-.####."),
-  transporterId: integer("transporter_id").notNull(),
-  jobId: integer("job_id"),
-  title: text("title").notNull(),
-  subtitle: text("subtitle"),
-  feedType: text("feed_type"), // "Apply", "Blank", "Register"
-  shareText: text("share_text"),
-  likes: integer("likes").default(0),
-  applications: integer("applications").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  questionsJson: jsonb("questions_json"),
-  description: text("description"),
-  imagesJson: jsonb("images_json"),
-  logoUrl: text("logo_url"),
-  registerUrlText: text("register_url_text"),
-  registerUrl: text("register_url"),
-  isActive: boolean("is_active").default(true),
-});
-
-// Transporter feed
-export const transporterFeed = pgTable("transporter_feed", {
-  id: serial("id").primaryKey(),
-  namingSeries: text("naming_series").default("SIGTF-.####."),
-  companyName: text("company_name").notNull(),
-  title: text("title").notNull(),
-  subtitle: text("subtitle"),
-  feedType: text("feed_type"), // "Apply", "Blank", "Register"
-  shareText: text("share_text"),
-  likes: integer("likes").default(0),
-  applications: integer("applications").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  questionsJson: jsonb("questions_json"),
-  description: text("description"),
-  imagesJson: jsonb("images_json"),
-  logoUrl: text("logo_url"),
-  registerUrlText: text("register_url_text"),
-  registerUrl: text("register_url"),
-  isActive: boolean("is_active").default(true),
-});
-
-// Trip expenses
-export const tripExpenses = pgTable("trip_expenses", {
-  id: serial("id").primaryKey(),
-  tripId: integer("trip_id").notNull(),
-  linkedExpenses: text("linked_expenses"),
-  transporterId: integer("transporter_id").notNull(),
-  driverId: integer("driver_id").notNull(),
-  purpose: text("purpose"),
-  amount: integer("amount").notNull(),
-  paidAmount: integer("paid_amount").default(0),
-  pendingAmount: integer("pending_amount"),
-  date: timestamp("date").defaultNow(),
-  description: text("description"),
-  receipt: text("receipt"),
-  status: text("status").notNull().default(ExpenseStatus.PENDING),
-  referenceNo: text("reference_no"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Short URL table
-export const shortUrls = pgTable("short_urls", {
-  id: serial("id").primaryKey(),
-  hash: text("hash").notNull().unique(),
-  fullUrl: text("full_url").notNull(),
-  clicks: integer("clicks").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// App settings
-export const appSettings = pgTable("app_settings", {
-  id: serial("id").primaryKey(),
-  aboutHeader: text("about_header"),
-  aboutDescription: text("about_description"),
-  contactEmail: text("contact_email"),
-  contactPhone: text("contact_phone"),
-  logo: text("logo"),
-  defaultExpensePurposes: text("default_expense_purposes"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 // Zod schemas for validation
 export const userInsertSchema = createInsertSchema(users).pick({
   fullName: true,
@@ -522,10 +253,6 @@ export const driverInsertSchema = createInsertSchema(drivers).pick({
   identityProof: true,
   experience: true,
   vehicleTypes: true,
-  about: true,
-  location: true,
-  availability: true,
-  skills: true,
 });
 
 export const fleetOwnerInsertSchema = createInsertSchema(fleetOwners).pick({
@@ -534,9 +261,6 @@ export const fleetOwnerInsertSchema = createInsertSchema(fleetOwners).pick({
   fleetSize: true,
   preferredLocations: true,
   registrationDoc: true,
-  about: true,
-  location: true,
-  contactEmail: true,
 });
 
 export const jobInsertSchema = createInsertSchema(jobs).pick({
@@ -686,131 +410,6 @@ export const submitAssessmentSchema = z.object({
 });
 
 // Types for TypeScript
-// Let's define schemas for the newly added tables
-export const jobImagesInsertSchema = createInsertSchema(jobImages).pick({
-  jobId: true,
-  url: true,
-  preview: true,
-});
-
-export const jobQuestionsInsertSchema = createInsertSchema(jobQuestions).pick({
-  jobId: true,
-  question: true,
-  type: true,
-  options: true,
-  answer: true,
-  isRequired: true,
-});
-
-// Using z.object instead of createInsertSchema due to schema mismatches with the database
-export const jobApplicationsInsertSchema = z.object({
-  jobId: z.number(),
-  driverId: z.number(),
-  status: z.string().optional(),
-  expectedSalary: z.number().optional(),
-  preferredJoiningDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
-  additionalNotes: z.string().optional(),
-});
-
-export const jobHiredDriversInsertSchema = createInsertSchema(jobHiredDrivers).pick({
-  feedId: true,
-  jobId: true,
-  driverId: true,
-  driverName: true,
-  remarks: true,
-  transporterId: true,
-});
-
-export const driverAttendanceInsertSchema = createInsertSchema(driverAttendance).pick({
-  driverId: true,
-  driverName: true,
-  date: true,
-  status: true,
-  markedBy: true,
-  remarks: true,
-});
-
-export const reviewsInsertSchema = createInsertSchema(reviews).pick({
-  documentType: true,
-  documentName: true,
-  reviewDate: true,
-  rating: true,
-  comments: true,
-  reviewBy: true,
-});
-
-// Use z.object for custom schemas with boolean fields
-export const driverFeedInsertSchema = z.object({
-  transporterId: z.number(),
-  jobId: z.number().optional(),
-  title: z.string(),
-  subtitle: z.string().optional(),
-  feedType: z.string().optional(),
-  shareText: z.string().optional(),
-  questionsJson: z.any().optional(),
-  description: z.string().optional(),
-  imagesJson: z.any().optional(),
-  logoUrl: z.string().optional(),
-  registerUrlText: z.string().optional(),
-  registerUrl: z.string().optional(),
-  isActive: z.boolean().default(true),
-});
-
-export const transporterFeedInsertSchema = z.object({
-  companyName: z.string(),
-  title: z.string(),
-  subtitle: z.string().optional(),
-  feedType: z.string().optional(),
-  shareText: z.string().optional(),
-  questionsJson: z.any().optional(),
-  description: z.string().optional(),
-  imagesJson: z.any().optional(),
-  logoUrl: z.string().optional(),
-  registerUrlText: z.string().optional(),
-  registerUrl: z.string().optional(),
-  isActive: z.boolean().default(true),
-});
-
-export const tripExpensesInsertSchema = createInsertSchema(tripExpenses).pick({
-  tripId: true,
-  linkedExpenses: true,
-  transporterId: true,
-  driverId: true,
-  purpose: true,
-  amount: true,
-  paidAmount: true,
-  pendingAmount: true,
-  date: true,
-  description: true,
-  receipt: true,
-  status: true,
-  referenceNo: true,
-});
-
-export const shortUrlsInsertSchema = createInsertSchema(shortUrls).pick({
-  hash: true,
-  fullUrl: true,
-  clicks: true,
-});
-
-export const appSettingsInsertSchema = createInsertSchema(appSettings).pick({
-  aboutHeader: true,
-  aboutDescription: true,
-  contactEmail: true,
-  contactPhone: true,
-  logo: true,
-  defaultExpensePurposes: true,
-});
-
-export const vehicleChecklistsInsertSchema = createInsertSchema(vehicleChecklists).pick({
-  item: true,
-  isAvailable: true,
-  remarks: true,
-  description: true,
-  vehicleId: true,
-  tripId: true,
-});
-
 export type InsertUser = z.infer<typeof userInsertSchema>;
 export type InsertDriver = z.infer<typeof driverInsertSchema>;
 export type InsertFleetOwner = z.infer<typeof fleetOwnerInsertSchema>;
@@ -825,18 +424,6 @@ export type InsertToll = z.infer<typeof tollInsertSchema>;
 export type InsertTrip = z.infer<typeof tripInsertSchema>;
 export type InsertChalan = z.infer<typeof chalanInsertSchema>;
 export type InsertServiceLocation = z.infer<typeof serviceLocationInsertSchema>;
-export type InsertJobImage = z.infer<typeof jobImagesInsertSchema>;
-export type InsertJobQuestion = z.infer<typeof jobQuestionsInsertSchema>;
-export type InsertJobApplication = z.infer<typeof jobApplicationsInsertSchema>;
-export type InsertJobHiredDriver = z.infer<typeof jobHiredDriversInsertSchema>;
-export type InsertDriverAttendance = z.infer<typeof driverAttendanceInsertSchema>;
-export type InsertReview = z.infer<typeof reviewsInsertSchema>;
-export type InsertDriverFeed = z.infer<typeof driverFeedInsertSchema>;
-export type InsertTransporterFeed = z.infer<typeof transporterFeedInsertSchema>;
-export type InsertTripExpense = z.infer<typeof tripExpensesInsertSchema>;
-export type InsertShortUrl = z.infer<typeof shortUrlsInsertSchema>;
-export type InsertAppSetting = z.infer<typeof appSettingsInsertSchema>;
-export type InsertVehicleChecklist = z.infer<typeof vehicleChecklistsInsertSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Driver = typeof drivers.$inferSelect;
@@ -852,15 +439,3 @@ export type Toll = typeof tolls.$inferSelect;
 export type Trip = typeof trips.$inferSelect;
 export type Chalan = typeof chalans.$inferSelect;
 export type ServiceLocation = typeof serviceLocations.$inferSelect;
-export type JobImage = typeof jobImages.$inferSelect;
-export type JobQuestion = typeof jobQuestions.$inferSelect;
-export type JobApplication = typeof jobApplications.$inferSelect;
-export type JobHiredDriver = typeof jobHiredDrivers.$inferSelect;
-export type DriverAttendance = typeof driverAttendance.$inferSelect;
-export type Review = typeof reviews.$inferSelect;
-export type DriverFeed = typeof driverFeed.$inferSelect;
-export type TransporterFeed = typeof transporterFeed.$inferSelect;
-export type TripExpense = typeof tripExpenses.$inferSelect;
-export type ShortUrl = typeof shortUrls.$inferSelect;
-export type AppSetting = typeof appSettings.$inferSelect;
-export type VehicleChecklist = typeof vehicleChecklists.$inferSelect;
