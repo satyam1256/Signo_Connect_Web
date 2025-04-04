@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -17,8 +16,7 @@ import FleetOwnerJobs from "@/pages/fleet-owner/jobs";
 import FleetOwnerProfile from "@/pages/fleet-owner/profile";
 import FleetOwnerDrivers from "@/pages/fleet-owner/drivers";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
-// Import the SimpleWebSocketProvider instead of the standard one
-import { SimpleWebSocketProvider } from "@/contexts/simple-websocket-context";
+import { WebSocketProvider } from "@/contexts/websocket-context";
 import { WebSocketTest } from "@/components/websocket-test";
 
 // Protected route that redirects logged-in users from auth pages to their dashboard
@@ -39,45 +37,18 @@ function AuthRoute({ component: Component, ...rest }: any) {
   return <Component {...rest} />;
 }
 
-// Fallback component to use while app is initializing
-function LoadingFallback() {
-  return (
-    <div className="flex flex-col items-center justify-center h-screen bg-neutral-50">
-      <div className="mb-8 flex flex-col items-center">
-        <div className="w-16 h-16 relative">
-          <div className="w-16 h-16 rounded-full border-4 border-primary opacity-25"></div>
-          <div className="w-16 h-16 rounded-full border-4 border-t-primary animate-spin absolute top-0 left-0"></div>
-        </div>
-        <h2 className="mt-4 text-xl font-medium text-neutral-700">Loading SIGNO Connect...</h2>
-      </div>
-    </div>
-  );
-}
-
 function Router() {
   const { isAuthenticated, user, isLoading } = useAuth();
-  const [appReady, setAppReady] = useState(false);
   
-  // Ensure the app has a minimum loading time to prevent flash of content
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAppReady(true);
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, []);
-  
-  // Show loading fallback until auth is ready and minimum load time is met
-  if (isLoading || !appReady) {
-    return <LoadingFallback />;
+  // Show a basic loading state if auth state is still loading
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
   
   return (
     <Switch>
       {/* Public Routes - accessible to everyone */}
-      <Route path="/">
-        {() => <WelcomePage />}
-      </Route>
+      <Route path="/" component={WelcomePage} />
       
       {/* Auth Routes - redirect logged-in users to their dashboard */}
       <Route path="/login">
@@ -91,105 +62,34 @@ function Router() {
       </Route>
 
       {/* Driver Routes */}
-      <Route path="/driver/dashboard">
-        {() => <DriverDashboard />}
-      </Route>
-      <Route path="/driver/jobs">
-        {() => <DriverJobs />}
-      </Route>
-      <Route path="/driver/alerts">
-        {() => <DriverAlerts />}
-      </Route>
-      <Route path="/driver/profile">
-        {() => <DriverProfile />}
-      </Route>
+      <Route path="/driver/dashboard" component={DriverDashboard} />
+      <Route path="/driver/jobs" component={DriverJobs} />
+      <Route path="/driver/alerts" component={DriverAlerts} />
+      <Route path="/driver/profile" component={DriverProfile} />
 
       {/* Fleet Owner Routes */}
-      <Route path="/fleet-owner/dashboard">
-        {() => <FleetOwnerDashboard />}
-      </Route>
-      <Route path="/fleet-owner/jobs">
-        {() => <FleetOwnerJobs />}
-      </Route>
-      <Route path="/fleet-owner/profile">
-        {() => <FleetOwnerProfile />}
-      </Route>
-      <Route path="/fleet-owner/drivers">
-        {() => <FleetOwnerDrivers />}
-      </Route>
+      <Route path="/fleet-owner/dashboard" component={FleetOwnerDashboard} />
+      <Route path="/fleet-owner/jobs" component={FleetOwnerJobs} />
+      <Route path="/fleet-owner/profile" component={FleetOwnerProfile} />
+      <Route path="/fleet-owner/drivers" component={FleetOwnerDrivers} />
 
       {/* WebSocket Test Routes */}
-      <Route path="/test/websocket">
-        {() => <WebSocketTest />}
-      </Route>
+      <Route path="/test/websocket" component={WebSocketTest} />
 
-      {/* Catch-all route */}
-      <Route>
-        {() => {
-          console.log("Route not found, redirecting to home");
-          return <Redirect to="/" />;
-        }}
-      </Route>
+      {/* Fallback */}
+      <Route component={NotFound} />
     </Switch>
   );
 }
 
 function App() {
-  // Two-stage initialization to prevent flash of content
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isFullyReady, setIsFullyReady] = useState(false);
-  
-  // First stage initialization - make sure DOM is ready
-  useEffect(() => {
-    // Use requestAnimationFrame to ensure we're in the next paint cycle
-    const initFrame = requestAnimationFrame(() => {
-      setIsInitialized(true);
-    });
-    
-    return () => cancelAnimationFrame(initFrame);
-  }, []);
-  
-  // Second stage initialization - allow components to mount
-  useEffect(() => {
-    if (isInitialized) {
-      // Add a longer delay to ensure all child components have a chance to initialize
-      // and the DOM is fully ready before attempting WebSocket connections
-      const timer = setTimeout(() => {
-        setIsFullyReady(true);
-        // Add a class to the document to signal app is ready for styling
-        document.documentElement.classList.add('app-ready');
-        console.log("App is fully ready, WebSocket can now be initialized");
-      }, 500); // Increased from 100ms to 500ms
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isInitialized]);
-  
-  // Show loading spinner during initialization
-  if (!isInitialized) {
-    return <LoadingFallback />;
-  }
-  
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {isFullyReady ? (
-          <SimpleWebSocketProvider 
-            autoReconnect={true}
-            reconnectInterval={5000} 
-            maxReconnectAttempts={10}
-          >
-            <div className="app-container app-visible">
-              <Router />
-              <Toaster />
-            </div>
-          </SimpleWebSocketProvider>
-        ) : (
-          <div className="app-container app-initializing">
-            <Router />
-            <Toaster />
-          </div>
-        )}
+        <WebSocketProvider>
+          <Router />
+          <Toaster />
+        </WebSocketProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

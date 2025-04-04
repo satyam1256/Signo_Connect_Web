@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { TruckIcon } from "lucide-react";
 import { Header } from "@/components/layout/header";
@@ -23,43 +22,12 @@ export const TruckMovingIcon = () => (
 
 const WelcomePage = () => {
   const { t } = useLanguageStore();
-  const [pageReady, setPageReady] = useState(false);
-  const [contentVisible, setContentVisible] = useState(false);
-  
-  // First-stage loading - check if component is mounted
-  useEffect(() => {
-    // Use requestAnimationFrame to ensure DOM is painted
-    const frameId = requestAnimationFrame(() => {
-      setPageReady(true);
-    });
-    
-    return () => cancelAnimationFrame(frameId);
-  }, []);
-  
-  // Second-stage loading - show content with animation
-  useEffect(() => {
-    if (pageReady) {
-      const timer = setTimeout(() => {
-        setContentVisible(true);
-        console.log("Welcome page fully loaded and ready");
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [pageReady]);
-  
-  // Always render the page container to prevent layout shifts
-  // Use CSS classes to control visibility with transitions
+
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
       <Header />
 
-      <div 
-        className={`flex-grow container mx-auto px-4 py-6 max-w-md transition-opacity duration-300 ${
-          contentVisible ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{ minHeight: '80vh' }} // Ensure consistent height
-      >
+      <div className="flex-grow container mx-auto px-4 py-6 max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-neutral-800 mb-2">
             {t("welcome")}
@@ -124,16 +92,6 @@ const WelcomePage = () => {
               {t("sign_in")}
             </Link>
           </p>
-        </div>
-      </div>
-
-      {/* Loading spinner - always rendered but hidden when content loads */}
-      <div className={`flex-grow flex items-center justify-center absolute inset-0 bg-neutral-50 transition-opacity duration-300 ${
-        contentVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'
-      }`}>
-        <div className="w-16 h-16 relative">
-          <div className="w-16 h-16 rounded-full border-4 border-primary opacity-25"></div>
-          <div className="w-16 h-16 rounded-full border-4 border-t-primary animate-spin absolute top-0 left-0"></div>
         </div>
       </div>
 

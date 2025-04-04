@@ -1,17 +1,22 @@
-import React, { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef } from 'react';
-import { useWebSocket, WebSocketData, MessageHandler } from '@/hooks/use-websocket';
+import React, { createContext, useContext, ReactNode, useState, useCallback } from 'react';
+import { useWebSocket } from '@/hooks/use-websocket';
 
-// Use the WebSocketData type from the hook to ensure compatibility
-type WebSocketMessage = WebSocketData;
+// Message types for our WebSocket communication
+type MessageType = 'welcome' | 'broadcast' | 'ping' | 'pong' | 'error' | 'notification' | 'chat';
+
+interface WebSocketMessage {
+  type: MessageType;
+  message?: string;
+  data?: any;
+  timestamp?: string;
+}
 
 interface WebSocketContextType {
-  status: 'connecting' | 'open' | 'closing' | 'closed' | 'error' | 'message';
+  status: 'connecting' | 'open' | 'closing' | 'closed' | 'error';
   messages: WebSocketMessage[];
-  sendMessage: (data: WebSocketMessage) => void;
+  sendMessage: (data: any) => void;
   sendPing: () => void;
   clearMessages: () => void;
-  isConnected: boolean;
-  connectionError: Error | null;
 }
 
 // Create context with default values
@@ -20,9 +25,7 @@ const WebSocketContext = createContext<WebSocketContextType>({
   messages: [],
   sendMessage: () => {},
   sendPing: () => {},
-  clearMessages: () => {},
-  isConnected: false,
-  connectionError: null
+  clearMessages: () => {}
 });
 
 // Custom hook to use the WebSocket context
@@ -30,89 +33,30 @@ export const useWebSocketContext = () => useContext(WebSocketContext);
 
 interface WebSocketProviderProps {
   children: ReactNode;
-  // Optional props for testing or configuration
-  autoConnect?: boolean;
-  reconnectInterval?: number;
-  maxReconnectAttempts?: number;
-  initialConnectionDelay?: number; // Add this parameter for initial connection delay
 }
 
-/**
- * WebSocket Provider with improved error handling and reconnection logic
- * Provides WebSocket functionality to the entire application
- */
-export function WebSocketProvider({ 
-  children, 
-  autoConnect = true,
-  reconnectInterval = 5000, // 5 seconds as requested
-  maxReconnectAttempts = 10,
-  initialConnectionDelay = 2000 // Default to 2 seconds
-}: WebSocketProviderProps) {
-  // Store messages in state
+export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
-  
-  // Track any connection errors
-  const [connectionError, setConnectionError] = useState<Error | null>(null);
-  
-  // Track if the component is mounted to prevent state updates after unmount
-  const isMountedRef = useRef<boolean>(true);
-  
-  // Handle incoming messages in a safe way
-  const handleMessage = useCallback((data: WebSocketMessage) => {
-    // Safety check for mounted state
-    if (!isMountedRef.current) return;
-    
-    // Log the message for debugging
-    console.log('WebSocket message received:', data);
-    
-    try {
-      // Add to message history
-      setMessages(prev => [...prev, data]);
-      
-      // Clear any previous connection errors since we're receiving messages
-      if (connectionError) {
-        setConnectionError(null);
-      }
-    } catch (error) {
-      console.error('Error processing WebSocket message:', error);
-    }
-  }, [connectionError]);
 
-  // Use our enhanced WebSocket hook with proper error handling
+  // Handle incoming messages
+  const handleMessage = useCallback((data: WebSocketMessage) => {
+    console.log('WebSocket message received:', data);
+    setMessages(prev => [...prev, data]);
+  }, []);
+
+  // Use our custom WebSocket hook
   const { 
     status, 
     sendJsonMessage, 
-    lastMessage,
-    isConnected 
+    lastMessage 
   } = useWebSocket({
     onMessage: handleMessage,
-    autoReconnect: autoConnect,
-    reconnectInterval: reconnectInterval,
-    maxReconnectAttempts: maxReconnectAttempts,
-    initialConnectionDelay: initialConnectionDelay // Use the prop value
+    autoReconnect: true
   });
-
-  // Handle status changes for error reporting
-  useEffect(() => {
-    if (status === 'error') {
-      // Create a standardized error object
-      setConnectionError(new Error('WebSocket connection error occurred'));
-    } else if (status === 'open') {
-      // Clear errors when connected
-      setConnectionError(null);
-    }
-  }, [status]);
 
   // Function to send a ping message
   const sendPing = useCallback(() => {
-    try {
-      sendJsonMessage({ 
-        type: 'ping', 
-        timestamp: new Date().toISOString() 
-      });
-    } catch (error) {
-      console.error('Error sending ping:', error);
-    }
+    sendJsonMessage({ type: 'ping', timestamp: new Date().toISOString() });
   }, [sendJsonMessage]);
 
   // Function to clear message history
@@ -120,26 +64,17 @@ export function WebSocketProvider({
     setMessages([]);
   }, []);
 
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  // Create the context value
-  const contextValue: WebSocketContextType = {
+  // Context value
+  const value = {
     status,
     messages,
     sendMessage: sendJsonMessage,
     sendPing,
-    clearMessages,
-    isConnected,
-    connectionError
+    clearMessages
   };
 
   return (
-    <WebSocketContext.Provider value={contextValue}>
+    <WebSocketContext.Provider value={value}>
       {children}
     </WebSocketContext.Provider>
   );

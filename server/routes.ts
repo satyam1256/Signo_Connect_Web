@@ -1,4 +1,4 @@
- import type { Express, Request, Response, NextFunction } from "express";
+ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { IStorage, storage as memStorage } from "./storage";
@@ -28,32 +28,6 @@ import { fromZodError } from "zod-validation-error";
 function generateOTP(): string {
   // Always return "123456" for testing
   return "123456";
-}
-
-/**
- * Generates a document name following Frappe's naming convention
- * Format: PREFIX + 5-digit sequential number (e.g., SIG00001, SIG00002)
- * @param prefix The prefix for the document name (e.g., "SIG")
- * @returns A unique document name with the given prefix
- */
-function generateFrappeDocName(prefix: string): string {
-  // Get current timestamp for uniqueness
-  const now = new Date();
-  
-  // Create a counter that resets daily
-  // Using the day of year as part of the counter base
-  const startOfYear = new Date(now.getFullYear(), 0, 0);
-  const diff = now.getTime() - startOfYear.getTime();
-  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
-  
-  // Create a unique number using timestamp
-  const uniqueCounter = (dayOfYear * 1000 + now.getHours() * 100 + now.getMinutes()) % 100000;
-  
-  // Format the number with leading zeros to ensure 5 digits
-  const paddedNumber = uniqueCounter.toString().padStart(5, '0');
-  
-  // Return the formatted document name
-  return `${prefix}${paddedNumber}`;
 }
 
 export async function registerRoutes(app: Express, customStorage?: IStorage): Promise<Server> {
@@ -88,81 +62,6 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
 
     console.error("API Error:", err);
     return res.status(500).json({ error: "Internal server error" });
-  };
-  
-  // Authentication middleware
-  interface AuthRequest extends Request {
-    user?: User;
-    token?: string;
-    role?: string;
-  }
-  
-  /**
-   * Middleware to authenticate API requests
-   * For demonstration, we're using a simple API key approach
-   * In production, you would use JWT tokens with proper validation
-   */
-  const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      // Get API key from header
-      const apiKey = req.headers['x-api-key'] as string;
-      
-      if (!apiKey) {
-        return res.status(401).json({ error: "Authentication required. Please provide an API key." });
-      }
-      
-      // For demo purposes, accept any key starting with "signo_"
-      // In production, validate against stored keys or use JWT verification
-      if (!apiKey.startsWith('signo_')) {
-        return res.status(401).json({ error: "Invalid API key format" });
-      }
-      
-      // Attach authentication info to request for use in later middleware
-      req.token = apiKey;
-      
-      // Move to the next middleware
-      next();
-    } catch (error) {
-      console.error("Authentication error:", error);
-      return res.status(500).json({ error: "Authentication failed" });
-    }
-  };
-  
-  /**
-   * Middleware to check if the user has the required role
-   * @param roles Array of roles that are allowed to access the endpoint
-   */
-  const checkRole = (roles: string[]) => {
-    return (req: AuthRequest, res: Response, next: NextFunction) => {
-      // Get role from request (would be set by authenticate middleware in real implementation)
-      // For demo purposes, extract role from API key if available
-      const apiKey = req.token;
-      
-      if (!apiKey) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-      
-      // Extract role from API key for demo (e.g., signo_admin, signo_driver)
-      const rolePart = apiKey.split('_')[1];
-      req.role = rolePart || 'user'; // Default to 'user' if no role specified
-      
-      console.log(`Role check: User role '${req.role}', Required roles: [${roles.join(', ')}]`);
-      
-      // Check if user has required role
-      if (!roles.includes(req.role)) {
-        console.log(`Access denied: User role '${req.role}' not in required roles [${roles.join(', ')}]`);
-        return res.status(403).json({ 
-          error: "Access denied", 
-          message: `This endpoint requires one of these roles: ${roles.join(', ')}`,
-          userRole: req.role
-        });
-      }
-      
-      console.log(`Role check passed: User role '${req.role}' is authorized for this endpoint`);
-      
-      // User has required role, proceed
-      next();
-    };
   };
 
   // User registration
@@ -1046,7 +945,7 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   // Frappe Driver API Routes
   
   // Get all Frappe drivers with optional filtering
-  app.get("/api/frappe-drivers", authenticate, checkRole(['admin', 'manager']), async (req: AuthRequest, res: Response) => {
+  app.get("/api/frappe-drivers", async (req: Request, res: Response) => {
     try {
       const { error, data } = frappeDriversQuerySchema.safeParse(req.query);
       
@@ -1058,26 +957,14 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       }
       
       const drivers = await storage.getFrappeDrivers(data);
-      
-      // Add metadata about the request for auditing purposes
-      const metadata = {
-        requestedBy: req.role,
-        timestamp: new Date().toISOString(),
-        queryParameters: req.query
-      };
-      
-      res.status(200).json({
-        data: drivers,
-        count: drivers.length,
-        _metadata: metadata
-      });
+      res.status(200).json(drivers);
     } catch (err) {
       handleError(err as Error, res);
     }
   });
   
   // Get a Frappe driver by phone number
-  app.get("/api/frappe-drivers/phone/:phoneNumber", authenticate, checkRole(['admin', 'manager', 'driver']), async (req: AuthRequest, res: Response) => {
+  app.get("/api/frappe-drivers/phone/:phoneNumber", async (req: Request, res: Response) => {
     try {
       const { phoneNumber } = req.params;
       const driver = await storage.getFrappeDriverByPhone(phoneNumber);
@@ -1086,24 +973,14 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
         return res.status(404).json({ error: "Driver not found" });
       }
       
-      // Add metadata for audit logging
-      const metadata = {
-        requestedBy: req.role,
-        timestamp: new Date().toISOString(),
-        accessType: 'lookup-by-phone'
-      };
-      
-      res.status(200).json({
-        data: driver,
-        _metadata: metadata
-      });
+      res.status(200).json(driver);
     } catch (err) {
       handleError(err as Error, res);
     }
   });
 
   // Get a specific Frappe driver by docName
-  app.get("/api/frappe-drivers/:docName", authenticate, checkRole(['admin', 'manager', 'driver']), async (req: AuthRequest, res: Response) => {
+  app.get("/api/frappe-drivers/:docName", async (req: Request, res: Response) => {
     try {
       const { docName } = req.params;
       const driver = await storage.getFrappeDriver(docName);
@@ -1112,24 +989,14 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
         return res.status(404).json({ error: "Driver not found" });
       }
       
-      // Add metadata for audit logging
-      const metadata = {
-        requestedBy: req.role,
-        timestamp: new Date().toISOString(),
-        accessType: 'lookup-by-docName'
-      };
-      
-      res.status(200).json({
-        data: driver,
-        _metadata: metadata
-      });
+      res.status(200).json(driver);
     } catch (err) {
       handleError(err as Error, res);
     }
   });
   
   // Create a new Frappe driver
-  app.post("/api/frappe-drivers", authenticate, checkRole(['admin']), async (req: AuthRequest, res: Response) => {
+  app.post("/api/frappe-drivers", async (req: Request, res: Response) => {
     try {
       const { error, data } = frappeDriverCreateSchema.safeParse(req.body);
       
@@ -1157,29 +1024,17 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       // Create the driver with generated docName
       const newDriver = await storage.createFrappeDriver({
         ...data,
-        docName,
-        owner: `${req.role}@example.com`, // Set owner based on authenticated role
-        modifiedBy: `${req.role}@example.com`
+        docName
       });
       
-      // Add metadata for audit logging
-      const metadata = {
-        createdBy: req.role,
-        timestamp: new Date().toISOString(),
-        apiKey: req.token?.substring(0, 8) + '****' // Partial API key for security logs
-      };
-      
-      res.status(201).json({
-        data: newDriver,
-        _metadata: metadata
-      });
+      res.status(201).json(newDriver);
     } catch (err) {
       handleError(err as Error, res);
     }
   });
   
   // Update an existing Frappe driver
-  app.patch("/api/frappe-drivers/:docName", authenticate, checkRole(['admin', 'manager']), async (req: AuthRequest, res: Response) => {
+  app.patch("/api/frappe-drivers/:docName", async (req: Request, res: Response) => {
     try {
       const { docName } = req.params;
       const { error, data } = frappeDriverUpdateSchema.safeParse(req.body);
@@ -1207,90 +1062,32 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
         }
       }
       
-      // Add modifiedBy field based on the authenticated user
-      const updateData = {
-        ...data,
-        modifiedBy: `${req.role}@example.com`,
-        modified: new Date() // Using Date object directly instead of ISO string
-      };
-      
-      const updatedDriver = await storage.updateFrappeDriver(docName, updateData);
-      
-      // Add metadata for audit logging
-      const metadata = {
-        modifiedBy: req.role,
-        timestamp: new Date().toISOString(),
-        modifiedFields: Object.keys(data),
-        apiKey: req.token?.substring(0, 8) + '****' // Partial API key for security logs
-      };
-      
-      res.status(200).json({
-        data: updatedDriver,
-        _metadata: metadata
-      });
+      const updatedDriver = await storage.updateFrappeDriver(docName, data);
+      res.status(200).json(updatedDriver);
     } catch (err) {
       handleError(err as Error, res);
     }
   });
   
-  // Delete a Frappe driver (only admins can delete)
-  app.delete("/api/frappe-drivers/:docName", authenticate, checkRole(['admin']), async (req: AuthRequest, res: Response) => {
+  // Delete a Frappe driver
+  app.delete("/api/frappe-drivers/:docName", async (req: Request, res: Response) => {
     try {
       const { docName } = req.params;
-      
-      // Log attempt for debugging
-      console.log(`DELETE request for driver ${docName} by role '${req.role}' (token: ${req.token?.substring(0, 8)}****)`);
-      
-      // Extra role check - belt and suspenders approach
-      if (req.role !== 'admin') {
-        console.log(`RBAC check failed: User role '${req.role}' is not 'admin'`);
-        return res.status(403).json({ 
-          error: "Access denied", 
-          message: "Only administrators can delete drivers",
-          userRole: req.role
-        });
-      }
       
       // Check if the driver exists
       const existingDriver = await storage.getFrappeDriver(docName);
       if (!existingDriver) {
-        console.log(`Driver ${docName} not found for deletion`);
         return res.status(404).json({ error: "Driver not found" });
       }
       
-      // Log the deletion attempt before deletion
-      console.log(`Deletion of driver ${docName} requested by ${req.role} with token ${req.token?.substring(0, 8)}****`);
-      
       const deleted = await storage.deleteFrappeDriver(docName);
-      
       if (deleted) {
-        // Create audit log for successful deletion
-        const auditLog = {
-          action: "delete",
-          resource: "frappe-driver",
-          resourceId: docName,
-          performedBy: req.role,
-          timestamp: new Date().toISOString(),
-          details: {
-            driverName: existingDriver.name1,
-            phoneNumber: existingDriver.phoneNumber ? 
-              `${existingDriver.phoneNumber.substring(0, 3)}****${existingDriver.phoneNumber.substring(existingDriver.phoneNumber.length - 2)}` : 
-              null,
-            apiKey: req.token?.substring(0, 8) + '****' // Partial API key for security logs
-          }
-        };
-        
-        console.log("Audit log for driver deletion:", JSON.stringify(auditLog));
-        
-        // Use 204 No Content status for successful DELETE operations
-        return res.status(204).end();
+        res.status(204).send(); // No content
       } else {
-        console.log(`Failed to delete driver ${docName}`);
-        return res.status(500).json({ error: "Failed to delete driver" });
+        res.status(500).json({ error: "Failed to delete driver" });
       }
     } catch (err) {
-      console.error(`Error in DELETE /api/frappe-drivers/:docName:`, err);
-      return handleError(err as Error, res);
+      handleError(err as Error, res);
     }
   });
 

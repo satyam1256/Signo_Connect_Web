@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useWebSocketContext } from '@/contexts/simple-websocket-context';
+import { useWebSocketContext } from '@/contexts/websocket-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
