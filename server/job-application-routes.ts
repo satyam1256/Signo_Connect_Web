@@ -169,6 +169,7 @@ export async function registerJobApplicationRoutes(app: Express) {
         driverId: data.driverId,
         status: data.status || "pending",
         expectedSalary: data.expectedSalary,
+        preferredJoiningDate: data.preferredJoiningDate,
         additionalNotes: data.additionalNotes,
         // Let the database handle the default timestamps for applied_at and updated_at
       }).returning();
@@ -197,6 +198,7 @@ export async function registerJobApplicationRoutes(app: Express) {
       const updateSchema = z.object({
         status: z.string().optional(),
         expectedSalary: z.number().optional(),
+        preferredJoiningDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
         additionalNotes: z.string().optional(),
       });
 
@@ -208,8 +210,9 @@ export async function registerJobApplicationRoutes(app: Express) {
       // Only include fields that are in the database schema
       const updateData: any = {};
       if (data.status) updateData.status = data.status;
-      if (data.expectedSalary) updateData.expectedSalary = data.expectedSalary;
-      if (data.additionalNotes) updateData.additionalNotes = data.additionalNotes;
+      if (data.expectedSalary !== undefined) updateData.expectedSalary = data.expectedSalary;
+      if (data.preferredJoiningDate !== undefined) updateData.preferredJoiningDate = data.preferredJoiningDate;
+      if (data.additionalNotes !== undefined) updateData.additionalNotes = data.additionalNotes;
 
       const [updatedApplication] = await db.update(jobApplications)
         .set(updateData)

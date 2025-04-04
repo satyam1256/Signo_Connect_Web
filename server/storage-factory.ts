@@ -1,6 +1,7 @@
 import { MemStorage } from "./storage";
 import { IStorage } from "./storage";
 import { initializeDatabase } from "./db";
+import { runMigrations } from "./migration";
 
 export async function createStorage(): Promise<IStorage> {
   console.log("Storage Factory: Beginning storage creation process...");
@@ -21,6 +22,11 @@ export async function createStorage(): Promise<IStorage> {
     console.log("Storage Factory: Initializing database connection...");
     await initializeDatabase();
     console.log("Storage Factory: Database initialized successfully");
+    
+    // Run migrations after database is initialized
+    console.log("Storage Factory: Running database migrations...");
+    await runMigrations();
+    console.log("Storage Factory: Migrations completed successfully");
     
     // Use dynamic import to avoid circular dependencies
     console.log("Storage Factory: Dynamically importing db-storage...");
