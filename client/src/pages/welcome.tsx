@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { TruckIcon } from "lucide-react";
 import { Header } from "@/components/layout/header";
@@ -22,78 +23,99 @@ export const TruckMovingIcon = () => (
 
 const WelcomePage = () => {
   const { t } = useLanguageStore();
-
+  const [pageReady, setPageReady] = useState(false);
+  
+  // Ensure page content only renders after component is fully mounted
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPageReady(true);
+      console.log("Welcome page fully loaded and ready");
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Always render the page container to prevent layout shifts
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
       <Header />
 
-      <div className="flex-grow container mx-auto px-4 py-6 max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-neutral-800 mb-2">
-            {t("welcome")}
-          </h1>
-          <p className="text-neutral-500">
-            {t("welcome_subtitle")}
-          </p>
-        </div>
+      {pageReady ? (
+        <div className="flex-grow container mx-auto px-4 py-6 max-w-md">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-neutral-800 mb-2">
+              {t("welcome")}
+            </h1>
+            <p className="text-neutral-500">
+              {t("welcome_subtitle")}
+            </p>
+          </div>
 
-        <div className="flex flex-col space-y-4 mb-8">
-          <img
-            className="w-64 mx-auto h-auto"
-            src={signoLogo}
-            alt="SIGNO Logo"
-          />
-        </div>
+          <div className="flex flex-col space-y-4 mb-8">
+            <img
+              className="w-64 mx-auto h-auto"
+              src={signoLogo}
+              alt="SIGNO Logo"
+            />
+          </div>
 
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <h2 className="text-xl font-bold mb-4 text-neutral-800">
-              I am a...
-            </h2>
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold mb-4 text-neutral-800">
+                I am a...
+              </h2>
 
-            <div className="flex flex-col space-y-3">
-              <Link to="/driver/register">
-                <Button 
-                  className="w-full justify-between bg-primary text-white hover:bg-primary-dark h-14"
-                  size="lg"
-                >
-                  <span className="flex items-center">
-                    <SteeringWheelIcon className="mr-3 h-5 w-5" />
-                    <span>{t("driver")}</span>
-                  </span>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Button>
+              <div className="flex flex-col space-y-3">
+                <Link to="/driver/register">
+                  <Button 
+                    className="w-full justify-between bg-primary text-white hover:bg-primary-dark h-14"
+                    size="lg"
+                  >
+                    <span className="flex items-center">
+                      <SteeringWheelIcon className="mr-3 h-5 w-5" />
+                      <span>{t("driver")}</span>
+                    </span>
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Button>
+                </Link>
+
+                <Link to="/fleet-owner/register">
+                  <Button 
+                    className="w-full justify-between bg-[#FF6D00] text-white hover:bg-[#E65100] h-14"
+                    size="lg"
+                  >
+                    <span className="flex items-center">
+                      <TruckMovingIcon />
+                      <span className="ml-3">{t("fleet_owner")}</span>
+                    </span>
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="text-center text-neutral-500">
+            <p>
+              {t("already_have_account")}{" "}
+              <Link to="/login" className="text-primary font-medium">
+                {t("sign_in")}
               </Link>
-
-              <Link to="/fleet-owner/register">
-                <Button 
-                  className="w-full justify-between bg-[#FF6D00] text-white hover:bg-[#E65100] h-14"
-                  size="lg"
-                >
-                  <span className="flex items-center">
-                    <TruckMovingIcon />
-                    <span className="ml-3">{t("fleet_owner")}</span>
-                  </span>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="text-center text-neutral-500">
-          <p>
-            {t("already_have_account")}{" "}
-            <Link to="/login" className="text-primary font-medium">
-              {t("sign_in")}
-            </Link>
-          </p>
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex-grow flex items-center justify-center">
+          <div className="w-16 h-16 relative">
+            <div className="w-16 h-16 rounded-full border-4 border-primary opacity-25"></div>
+            <div className="w-16 h-16 rounded-full border-4 border-t-primary animate-spin absolute top-0 left-0"></div>
+          </div>
+        </div>
+      )}
 
       <Chatbot />
     </div>

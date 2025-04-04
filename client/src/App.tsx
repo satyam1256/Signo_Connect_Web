@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -37,18 +38,45 @@ function AuthRoute({ component: Component, ...rest }: any) {
   return <Component {...rest} />;
 }
 
+// Fallback component to use while app is initializing
+function LoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center h-screen bg-neutral-50">
+      <div className="mb-8 flex flex-col items-center">
+        <div className="w-16 h-16 relative">
+          <div className="w-16 h-16 rounded-full border-4 border-primary opacity-25"></div>
+          <div className="w-16 h-16 rounded-full border-4 border-t-primary animate-spin absolute top-0 left-0"></div>
+        </div>
+        <h2 className="mt-4 text-xl font-medium text-neutral-700">Loading SIGNO Connect...</h2>
+      </div>
+    </div>
+  );
+}
+
 function Router() {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const [appReady, setAppReady] = useState(false);
   
-  // Show a basic loading state if auth state is still loading
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  // Ensure the app has a minimum loading time to prevent flash of content
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAppReady(true);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Show loading fallback until auth is ready and minimum load time is met
+  if (isLoading || !appReady) {
+    return <LoadingFallback />;
   }
   
   return (
     <Switch>
       {/* Public Routes - accessible to everyone */}
-      <Route path="/" component={WelcomePage} />
+      <Route path="/">
+        {() => <WelcomePage />}
+      </Route>
       
       {/* Auth Routes - redirect logged-in users to their dashboard */}
       <Route path="/login">
@@ -61,26 +89,42 @@ function Router() {
         {(params) => <AuthRoute component={FleetOwnerRegistration} params={params} />}
       </Route>
 
-      {/* Driver Routes - We'll handle authentication within these components */}
-      <Route path="/driver/dashboard" component={DriverDashboard} />
-      <Route path="/driver/jobs" component={DriverJobs} />
-      <Route path="/driver/alerts" component={DriverAlerts} />
-      <Route path="/driver/profile" component={DriverProfile} />
+      {/* Driver Routes */}
+      <Route path="/driver/dashboard">
+        {() => <DriverDashboard />}
+      </Route>
+      <Route path="/driver/jobs">
+        {() => <DriverJobs />}
+      </Route>
+      <Route path="/driver/alerts">
+        {() => <DriverAlerts />}
+      </Route>
+      <Route path="/driver/profile">
+        {() => <DriverProfile />}
+      </Route>
 
       {/* Fleet Owner Routes */}
-      <Route path="/fleet-owner/dashboard" component={FleetOwnerDashboard} />
-      <Route path="/fleet-owner/jobs" component={FleetOwnerJobs} />
-      <Route path="/fleet-owner/profile" component={FleetOwnerProfile} />
-      <Route path="/fleet-owner/drivers" component={FleetOwnerDrivers} />
+      <Route path="/fleet-owner/dashboard">
+        {() => <FleetOwnerDashboard />}
+      </Route>
+      <Route path="/fleet-owner/jobs">
+        {() => <FleetOwnerJobs />}
+      </Route>
+      <Route path="/fleet-owner/profile">
+        {() => <FleetOwnerProfile />}
+      </Route>
+      <Route path="/fleet-owner/drivers">
+        {() => <FleetOwnerDrivers />}
+      </Route>
 
       {/* WebSocket Test Routes */}
-      <Route path="/test/websocket" component={WebSocketTest} />
+      <Route path="/test/websocket">
+        {() => <WebSocketTest />}
+      </Route>
 
       {/* Catch-all route */}
-      <Route path="/:rest*">
+      <Route>
         {() => {
-          // This ensures that any route will at least render something
-          // Fixes the issue of the app not showing any content when refreshing on a non-root route
           console.log("Route not found, redirecting to home");
           return <Redirect to="/" />;
         }}
@@ -90,6 +134,19 @@ function Router() {
 }
 
 function App() {
+  // Initialize app state
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Make sure app is initialized after the component mounts
+  useEffect(() => {
+    setIsInitialized(true);
+  }, []);
+  
+  // Show loading spinner while initializing
+  if (!isInitialized) {
+    return <LoadingFallback />;
+  }
+  
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

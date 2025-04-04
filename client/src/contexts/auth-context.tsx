@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,6 +18,7 @@ interface AuthContextType {
   login: (user: User) => void;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
+  refreshAuth: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   login: () => {},
   logout: () => {},
   updateUser: () => {},
+  refreshAuth: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -38,25 +40,55 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Check if user data exists in localStorage
-    const storedUser = localStorage.getItem("signoUser");
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error("Failed to parse user data:", error);
-        localStorage.removeItem("signoUser");
+  // Load user data from localStorage
+  const loadUserData = useCallback(() => {
+    setIsLoading(true);
+    
+    try {
+      // Check if user data exists in localStorage
+      const storedUser = localStorage.getItem("signoUser");
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          console.log("User loaded from localStorage:", parsedUser);
+        } catch (error) {
+          console.error("Failed to parse user data:", error);
+          localStorage.removeItem("signoUser");
+          setUser(null);
+        }
+      } else {
+        setUser(null);
       }
+    } catch (error) {
+      console.error("Error loading auth state:", error);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+      setIsInitialized(true);
     }
-    setIsLoading(false);
   }, []);
 
-  const login = (userData: User) => {
+  // Initialize auth state on component mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadUserData();
+    }, 100); // Small delay to ensure consistent loading behavior
+    
+    return () => clearTimeout(timer);
+  }, [loadUserData]);
+
+  // Function to refresh auth state when needed
+  const refreshAuth = useCallback(() => {
+    loadUserData();
+  }, [loadUserData]);
+
+  // Login function
+  const login = useCallback((userData: User) => {
     // First, clear any existing profile data to prevent mixing data between users
     localStorage.removeItem("driverProfile");
     localStorage.removeItem("fleetOwnerProfile");
@@ -79,9 +111,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       title: "Login successful",
       description: `Welcome, ${userData.fullName}!`,
     });
-  };
+  }, [navigate, toast]);
 
-  const logout = () => {
+  // Logout function
+  const logout = useCallback(() => {
     setUser(null);
     
     // Clear all user-related data from localStorage
@@ -98,25 +131,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       title: "Logged out",
       description: "You have been successfully logged out.",
     });
-  };
+  }, [navigate, toast]);
 
-  const updateUser = (userData: Partial<User>) => {
+  // Update user data
+  const updateUser = useCallback((userData: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
       localStorage.setItem("signoUser", JSON.stringify(updatedUser));
     }
-  };
+  }, [user]);
 
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
-        isLoading,
+        isLoading: isLoading || !isInitialized,
         login,
         logout,
         updateUser,
+        refreshAuth,
       }}
     >
       {children}
