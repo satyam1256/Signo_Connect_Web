@@ -3,7 +3,13 @@ import {
   drivers, type Driver, type InsertDriver,
   fleetOwners, type FleetOwner, type InsertFleetOwner,
   jobs, type Job, type InsertJob,
-  otpVerifications, type OtpVerification, type InsertOtpVerification
+  otpVerifications, type OtpVerification, type InsertOtpVerification,
+  fuelPumps, type FuelPump, type InsertFuelPump,
+  vehicles, type Vehicle, type InsertVehicle,
+  driverAssessments, type DriverAssessment, type InsertDriverAssessment,
+  notifications, type Notification, type InsertNotification,
+  referrals, type Referral, type InsertReferral,
+  tolls, type Toll, type InsertToll
 } from "@shared/schema";
 
 // Interface for storage operations
@@ -35,6 +41,36 @@ export interface IStorage {
   createOtpVerification(verification: InsertOtpVerification): Promise<OtpVerification>;
   getOtpVerification(phoneNumber: string): Promise<OtpVerification | undefined>;
   verifyOtp(phoneNumber: string, otp: string): Promise<boolean>;
+
+  // Fuel pump operations
+  getNearbyFuelPumps(coordinates: [number, number][]): Promise<FuelPump[]>;
+  createFuelPump(fuelPump: InsertFuelPump): Promise<FuelPump>;
+
+  // Vehicle operations
+  getVehicleByRegistration(registrationNumber: string): Promise<Vehicle | undefined>;
+  getVehiclesByTransporter(transporterId: number): Promise<Vehicle[]>;
+  createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
+  updateVehicle(id: number, vehicle: Partial<Vehicle>): Promise<Vehicle | undefined>;
+
+  // Driver assessment operations
+  getDriverAssessment(id: number): Promise<DriverAssessment | undefined>;
+  getDriverAssessmentsByDriver(driverId: number, status?: string): Promise<DriverAssessment[]>;
+  createDriverAssessment(assessment: InsertDriverAssessment): Promise<DriverAssessment>;
+  updateDriverAssessment(id: number, assessment: Partial<DriverAssessment>): Promise<DriverAssessment | undefined>;
+
+  // Notification operations
+  getNotifications(userId: number, userType: string): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: number): Promise<Notification | undefined>;
+
+  // Referral operations
+  getReferralsByReferrer(referrerId: number): Promise<Referral[]>;
+  createReferral(referral: InsertReferral): Promise<Referral>;
+  updateReferral(id: number, referral: Partial<Referral>): Promise<Referral | undefined>;
+
+  // Toll operations
+  getTollsAlongRoute(coordinates: [number, number][]): Promise<Toll[]>;
+  createToll(toll: InsertToll): Promise<Toll>;
 }
 
 export class MemStorage implements IStorage {
@@ -43,12 +79,24 @@ export class MemStorage implements IStorage {
   private fleetOwners = new Map<number, FleetOwner>();
   private jobs = new Map<number, Job>();
   private otpVerifications = new Map<string, OtpVerification>();
+  private fuelPumps = new Map<number, FuelPump>();
+  private vehicles = new Map<number, Vehicle>();
+  private driverAssessments = new Map<number, DriverAssessment>();
+  private notifications = new Map<number, Notification>();
+  private referrals = new Map<number, Referral>();
+  private tolls = new Map<number, Toll>();
 
   private userId = 1;
   private driverId = 1;
   private fleetOwnerId = 1;
   private jobId = 1;
   private otpId = 1;
+  private fuelPumpId = 1;
+  private vehicleId = 1;
+  private assessmentId = 1;
+  private notificationId = 1;
+  private referralId = 1;
+  private tollId = 1;
 
   constructor() {
     this.resetData();
@@ -61,12 +109,24 @@ export class MemStorage implements IStorage {
     this.fleetOwners = new Map();
     this.jobs = new Map();
     this.otpVerifications = new Map();
+    this.fuelPumps = new Map();
+    this.vehicles = new Map();
+    this.driverAssessments = new Map();
+    this.notifications = new Map();
+    this.referrals = new Map();
+    this.tolls = new Map();
 
     this.userId = 1;
     this.driverId = 1;
     this.fleetOwnerId = 1;
     this.jobId = 1;
     this.otpId = 1;
+    this.fuelPumpId = 1;
+    this.vehicleId = 1;
+    this.assessmentId = 1;
+    this.notificationId = 1;
+    this.referralId = 1;
+    this.tollId = 1;
 
     console.log('[MemStorage] Data has been reset');
     return true;
@@ -256,6 +316,191 @@ export class MemStorage implements IStorage {
     }
 
     return false;
+  }
+
+  // Fuel pump methods
+  async getNearbyFuelPumps(coordinates: [number, number][]): Promise<FuelPump[]> {
+    // Mock implementation: return all fuel pumps
+    // In a real implementation, we would filter by proximity to each coordinate
+    return Array.from(this.fuelPumps.values());
+  }
+
+  async createFuelPump(fuelPump: InsertFuelPump): Promise<FuelPump> {
+    const id = this.fuelPumpId++;
+    const now = new Date();
+    const newFuelPump: FuelPump = {
+      ...fuelPump,
+      id,
+      createdAt: now,
+      amenities: fuelPump.amenities ?? null,
+      fuelTypes: fuelPump.fuelTypes ?? null,
+      isOpen24Hours: fuelPump.isOpen24Hours ?? null,
+      rating: fuelPump.rating ?? null
+    };
+    this.fuelPumps.set(id, newFuelPump);
+    return newFuelPump;
+  }
+
+  // Vehicle methods
+  async getVehicleByRegistration(registrationNumber: string): Promise<Vehicle | undefined> {
+    return Array.from(this.vehicles.values()).find(
+      (vehicle) => vehicle.registrationNumber === registrationNumber
+    );
+  }
+
+  async getVehiclesByTransporter(transporterId: number): Promise<Vehicle[]> {
+    return Array.from(this.vehicles.values()).filter(
+      (vehicle) => vehicle.transporterId === transporterId
+    );
+  }
+
+  async createVehicle(vehicle: InsertVehicle): Promise<Vehicle> {
+    const id = this.vehicleId++;
+    const now = new Date();
+    const newVehicle: Vehicle = {
+      ...vehicle,
+      id,
+      createdAt: now,
+      year: vehicle.year ?? null,
+      capacityTons: vehicle.capacityTons ?? null,
+      insuranceStatus: vehicle.insuranceStatus ?? null,
+      lastServiceDate: vehicle.lastServiceDate ?? null
+    };
+    this.vehicles.set(id, newVehicle);
+    return newVehicle;
+  }
+
+  async updateVehicle(id: number, vehicleData: Partial<Vehicle>): Promise<Vehicle | undefined> {
+    const vehicle = this.vehicles.get(id);
+    if (!vehicle) return undefined;
+
+    const updatedVehicle = { ...vehicle, ...vehicleData };
+    this.vehicles.set(id, updatedVehicle);
+    return updatedVehicle;
+  }
+
+  // Driver assessment methods
+  async getDriverAssessment(id: number): Promise<DriverAssessment | undefined> {
+    return this.driverAssessments.get(id);
+  }
+
+  async getDriverAssessmentsByDriver(driverId: number, status?: string): Promise<DriverAssessment[]> {
+    const assessments = Array.from(this.driverAssessments.values()).filter(
+      (assessment) => assessment.driverId === driverId
+    );
+    
+    if (status) {
+      return assessments.filter(assessment => assessment.status === status);
+    }
+    
+    return assessments;
+  }
+
+  async createDriverAssessment(assessment: InsertDriverAssessment): Promise<DriverAssessment> {
+    const id = this.assessmentId++;
+    const now = new Date();
+    const newAssessment: DriverAssessment = {
+      ...assessment,
+      id,
+      createdAt: now,
+      score: assessment.score ?? null,
+      feedbackNotes: assessment.feedbackNotes ?? null,
+      completedAt: assessment.completedAt ?? null
+    };
+    this.driverAssessments.set(id, newAssessment);
+    return newAssessment;
+  }
+
+  async updateDriverAssessment(id: number, assessmentData: Partial<DriverAssessment>): Promise<DriverAssessment | undefined> {
+    const assessment = this.driverAssessments.get(id);
+    if (!assessment) return undefined;
+
+    const updatedAssessment = { ...assessment, ...assessmentData };
+    this.driverAssessments.set(id, updatedAssessment);
+    return updatedAssessment;
+  }
+
+  // Notification methods
+  async getNotifications(userId: number, userType: string): Promise<Notification[]> {
+    return Array.from(this.notifications.values()).filter(
+      (notification) => notification.userId === userId && notification.userType === userType
+    );
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const id = this.notificationId++;
+    const now = new Date();
+    const newNotification: Notification = {
+      ...notification,
+      id,
+      createdAt: now,
+      read: false,
+      actionUrl: notification.actionUrl ?? null
+    };
+    this.notifications.set(id, newNotification);
+    return newNotification;
+  }
+
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    const notification = this.notifications.get(id);
+    if (!notification) return undefined;
+
+    const updatedNotification = { ...notification, read: true };
+    this.notifications.set(id, updatedNotification);
+    return updatedNotification;
+  }
+
+  // Referral methods
+  async getReferralsByReferrer(referrerId: number): Promise<Referral[]> {
+    return Array.from(this.referrals.values()).filter(
+      (referral) => referral.referrerId === referrerId
+    );
+  }
+
+  async createReferral(referral: InsertReferral): Promise<Referral> {
+    const id = this.referralId++;
+    const now = new Date();
+    const newReferral: Referral = {
+      ...referral,
+      id,
+      createdAt: now,
+      referredName: referral.referredName ?? null,
+      reward: referral.reward ?? null,
+      completedAt: referral.completedAt ?? null
+    };
+    this.referrals.set(id, newReferral);
+    return newReferral;
+  }
+
+  async updateReferral(id: number, referralData: Partial<Referral>): Promise<Referral | undefined> {
+    const referral = this.referrals.get(id);
+    if (!referral) return undefined;
+
+    const updatedReferral = { ...referral, ...referralData };
+    this.referrals.set(id, updatedReferral);
+    return updatedReferral;
+  }
+
+  // Toll methods
+  async getTollsAlongRoute(coordinates: [number, number][]): Promise<Toll[]> {
+    // Mock implementation: return all tolls
+    // In a real implementation, we would filter by proximity to the route
+    return Array.from(this.tolls.values());
+  }
+
+  async createToll(toll: InsertToll): Promise<Toll> {
+    const id = this.tollId++;
+    const now = new Date();
+    const newToll: Toll = {
+      ...toll,
+      id,
+      createdAt: now,
+      feeAmount: toll.feeAmount ?? null,
+      highway: toll.highway ?? null,
+      paymentMethods: toll.paymentMethods ?? null
+    };
+    this.tolls.set(id, newToll);
+    return newToll;
   }
 }
 

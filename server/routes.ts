@@ -8,6 +8,13 @@ import {
   driverInsertSchema, 
   fleetOwnerInsertSchema,
   jobInsertSchema,
+  nearbyFuelPumpsSchema,
+  routesWithTollsSchema,
+  submitAssessmentSchema,
+  driverAssessmentInsertSchema,
+  vehicleInsertSchema,
+  referralInsertSchema,
+  notificationInsertSchema,
   UserType,
   User
 } from "@shared/schema";
@@ -27,6 +34,11 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   if (!customStorage || !(customStorage instanceof DbStorage)) {
     (memStorage as any).resetData();
   }
+  
+  // TypeScript type annotations for sum & toll in reduce function
+  const getTotalTollFee = (tolls: any[]): number => {
+    return tolls.reduce((sum: number, toll: any) => sum + (toll.feeAmount || 0), 0);
+  };
 
   // Error handler middleware
   const handleError = (err: Error, res: Response) => {
@@ -401,6 +413,517 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
       const jobs = await storage.getJobsByFleetOwner(fleetOwnerId);
 
       return res.status(200).json(jobs);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Get drivers directory for transporters (fleet owners)
+  app.get("/api/drivers-directory", async (req: Request, res: Response) => {
+    try {
+      const { transporter_id, limit_start, limit_page_length, qtype, q } = req.query;
+      
+      // Validate the required parameter
+      if (!transporter_id) {
+        return res.status(400).json({ error: "Transporter ID is required" });
+      }
+
+      // Get all drivers (in a real implementation we would filter and paginate)
+      const drivers = await Promise.all((await storage.getUser(1) ? [1] : [])
+        .map(async id => {
+          const user = await storage.getUser(id);
+          if (user?.userType === UserType.DRIVER) {
+            const driver = await storage.getDriver(user.id);
+            if (driver) {
+              return {
+                id: driver.id,
+                userId: driver.userId,
+                name: user.fullName,
+                phone: user.phoneNumber,
+                experience: driver.experience,
+                vehicleTypes: driver.vehicleTypes,
+                preferredLocations: driver.preferredLocations,
+                availability: qtype === "availability" && q === "1" ? "available" : "busy",
+                rating: 4.5 // Mock rating
+              };
+            }
+          }
+          return null;
+        }));
+
+      // Filter out null values and apply filtering based on query parameters
+      const filteredDrivers = drivers.filter(driver => driver !== null);
+      
+      return res.status(200).json({
+        message: "Drivers directory fetched successfully",
+        data: filteredDrivers,
+        total: filteredDrivers.length
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Get nearby fuel pumps
+  app.post("/api/nearby-fuel-pumps", async (req: Request, res: Response) => {
+    try {
+      const { coordinates } = nearbyFuelPumpsSchema.parse(req.body);
+      
+      // Using a single sample coordinate for demonstration purposes
+      const [lat, lng] = coordinates[0] || [28.6417, 77.2178];
+
+      // Get nearby fuel pumps (in a real world scenario, we would use geospatial queries)
+      const fuelPumps = await storage.getNearbyFuelPumps(coordinates);
+      
+      // If no fuel pumps are found, create some sample ones
+      if (fuelPumps.length === 0) {
+        // Create sample fuel pumps near the provided coordinates
+        const sampleFuelPumps = [
+          {
+            name: "Indian Oil",
+            address: "Airport Road, Delhi",
+            latitude: lat + 0.01,
+            longitude: lng + 0.01,
+            amenities: ["Restaurant", "Restroom", "Convenience Store"],
+            fuelTypes: ["Petrol", "Diesel", "CNG"],
+            isOpen24Hours: true,
+            rating: 4.2
+          },
+          {
+            name: "Bharat Petroleum",
+            address: "NH-8, Delhi",
+            latitude: lat - 0.01,
+            longitude: lng - 0.01,
+            amenities: ["ATM", "Restroom"],
+            fuelTypes: ["Petrol", "Diesel"],
+            isOpen24Hours: false,
+            rating: 3.8
+          },
+          {
+            name: "Hindustan Petroleum",
+            address: "MG Road, Delhi",
+            latitude: lat + 0.02,
+            longitude: lng - 0.02,
+            amenities: ["Service Station", "Restroom", "Car Wash"],
+            fuelTypes: ["Petrol", "Diesel"],
+            isOpen24Hours: true,
+            rating: 4.0
+          }
+        ];
+
+        // Add sample fuel pumps to storage
+        await Promise.all(sampleFuelPumps.map(fp => storage.createFuelPump(fp)));
+      }
+      
+      // Get the updated list of fuel pumps
+      const nearbyFuelPumps = await storage.getNearbyFuelPumps(coordinates);
+      
+      return res.status(200).json({
+        message: "Nearby fuel pumps fetched successfully",
+        data: nearbyFuelPumps
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Get routes with toll information
+  app.post("/api/routes-with-tolls", async (req: Request, res: Response) => {
+    try {
+      const { coordinates } = routesWithTollsSchema.parse(req.body);
+      
+      // Get all tolls along the route
+      const tolls = await storage.getTollsAlongRoute(coordinates);
+      
+      // If no tolls are found, create some sample ones
+      if (tolls.length === 0) {
+        // Create sample tolls along the route
+        const [startCoord, endCoord] = coordinates;
+        const [startLat, startLng] = startCoord || [19.076, 72.8777];
+        const [endLat, endLng] = endCoord || [28.7041, 77.1025];
+        
+        // Create tolls at different points between start and end
+        const midLat1 = startLat + (endLat - startLat) * 0.25;
+        const midLng1 = startLng + (endLng - startLng) * 0.25;
+        
+        const midLat2 = startLat + (endLat - startLat) * 0.5;
+        const midLng2 = startLng + (endLng - startLng) * 0.5;
+        
+        const midLat3 = startLat + (endLat - startLat) * 0.75;
+        const midLng3 = startLng + (endLng - startLng) * 0.75;
+        
+        const sampleTolls = [
+          {
+            name: "Mumbai-Pune Expressway Toll",
+            latitude: midLat1,
+            longitude: midLng1,
+            feeAmount: 230,
+            highway: "Mumbai-Pune Expressway",
+            paymentMethods: ["Cash", "FASTag", "Credit Card"]
+          },
+          {
+            name: "Nashik Highway Toll",
+            latitude: midLat2,
+            longitude: midLng2,
+            feeAmount: 185,
+            highway: "NH-3",
+            paymentMethods: ["Cash", "FASTag"]
+          },
+          {
+            name: "Delhi-Jaipur Highway Toll",
+            latitude: midLat3,
+            longitude: midLng3,
+            feeAmount: 220,
+            highway: "NH-8",
+            paymentMethods: ["Cash", "FASTag", "UPI"]
+          }
+        ];
+        
+        // Add sample tolls to storage
+        await Promise.all(sampleTolls.map(toll => storage.createToll(toll)));
+      }
+      
+      // Get the updated list of tolls
+      const routeTolls = await storage.getTollsAlongRoute(coordinates);
+      
+      // Calculate route details
+      const [startCoord, endCoord] = coordinates;
+      const distanceKm = Math.floor(Math.random() * 1000) + 500; // Random distance between 500-1500 km
+      const durationHours = Math.floor(distanceKm / 60); // Assuming average speed of 60 km/h
+      const totalTollFee = getTotalTollFee(routeTolls);
+      
+      return res.status(200).json({
+        message: "Route information fetched successfully",
+        data: {
+          distance: {
+            value: distanceKm,
+            unit: "kilometers"
+          },
+          duration: {
+            value: durationHours,
+            unit: "hours"
+          },
+          tolls: routeTolls,
+          totalTollFee,
+          fuelEstimate: {
+            liters: Math.floor(distanceKm / 5), // Assuming 5 km/l mileage
+            cost: Math.floor(distanceKm / 5) * 100 // Assuming ₹100/liter
+          }
+        }
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Get driver assessments
+  app.get("/api/driver-assessments", async (req: Request, res: Response) => {
+    try {
+      const { driver_id, status } = req.query;
+      
+      if (!driver_id) {
+        return res.status(400).json({ error: "Driver ID is required" });
+      }
+      
+      const driverId = parseInt(driver_id as string);
+      if (isNaN(driverId)) {
+        return res.status(400).json({ error: "Invalid driver ID" });
+      }
+      
+      // Get assessments for the driver with optional status filter
+      const assessments = await storage.getDriverAssessmentsByDriver(
+        driverId, 
+        status as string
+      );
+      
+      return res.status(200).json({
+        message: "Driver assessments fetched successfully",
+        data: assessments
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Submit driver assessment
+  app.post("/api/submit-assessment", async (req: Request, res: Response) => {
+    try {
+      const assessmentData = submitAssessmentSchema.parse(req.body);
+      
+      // Create a new assessment
+      const assessment = await storage.createDriverAssessment({
+        driverId: assessmentData.driverId,
+        assessmentType: assessmentData.assessmentType,
+        status: "completed",
+        score: assessmentData.score,
+        feedbackNotes: assessmentData.feedbackNotes,
+        completedAt: new Date()
+      });
+      
+      return res.status(201).json({
+        message: "Assessment submitted successfully",
+        data: assessment
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Get vehicle details
+  app.get("/api/vehicle-details", async (req: Request, res: Response) => {
+    try {
+      const { registration_number, transporter_id } = req.query;
+      
+      if (!registration_number) {
+        return res.status(400).json({ error: "Vehicle registration number is required" });
+      }
+      
+      // Get vehicle by registration number
+      let vehicle = await storage.getVehicleByRegistration(registration_number as string);
+      
+      // If vehicle doesn't exist and transporter_id is provided, create a sample one
+      if (!vehicle && transporter_id) {
+        const transporterId = parseInt(transporter_id as string);
+        if (!isNaN(transporterId)) {
+          vehicle = await storage.createVehicle({
+            registrationNumber: registration_number as string,
+            transporterId,
+            vehicleType: "Truck",
+            make: "Tata",
+            model: "Prima",
+            year: 2022,
+            capacityTons: 25,
+            insuranceStatus: "Active",
+            lastServiceDate: new Date()
+          });
+        }
+      }
+      
+      if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      
+      return res.status(200).json({
+        message: "Vehicle details fetched successfully",
+        data: vehicle
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Get all vehicles for a transporter
+  app.get("/api/vehicles", async (req: Request, res: Response) => {
+    try {
+      const { transporter_id } = req.query;
+      
+      if (!transporter_id) {
+        return res.status(400).json({ error: "Transporter ID is required" });
+      }
+      
+      const transporterId = parseInt(transporter_id as string);
+      if (isNaN(transporterId)) {
+        return res.status(400).json({ error: "Invalid transporter ID" });
+      }
+      
+      // Get all vehicles for the transporter
+      const vehicles = await storage.getVehiclesByTransporter(transporterId);
+      
+      return res.status(200).json({
+        message: "Vehicles fetched successfully",
+        data: vehicles
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Get notifications
+  app.get("/api/notifications", async (req: Request, res: Response) => {
+    try {
+      const { user_id, user_type } = req.query;
+      
+      if (!user_id || !user_type) {
+        return res.status(400).json({ error: "User ID and user type are required" });
+      }
+      
+      const userId = parseInt(user_id as string);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      // Validate user type
+      if (user_type !== UserType.DRIVER && user_type !== UserType.FLEET_OWNER) {
+        return res.status(400).json({ error: "Invalid user type" });
+      }
+      
+      // Get notifications for the user
+      const notifications = await storage.getNotifications(userId, user_type as string);
+      
+      // If no notifications are found, create sample ones for demo purposes
+      if (notifications.length === 0) {
+        // Create sample notifications
+        const sampleNotifications = [
+          {
+            userId,
+            userType: user_type as string,
+            title: "New Job Posted",
+            content: "A new job matching your profile has been posted in your area.",
+            type: "job",
+            actionUrl: "/jobs"
+          },
+          {
+            userId,
+            userType: user_type as string,
+            title: "Pending Document Verification",
+            content: "Your documents are pending verification. Please complete the process.",
+            type: "system",
+            actionUrl: "/profile/documents"
+          },
+          {
+            userId,
+            userType: user_type as string,
+            title: "Payment Received",
+            content: "You have received a payment of ₹5,000 for completed trip #123.",
+            type: "payment",
+            actionUrl: "/payments"
+          }
+        ];
+        
+        // Add sample notifications to storage
+        await Promise.all(sampleNotifications.map(notif => storage.createNotification(notif)));
+        
+        // Get the updated list of notifications
+        const createdNotifications = await storage.getNotifications(userId, user_type as string);
+        
+        return res.status(200).json({
+          message: "Notifications fetched successfully",
+          data: createdNotifications
+        });
+      }
+      
+      return res.status(200).json({
+        message: "Notifications fetched successfully",
+        data: notifications
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Mark notification as read
+  app.post("/api/read-notification/:id", async (req: Request, res: Response) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ error: "Invalid notification ID" });
+      }
+      
+      const updatedNotification = await storage.markNotificationAsRead(notificationId);
+      
+      if (!updatedNotification) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      
+      return res.status(200).json({
+        message: "Notification marked as read",
+        data: updatedNotification
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Get referrals for a driver
+  app.get("/api/referrals", async (req: Request, res: Response) => {
+    try {
+      const { driver_id } = req.query;
+      
+      if (!driver_id) {
+        return res.status(400).json({ error: "Driver ID is required" });
+      }
+      
+      const driverId = parseInt(driver_id as string);
+      if (isNaN(driverId)) {
+        return res.status(400).json({ error: "Invalid driver ID" });
+      }
+      
+      // Get referrals for the driver
+      const referrals = await storage.getReferralsByReferrer(driverId);
+      
+      // If no referrals are found, create sample ones for demo purposes
+      if (referrals.length === 0) {
+        // Create sample referrals
+        const sampleReferrals = [
+          {
+            referrerId: driverId,
+            referredPhoneNumber: "+919876543210",
+            referredName: "Rahul Kumar",
+            status: "registered",
+            reward: "₹500"
+          },
+          {
+            referrerId: driverId,
+            referredPhoneNumber: "+919876543211",
+            referredName: "Suresh Singh",
+            status: "completed",
+            reward: "₹1000",
+            completedAt: new Date()
+          },
+          {
+            referrerId: driverId,
+            referredPhoneNumber: "+919876543212",
+            referredName: "Amit Patel",
+            status: "pending",
+            reward: null
+          }
+        ];
+        
+        // Add sample referrals to storage
+        await Promise.all(sampleReferrals.map(ref => storage.createReferral(ref)));
+        
+        // Get the updated list of referrals
+        const createdReferrals = await storage.getReferralsByReferrer(driverId);
+        
+        return res.status(200).json({
+          message: "Referrals fetched successfully",
+          data: createdReferrals
+        });
+      }
+      
+      return res.status(200).json({
+        message: "Referrals fetched successfully",
+        data: referrals
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Create a new referral
+  app.post("/api/referrals", async (req: Request, res: Response) => {
+    try {
+      const { referrer_id, referred_phone, referred_name } = req.body;
+      
+      if (!referrer_id || !referred_phone) {
+        return res.status(400).json({ error: "Referrer ID and referred phone number are required" });
+      }
+      
+      // Create a new referral
+      const referral = await storage.createReferral({
+        referrerId: parseInt(referrer_id),
+        referredPhoneNumber: referred_phone,
+        referredName: referred_name || null,
+        status: "pending",
+        reward: null,
+        completedAt: null
+      });
+      
+      return res.status(201).json({
+        message: "Referral created successfully",
+        data: referral
+      });
     } catch (err) {
       return handleError(err as Error, res);
     }

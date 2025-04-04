@@ -3,7 +3,13 @@ import {
   drivers, type Driver, type InsertDriver,
   fleetOwners, type FleetOwner, type InsertFleetOwner,
   jobs, type Job, type InsertJob,
-  otpVerifications, type OtpVerification, type InsertOtpVerification
+  otpVerifications, type OtpVerification, type InsertOtpVerification,
+  fuelPumps, type FuelPump, type InsertFuelPump,
+  vehicles, type Vehicle, type InsertVehicle,
+  driverAssessments, type DriverAssessment, type InsertDriverAssessment,
+  notifications, type Notification, type InsertNotification,
+  referrals, type Referral, type InsertReferral,
+  tolls, type Toll, type InsertToll
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
@@ -234,5 +240,130 @@ export class DbStorage implements IStorage {
       console.error("Error in verifyOtp:", err);
       return false;
     }
+  }
+
+  // Fuel pump operations
+  async getNearbyFuelPumps(coordinates: [number, number][]): Promise<FuelPump[]> {
+    // A simplified implementation without geospatial filtering
+    return await db.select().from(fuelPumps);
+  }
+
+  async createFuelPump(fuelPump: InsertFuelPump): Promise<FuelPump> {
+    const result = await db.insert(fuelPumps).values(fuelPump).returning();
+    return result[0];
+  }
+
+  // Vehicle operations
+  async getVehicleByRegistration(registrationNumber: string): Promise<Vehicle | undefined> {
+    const result = await db.select().from(vehicles)
+      .where(eq(vehicles.registrationNumber, registrationNumber));
+    return result[0];
+  }
+
+  async getVehiclesByTransporter(transporterId: number): Promise<Vehicle[]> {
+    return await db.select().from(vehicles)
+      .where(eq(vehicles.transporterId, transporterId));
+  }
+
+  async createVehicle(vehicle: InsertVehicle): Promise<Vehicle> {
+    const result = await db.insert(vehicles).values(vehicle).returning();
+    return result[0];
+  }
+
+  async updateVehicle(id: number, vehicleData: Partial<Vehicle>): Promise<Vehicle | undefined> {
+    const result = await db.update(vehicles)
+      .set(vehicleData)
+      .where(eq(vehicles.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  // Driver assessment operations
+  async getDriverAssessment(id: number): Promise<DriverAssessment | undefined> {
+    const result = await db.select().from(driverAssessments)
+      .where(eq(driverAssessments.id, id));
+    return result[0];
+  }
+
+  async getDriverAssessmentsByDriver(driverId: number, status?: string): Promise<DriverAssessment[]> {
+    if (status) {
+      return await db.select().from(driverAssessments)
+        .where(and(
+          eq(driverAssessments.driverId, driverId),
+          eq(driverAssessments.status, status)
+        ));
+    }
+    
+    return await db.select().from(driverAssessments)
+      .where(eq(driverAssessments.driverId, driverId));
+  }
+
+  async createDriverAssessment(assessment: InsertDriverAssessment): Promise<DriverAssessment> {
+    const result = await db.insert(driverAssessments).values(assessment).returning();
+    return result[0];
+  }
+
+  async updateDriverAssessment(id: number, assessmentData: Partial<DriverAssessment>): Promise<DriverAssessment | undefined> {
+    const result = await db.update(driverAssessments)
+      .set(assessmentData)
+      .where(eq(driverAssessments.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  // Notification operations
+  async getNotifications(userId: number, userType: string): Promise<Notification[]> {
+    return await db.select().from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.userType, userType)
+      ));
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const result = await db.insert(notifications).values(notification).returning();
+    return result[0];
+  }
+
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    const result = await db.update(notifications)
+      .set({ read: true })
+      .where(eq(notifications.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  // Referral operations
+  async getReferralsByReferrer(referrerId: number): Promise<Referral[]> {
+    return await db.select().from(referrals)
+      .where(eq(referrals.referrerId, referrerId));
+  }
+
+  async createReferral(referral: InsertReferral): Promise<Referral> {
+    const result = await db.insert(referrals).values(referral).returning();
+    return result[0];
+  }
+
+  async updateReferral(id: number, referralData: Partial<Referral>): Promise<Referral | undefined> {
+    const result = await db.update(referrals)
+      .set(referralData)
+      .where(eq(referrals.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  // Toll operations
+  async getTollsAlongRoute(coordinates: [number, number][]): Promise<Toll[]> {
+    // A simplified implementation without geospatial filtering
+    return await db.select().from(tolls);
+  }
+
+  async createToll(toll: InsertToll): Promise<Toll> {
+    const result = await db.insert(tolls).values(toll).returning();
+    return result[0];
   }
 }

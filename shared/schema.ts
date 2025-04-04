@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -66,6 +66,84 @@ export const otpVerifications = pgTable("otp_verifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Fuel pumps/stations for the nearby_fuel_pumps API
+export const fuelPumps = pgTable("fuel_pumps", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  latitude: doublePrecision("latitude").notNull(),
+  longitude: doublePrecision("longitude").notNull(),
+  amenities: text("amenities").array(),
+  fuelTypes: text("fuel_types").array(),
+  isOpen24Hours: boolean("is_open_24_hours").default(false),
+  rating: doublePrecision("rating"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Vehicles for the get_vehicle_details API
+export const vehicles = pgTable("vehicles", {
+  id: serial("id").primaryKey(),
+  registrationNumber: text("registration_number").notNull().unique(),
+  transporterId: integer("transporter_id").notNull(),
+  vehicleType: text("vehicle_type").notNull(),
+  make: text("make").notNull(),
+  model: text("model").notNull(),
+  year: integer("year"),
+  capacityTons: doublePrecision("capacity_tons"),
+  insuranceStatus: text("insurance_status"),
+  lastServiceDate: timestamp("last_service_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Driver assessment records
+export const driverAssessments = pgTable("driver_assessments", {
+  id: serial("id").primaryKey(),
+  driverId: integer("driver_id").notNull(),
+  assessmentType: text("assessment_type").notNull(),
+  status: text("status").notNull(), // "pending", "completed", "failed"
+  score: integer("score"),
+  feedbackNotes: text("feedback_notes"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Notifications for both drivers and fleet owners
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  userType: text("user_type").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  type: text("type").notNull(), // "job", "payment", "system", etc.
+  read: boolean("read").default(false),
+  actionUrl: text("action_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Referrals for the driver referral program
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referrerId: integer("referrer_id").notNull(),
+  referredPhoneNumber: text("referred_phone_number").notNull(),
+  referredName: text("referred_name"),
+  status: text("status").notNull(), // "pending", "registered", "completed"
+  reward: text("reward"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Tolls for route planning
+export const tolls = pgTable("tolls", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  latitude: doublePrecision("latitude").notNull(),
+  longitude: doublePrecision("longitude").notNull(),
+  feeAmount: doublePrecision("fee_amount"),
+  highway: text("highway"),
+  paymentMethods: text("payment_methods").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Zod schemas for validation
 export const userInsertSchema = createInsertSchema(users).pick({
   fullName: true,
@@ -107,6 +185,65 @@ export const otpVerificationSchema = createInsertSchema(otpVerifications).pick({
   expiresAt: true,
 });
 
+export const fuelPumpInsertSchema = createInsertSchema(fuelPumps).pick({
+  name: true,
+  address: true,
+  latitude: true,
+  longitude: true,
+  amenities: true,
+  fuelTypes: true,
+  isOpen24Hours: true,
+  rating: true,
+});
+
+export const vehicleInsertSchema = createInsertSchema(vehicles).pick({
+  registrationNumber: true,
+  transporterId: true,
+  vehicleType: true,
+  make: true,
+  model: true,
+  year: true,
+  capacityTons: true,
+  insuranceStatus: true,
+  lastServiceDate: true,
+});
+
+export const driverAssessmentInsertSchema = createInsertSchema(driverAssessments).pick({
+  driverId: true,
+  assessmentType: true,
+  status: true,
+  score: true,
+  feedbackNotes: true,
+  completedAt: true,
+});
+
+export const notificationInsertSchema = createInsertSchema(notifications).pick({
+  userId: true,
+  userType: true,
+  title: true,
+  content: true,
+  type: true,
+  actionUrl: true,
+});
+
+export const referralInsertSchema = createInsertSchema(referrals).pick({
+  referrerId: true,
+  referredPhoneNumber: true,
+  referredName: true,
+  status: true,
+  reward: true,
+  completedAt: true,
+});
+
+export const tollInsertSchema = createInsertSchema(tolls).pick({
+  name: true,
+  latitude: true,
+  longitude: true,
+  feeAmount: true,
+  highway: true,
+  paymentMethods: true,
+});
+
 export const verifyOtpSchema = z.object({
   phoneNumber: z.string(),
   otp: z.string().length(6),
@@ -119,15 +256,43 @@ export const userRegistrationSchema = userInsertSchema.extend({
   email: z.string().email().optional(),
 });
 
+// Schemas for API endpoints
+export const nearbyFuelPumpsSchema = z.object({
+  coordinates: z.array(z.tuple([z.number(), z.number()])),
+});
+
+export const routesWithTollsSchema = z.object({
+  coordinates: z.array(z.tuple([z.number(), z.number()])),
+});
+
+export const submitAssessmentSchema = z.object({
+  driverId: z.number(),
+  assessmentType: z.string(),
+  score: z.number().optional(),
+  feedbackNotes: z.string().optional(),
+});
+
 // Types for TypeScript
 export type InsertUser = z.infer<typeof userInsertSchema>;
 export type InsertDriver = z.infer<typeof driverInsertSchema>;
 export type InsertFleetOwner = z.infer<typeof fleetOwnerInsertSchema>;
 export type InsertJob = z.infer<typeof jobInsertSchema>;
 export type InsertOtpVerification = z.infer<typeof otpVerificationSchema>;
+export type InsertFuelPump = z.infer<typeof fuelPumpInsertSchema>;
+export type InsertVehicle = z.infer<typeof vehicleInsertSchema>;
+export type InsertDriverAssessment = z.infer<typeof driverAssessmentInsertSchema>;
+export type InsertNotification = z.infer<typeof notificationInsertSchema>;
+export type InsertReferral = z.infer<typeof referralInsertSchema>;
+export type InsertToll = z.infer<typeof tollInsertSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Driver = typeof drivers.$inferSelect;
 export type FleetOwner = typeof fleetOwners.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type OtpVerification = typeof otpVerifications.$inferSelect;
+export type FuelPump = typeof fuelPumps.$inferSelect;
+export type Vehicle = typeof vehicles.$inferSelect;
+export type DriverAssessment = typeof driverAssessments.$inferSelect; 
+export type Notification = typeof notifications.$inferSelect;
+export type Referral = typeof referrals.$inferSelect;
+export type Toll = typeof tolls.$inferSelect;
