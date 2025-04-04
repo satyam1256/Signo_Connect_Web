@@ -15,7 +15,6 @@ import FleetOwnerDashboard from "@/pages/fleet-owner/dashboard";
 import FleetOwnerJobs from "@/pages/fleet-owner/jobs";
 import FleetOwnerProfile from "@/pages/fleet-owner/profile";
 import FleetOwnerDrivers from "@/pages/fleet-owner/drivers";
-import AdminFrappeDrivers from "./pages/admin/frappe-drivers";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { WebSocketProvider } from "@/contexts/websocket-context";
 import { WebSocketTest } from "@/components/websocket-test";
@@ -73,9 +72,6 @@ function Router() {
       <Route path="/fleet-owner/jobs" component={FleetOwnerJobs} />
       <Route path="/fleet-owner/profile" component={FleetOwnerProfile} />
       <Route path="/fleet-owner/drivers" component={FleetOwnerDrivers} />
-
-      {/* Admin Routes */}
-      <Route path="/admin/frappe-drivers" component={AdminFrappeDrivers} />
 
       {/* WebSocket Test Routes */}
       <Route path="/test/websocket" component={WebSocketTest} />
