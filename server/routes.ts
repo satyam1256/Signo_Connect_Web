@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { IStorage, storage as memStorage } from "./storage";
 import { DbStorage } from "./db-storage";
 import { 
@@ -939,6 +940,50 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
   console.log("RegisterRoutes: Creating HTTP server...");
   const httpServer = createServer(app);
   console.log("RegisterRoutes: HTTP server created successfully");
+  
+  // Setup WebSocket server on a distinct path to avoid conflicts with Vite HMR
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  console.log("RegisterRoutes: WebSocket server created successfully");
+  
+  // Handle WebSocket connections
+  wss.on('connection', (ws) => {
+    console.log('WebSocket client connected');
+    
+    // Send welcome message to client
+    ws.send(JSON.stringify({ type: 'welcome', message: 'Connected to SIGNO Connect WebSocket server' }));
+    
+    // Handle incoming messages
+    ws.on('message', (message) => {
+      try {
+        console.log('WebSocket message received:', message.toString());
+        const data = JSON.parse(message.toString());
+        
+        // Handle different message types
+        if (data.type === 'ping') {
+          ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
+        }
+        
+        // Broadcast the message to all connected clients
+        wss.clients.forEach((client) => {
+          if (client !== ws && client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ 
+              type: 'broadcast', 
+              data: data,
+              timestamp: new Date().toISOString()
+            }));
+          }
+        });
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
+      }
+    });
+    
+    // Handle disconnection
+    ws.on('close', () => {
+      console.log('WebSocket client disconnected');
+    });
+  });
   
   console.log("RegisterRoutes: Route registration complete, returning server");
   return httpServer;

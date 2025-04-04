@@ -85,7 +85,7 @@ app.use((req, res, next) => {
     // Register routes with the selected storage
     console.log("Registering routes...");
     const server = await registerRoutes(app, selectedStorage);
-    console.log("Routes registered successfully");
+    console.log("Routes registered successfully. Server object created: ", server ? "Yes" : "No");
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;

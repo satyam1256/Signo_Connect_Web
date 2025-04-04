@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { db } from './db';
+import { db, initializeDatabase } from './db';
 import { log } from './vite';
 import fs from 'fs';
 import path from 'path';
@@ -9,12 +9,26 @@ export async function runMigrations() {
   try {
     log('Running database migrations...', 'db-migration');
     
+    // Ensure database is initialized before running migrations
+    console.log("Migration: Ensuring database is initialized...");
+    await initializeDatabase();
+    console.log("Migration: Database initialized successfully");
+    
     // Read migration SQL file
     const migrationPath = path.join(process.cwd(), 'drizzle', '0000_initial_migration.sql');
+    
+    if (!fs.existsSync(migrationPath)) {
+      console.log(`Migration file not found at ${migrationPath}. Skipping migrations.`);
+      log('No migration file found, skipping migrations.', 'db-migration');
+      return true;
+    }
+    
     let migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+    console.log("Migration: SQL file read successfully");
     
     // Execute each statement separately
     const statements = migrationSQL.split(';').filter(stmt => stmt.trim().length > 0);
+    console.log(`Migration: Executing ${statements.length} SQL statements`);
     
     for (const statement of statements) {
       try {

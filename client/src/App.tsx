@@ -16,6 +16,8 @@ import FleetOwnerJobs from "@/pages/fleet-owner/jobs";
 import FleetOwnerProfile from "@/pages/fleet-owner/profile";
 import FleetOwnerDrivers from "@/pages/fleet-owner/drivers";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import { WebSocketProvider } from "@/contexts/websocket-context";
+import { WebSocketTest } from "@/components/websocket-test";
 
 // Protected route that redirects logged-in users from auth pages to their dashboard
 function AuthRoute({ component: Component, ...rest }: any) {
@@ -71,6 +73,9 @@ function Router() {
       <Route path="/fleet-owner/profile" component={FleetOwnerProfile} />
       <Route path="/fleet-owner/drivers" component={FleetOwnerDrivers} />
 
+      {/* WebSocket Test Routes */}
+      <Route path="/test/websocket" component={WebSocketTest} />
+
       {/* Fallback */}
       <Route component={NotFound} />
     </Switch>
@@ -81,8 +86,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
-        <Toaster />
+        <WebSocketProvider>
+          <Router />
+          <Toaster />
+        </WebSocketProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

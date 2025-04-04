@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, initializeDatabase } from "./db";
 import {
   users,
   drivers,
@@ -15,6 +15,11 @@ import {
 
 export async function createTablesIfNotExist() {
   console.log("Creating tables if they don't exist...");
+  
+  // Ensure database is initialized
+  console.log("CreateTables: Ensuring database is initialized...");
+  await initializeDatabase();
+  console.log("CreateTables: Database initialized successfully");
   
   try {
     // Create users table if it doesn't exist

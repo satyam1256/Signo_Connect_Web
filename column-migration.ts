@@ -1,7 +1,12 @@
-import { db } from "./server/db";
+import { db, initializeDatabase } from "./server/db";
 
 export async function addMissingColumns() {
   console.log("Checking and adding any missing columns...");
+  
+  // Ensure database is initialized before running column migrations
+  console.log("ColumnMigration: Ensuring database is initialized...");
+  await initializeDatabase();
+  console.log("ColumnMigration: Database initialized successfully");
 
   try {
     // Check if users table needs updating with language field
