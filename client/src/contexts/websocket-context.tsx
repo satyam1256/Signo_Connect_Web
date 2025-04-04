@@ -34,6 +34,7 @@ interface WebSocketProviderProps {
   autoConnect?: boolean;
   reconnectInterval?: number;
   maxReconnectAttempts?: number;
+  initialConnectionDelay?: number; // Add this parameter for initial connection delay
 }
 
 /**
@@ -44,7 +45,8 @@ export function WebSocketProvider({
   children, 
   autoConnect = true,
   reconnectInterval = 5000, // 5 seconds as requested
-  maxReconnectAttempts = 10
+  maxReconnectAttempts = 10,
+  initialConnectionDelay = 2000 // Default to 2 seconds
 }: WebSocketProviderProps) {
   // Store messages in state
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
@@ -87,7 +89,7 @@ export function WebSocketProvider({
     autoReconnect: autoConnect,
     reconnectInterval: reconnectInterval,
     maxReconnectAttempts: maxReconnectAttempts,
-    initialConnectionDelay: 2000 // Delay initial connection to allow UI to stabilize
+    initialConnectionDelay: initialConnectionDelay // Use the prop value
   });
 
   // Handle status changes for error reporting

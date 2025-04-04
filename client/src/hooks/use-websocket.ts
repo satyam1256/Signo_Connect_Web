@@ -107,10 +107,19 @@ export function useWebSocket({
     };
   }, [handleStatusChange]);
   
-  // Create or get WebSocket connection
+  // Create or get WebSocket connection with improved error handling
   const connect = useCallback(() => {
+    // Safety check: Skip if DOM is not fully available
+    if (typeof window === 'undefined' || typeof WebSocket === 'undefined') {
+      console.warn('WebSocket API not available yet');
+      return;
+    }
+    
     // Skip if unmounting
-    if (isUnmountingRef.current) return;
+    if (isUnmountingRef.current) {
+      console.log('WebSocket connection skipped: Component is unmounting');
+      return;
+    }
     
     // If already connecting, wait
     if (WebSocketSingleton.isConnecting) {
@@ -118,20 +127,25 @@ export function useWebSocket({
       return;
     }
     
-    // If we already have a working connection, use it
-    if (
-      WebSocketSingleton.instance && 
-      (WebSocketSingleton.instance.readyState === WebSocket.OPEN || 
-       WebSocketSingleton.instance.readyState === WebSocket.CONNECTING)
-    ) {
-      console.log('Using existing WebSocket connection');
-      
-      // If open, immediately update state
-      if (WebSocketSingleton.instance.readyState === WebSocket.OPEN) {
-        handleStatusChange('open');
+    // Check if we already have a working connection
+    try {
+      if (
+        WebSocketSingleton.instance && 
+        (WebSocketSingleton.instance.readyState === WebSocket.OPEN || 
+         WebSocketSingleton.instance.readyState === WebSocket.CONNECTING)
+      ) {
+        console.log('Using existing WebSocket connection');
+        
+        // If open, immediately update state
+        if (WebSocketSingleton.instance.readyState === WebSocket.OPEN) {
+          handleStatusChange('open');
+        }
+        
+        return;
       }
-      
-      return;
+    } catch (error) {
+      console.error('Error checking WebSocket state:', error);
+      // Continue to create a new connection
     }
     
     // Mark as connecting to prevent multiple connection attempts
@@ -258,20 +272,29 @@ export function useWebSocket({
     }
   }, [autoReconnect, handleStatusChange, maxReconnectAttempts, reconnectInterval]);
   
-  // Initialize connection with a delay to prevent issues during app startup
+  // Initialize connection with a longer delay to prevent issues during app startup
   useEffect(() => {
     // Only connect once
     if (hasInitializedRef.current) {
       return;
     }
     
+    // Use a longer delay for the initial connection to ensure DOM is fully loaded
+    // and React has completed all its initial rendering
+    const actualDelay = Math.max(initialConnectionDelay, 2000); // Ensure at least 2 seconds
+    console.log(`WebSocket will initialize in ${actualDelay}ms`);
+    
     const timer = setTimeout(() => {
       if (!isUnmountingRef.current && !hasInitializedRef.current) {
+        console.log('Now attempting initial WebSocket connection');
         connect();
       }
-    }, initialConnectionDelay);
+    }, actualDelay);
     
-    return () => clearTimeout(timer);
+    return () => {
+      console.log('Clearing WebSocket initialization timer');
+      clearTimeout(timer);
+    };
   }, [connect, initialConnectionDelay]);
   
   // Set up cleanup on unmount

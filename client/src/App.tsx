@@ -151,12 +151,14 @@ function App() {
   // Second stage initialization - allow components to mount
   useEffect(() => {
     if (isInitialized) {
-      // Add a slight delay to ensure all child components have a chance to initialize
+      // Add a longer delay to ensure all child components have a chance to initialize
+      // and the DOM is fully ready before attempting WebSocket connections
       const timer = setTimeout(() => {
         setIsFullyReady(true);
         // Add a class to the document to signal app is ready for styling
         document.documentElement.classList.add('app-ready');
-      }, 100);
+        console.log("App is fully ready, WebSocket can now be initialized");
+      }, 500); // Increased from 100ms to 500ms
       
       return () => clearTimeout(timer);
     }
@@ -170,16 +172,24 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <WebSocketProvider 
-          autoConnect={true}
-          reconnectInterval={5000} 
-          maxReconnectAttempts={10}
-        >
-          <div className={`app-container ${isFullyReady ? 'app-visible' : 'app-initializing'}`}>
+        {isFullyReady ? (
+          <WebSocketProvider 
+            autoConnect={true}
+            reconnectInterval={5000} 
+            maxReconnectAttempts={10}
+            initialConnectionDelay={2500} // Even longer initial delay
+          >
+            <div className="app-container app-visible">
+              <Router />
+              <Toaster />
+            </div>
+          </WebSocketProvider>
+        ) : (
+          <div className="app-container app-initializing">
             <Router />
             <Toaster />
           </div>
-        </WebSocketProvider>
+        )}
       </AuthProvider>
     </QueryClientProvider>
   );
