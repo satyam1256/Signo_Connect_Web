@@ -2,6 +2,27 @@ import { pgTable, text, serial, integer, boolean, jsonb, timestamp, doublePrecis
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Define status constants
+export const TripStatus = {
+  UPCOMING: "Upcoming",
+  IN_PROGRESS: "In Progress",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+} as const;
+
+export const AssessmentStatus = {
+  PENDING: "pending",
+  COMPLETED: "completed",
+  FAILED: "failed",
+} as const;
+
+export const LocationType = {
+  FUEL_PUMP: "fuel_pump",
+  HOSPITAL: "hospital",
+  REST_AREA: "rest_area",
+  SERVICE_CENTER: "service_center",
+} as const;
+
 // User types
 export const UserType = {
   DRIVER: "driver",
@@ -144,6 +165,59 @@ export const tolls = pgTable("tolls", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Trips table for tracking trips
+export const trips = pgTable("trips", {
+  id: serial("id").primaryKey(),
+  tripId: text("trip_id").notNull().unique(), // Format: TR-00001
+  driverId: text("driver_id").notNull(), // Format: SIG00001
+  vehicleId: text("vehicle_id").notNull(), // Registration number like SAH2831
+  transporterId: text("transporter_id").notNull(), // Format: SIG00001
+  origin: text("origin").notNull(),
+  destination: text("destination").notNull(),
+  status: text("status").notNull().default(TripStatus.UPCOMING),
+  tripCost: doublePrecision("trip_cost").notNull(),
+  paidAmount: doublePrecision("paid_amount").default(0),
+  pendingAmount: doublePrecision("pending_amount"),
+  odoStart: integer("odo_start"),
+  odoEnd: integer("odo_end"),
+  odoStartPic: text("odo_start_pic"),
+  odoEndPic: text("odo_end_pic"),
+  startedBy: text("started_by"),
+  startedOn: timestamp("started_on"),
+  endedOn: timestamp("ended_on"),
+  etaStr: text("eta_str"),
+  createdOn: timestamp("created_on").defaultNow(),
+});
+
+// Chalans/Tickets for vehicles
+export const chalans = pgTable("chalans", {
+  id: serial("id").primaryKey(),
+  vehicleId: text("vehicle_id").notNull(), // Registration number like SAH2831
+  chalanNumber: text("chalan_number").notNull(),
+  issuedDate: timestamp("issued_date").notNull(),
+  offense: text("offense").notNull(),
+  amount: doublePrecision("amount").notNull(),
+  status: text("status").notNull(), // "paid", "unpaid", "contested"
+  paymentDate: timestamp("payment_date"),
+  location: text("location"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Service locations (hospitals, rest areas, service centers)
+export const serviceLocations = pgTable("service_locations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // "hospital", "rest_area", "service_center"
+  address: text("address").notNull(),
+  latitude: doublePrecision("latitude").notNull(),
+  longitude: doublePrecision("longitude").notNull(),
+  phone: text("phone"),
+  rating: doublePrecision("rating"),
+  openHours: text("open_hours"),
+  amenities: text("amenities").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Zod schemas for validation
 export const userInsertSchema = createInsertSchema(users).pick({
   fullName: true,
@@ -244,6 +318,50 @@ export const tollInsertSchema = createInsertSchema(tolls).pick({
   paymentMethods: true,
 });
 
+export const tripInsertSchema = createInsertSchema(trips).pick({
+  tripId: true,
+  driverId: true,
+  vehicleId: true,
+  transporterId: true,
+  origin: true,
+  destination: true,
+  status: true,
+  tripCost: true,
+  paidAmount: true,
+  pendingAmount: true,
+  odoStart: true,
+  odoEnd: true,
+  odoStartPic: true,
+  odoEndPic: true,
+  startedBy: true,
+  startedOn: true,
+  endedOn: true,
+  etaStr: true,
+});
+
+export const chalanInsertSchema = createInsertSchema(chalans).pick({
+  vehicleId: true,
+  chalanNumber: true,
+  issuedDate: true,
+  offense: true,
+  amount: true,
+  status: true,
+  paymentDate: true,
+  location: true,
+});
+
+export const serviceLocationInsertSchema = createInsertSchema(serviceLocations).pick({
+  name: true,
+  type: true,
+  address: true,
+  latitude: true,
+  longitude: true,
+  phone: true,
+  rating: true,
+  openHours: true,
+  amenities: true,
+});
+
 export const verifyOtpSchema = z.object({
   phoneNumber: z.string(),
   otp: z.string().length(6),
@@ -284,6 +402,9 @@ export type InsertDriverAssessment = z.infer<typeof driverAssessmentInsertSchema
 export type InsertNotification = z.infer<typeof notificationInsertSchema>;
 export type InsertReferral = z.infer<typeof referralInsertSchema>;
 export type InsertToll = z.infer<typeof tollInsertSchema>;
+export type InsertTrip = z.infer<typeof tripInsertSchema>;
+export type InsertChalan = z.infer<typeof chalanInsertSchema>;
+export type InsertServiceLocation = z.infer<typeof serviceLocationInsertSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Driver = typeof drivers.$inferSelect;
@@ -296,3 +417,6 @@ export type DriverAssessment = typeof driverAssessments.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;
 export type Toll = typeof tolls.$inferSelect;
+export type Trip = typeof trips.$inferSelect;
+export type Chalan = typeof chalans.$inferSelect;
+export type ServiceLocation = typeof serviceLocations.$inferSelect;
