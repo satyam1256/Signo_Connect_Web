@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { IStorage, storage as memStorage } from "./storage";
 import { DbStorage } from "./db-storage";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { 
   userRegistrationSchema, 
   verifyOtpSchema, 
@@ -17,9 +19,12 @@ import {
   referralInsertSchema,
   notificationInsertSchema,
   UserType,
-  User
+  User,
+  fleetOwners
 } from "@shared/schema";
 import { registerDocumentRoutes } from "./document-routes";
+import { registerVehicleChecklistRoutes } from "./vehicle-checklist-routes";
+import { registerJobApplicationRoutes } from "./job-application-routes";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -404,9 +409,12 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
     try {
       const jobData = jobInsertSchema.parse(req.body);
 
-      // Check if fleet owner exists
-      const fleetOwner = await storage.getFleetOwner(jobData.fleetOwnerId);
-      if (!fleetOwner) {
+      // Check if the fleet owner exists directly in the fleetOwners table
+      const [fleetOwnerExists] = await db.select({ id: fleetOwners.id })
+        .from(fleetOwners)
+        .where(eq(fleetOwners.id, jobData.fleetOwnerId));
+
+      if (!fleetOwnerExists) {
         return res.status(404).json({ error: "Fleet owner not found" });
       }
 
@@ -965,6 +973,8 @@ export async function registerRoutes(app: Express, customStorage?: IStorage): Pr
 
   // Register document management routes
   await registerDocumentRoutes(app);
+  await registerVehicleChecklistRoutes(app);
+  await registerJobApplicationRoutes(app);
 
   console.log("RegisterRoutes: Creating HTTP server...");
   const httpServer = createServer(app);

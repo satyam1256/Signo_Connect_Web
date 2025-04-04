@@ -374,17 +374,16 @@ export const jobQuestions = pgTable("job_questions", {
 // Job applications table
 export const jobApplications = pgTable("job_applications", {
   id: serial("id").primaryKey(),
-  namingSeries: text("naming_series").default("SIGJA-.####."),
   jobId: integer("job_id").notNull(),
-  feedId: integer("feed_id"),
   driverId: integer("driver_id").notNull(),
-  driverName: text("driver_name"),
-  driverMobile: text("driver_mobile"),
-  driverStatus: text("driver_status"),
-  transporterStatus: text("transporter_status"),
-  appliedOn: timestamp("applied_on").defaultNow(),
-  callNowCount: integer("call_now_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
+  status: text("status").default("pending"),
+  appliedAt: timestamp("applied_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  
+  // These fields may not exist in the DB yet, will add in migration
+  expectedSalary: integer("expected_salary"),
+  preferredJoiningDate: timestamp("preferred_joining_date"),
+  additionalNotes: text("additional_notes"),
 });
 
 // Job hired drivers table
@@ -703,15 +702,14 @@ export const jobQuestionsInsertSchema = createInsertSchema(jobQuestions).pick({
   isRequired: true,
 });
 
-export const jobApplicationsInsertSchema = createInsertSchema(jobApplications).pick({
-  jobId: true,
-  feedId: true,
-  driverId: true,
-  driverName: true,
-  driverMobile: true,
-  driverStatus: true,
-  transporterStatus: true,
-  callNowCount: true,
+// Using z.object instead of createInsertSchema due to schema mismatches with the database
+export const jobApplicationsInsertSchema = z.object({
+  jobId: z.number(),
+  driverId: z.number(),
+  status: z.string().optional(),
+  expectedSalary: z.number().optional(),
+  preferredJoiningDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  additionalNotes: z.string().optional(),
 });
 
 export const jobHiredDriversInsertSchema = createInsertSchema(jobHiredDrivers).pick({
