@@ -112,12 +112,23 @@ const DriverRegistration = () => {
   // API Mutations
   const registerMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "https://4fb5-2401-4900-45c0-c660-71cb-e6ea-e573-e373.ngrok-free.app/api/method/signo_connect.api.proxy/Drivers", {
-        fullName: data.fullName,
-        phoneNumber: data.countryCode + data.phoneNumber,
-        userType: "driver"
-      });
-      return response.json();
+      try {
+        const response = await apiRequest("POST", "/api/register", {
+          fullName: data.fullName,
+          phoneNumber: data.countryCode + data.phoneNumber,
+          userType: "driver"
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.text();
+          throw new Error(errorData || "Registration failed");
+        }
+        
+        return response.json();
+      } catch (error) {
+        console.error("Registration request failed:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       if (data.userId) {
@@ -135,19 +146,25 @@ const DriverRegistration = () => {
 
   const verifyOtpMutation = useMutation({
     mutationFn: async (data: any) => {
-      // Always use 123456 for testing
-      const testOtp = "123456";
-      
-      const response = await apiRequest("POST", "/api/verify-otp", {
-        phoneNumber,
-        otp: testOtp, // Force the test OTP instead of using the input value
-      });
-      
-      if (!response.ok) {
-        throw new Error("OTP verification failed");
+      try {
+        // Always use 123456 for testing
+        const testOtp = "123456";
+        
+        const response = await apiRequest("POST", "/api/verify-otp", {
+          phoneNumber,
+          otp: testOtp, // Force the test OTP instead of using the input value
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.text();
+          throw new Error(errorData || "OTP verification failed");
+        }
+        
+        return response.json();
+      } catch (error) {
+        console.error("OTP verification request failed:", error);
+        throw error;
       }
-      
-      return response.json();
     },
     onSuccess: (data) => {
       if (data.verified) {
@@ -161,13 +178,24 @@ const DriverRegistration = () => {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/driver-profile", {
-        userId,
-        preferredLocations: basicInfoForm.getValues().preferredLocations,
-        drivingLicense: data.drivingLicense ? data.drivingLicense.name : null,
-        identityProof: data.identityProof ? data.identityProof.name : null,
-      });
-      return response.json();
+      try {
+        const response = await apiRequest("POST", "/api/driver-profile", {
+          userId,
+          preferredLocations: basicInfoForm.getValues().preferredLocations,
+          drivingLicense: data.drivingLicense ? data.drivingLicense.name : null,
+          identityProof: data.identityProof ? data.identityProof.name : null,
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.text();
+          throw new Error(errorData || "Profile update failed");
+        }
+        
+        return response.json();
+      } catch (error) {
+        console.error("Profile update request failed:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       setRegistrationComplete(true);
