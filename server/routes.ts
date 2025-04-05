@@ -10,7 +10,9 @@ import {
   UserType,
   type User,
   type Driver,
-  type InsertDriver
+  type FleetOwner,
+  type InsertDriver,
+  type InsertFleetOwner
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -560,6 +562,302 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(200).json({ 
         message: "Driver deleted successfully",
         note: "In a real implementation, the driver would be removed from the database"
+      });
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+
+  // Get all fleet owners
+  app.get("/api/resource/FleetOwners", async (req: Request, res: Response) => {
+    try {
+      // Collect fleet owners by trying user IDs (simplified for demo)
+      const fleetOwners = [];
+      // Assume we have a reasonable number of users to check (for demo purposes)
+      for (let i = 1; i <= 100; i++) {
+        const user = await storage.getUser(i);
+        if (user && user.userType === UserType.FLEET_OWNER) {
+          const fleetOwnerProfile = await storage.getFleetOwner(user.id);
+          fleetOwners.push({
+            id: user.id,
+            fullName: user.fullName,
+            phoneNumber: user.phoneNumber,
+            email: user.email,
+            profileCompleted: user.profileCompleted,
+            ...(fleetOwnerProfile || {}) // Include fleet owner-specific details if exists
+          });
+        }
+      }
+      
+      return res.status(200).json(fleetOwners);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
+  // Get a specific fleet owner by ID
+  app.get("/api/resource/FleetOwners/:id", async (req: Request, res: Response) => {
+    try {
+      const fleetOwnerId = parseInt(req.params.id);
+      
+      if (isNaN(fleetOwnerId)) {
+        return res.status(400).json({ error: "Invalid fleet owner ID" });
+      }
+      
+      const user = await storage.getUser(fleetOwnerId);
+      if (!user) {
+        return res.status(404).json({ error: "Fleet owner not found" });
+      }
+      
+      if (user.userType !== UserType.FLEET_OWNER) {
+        return res.status(400).json({ error: "User is not a fleet owner" });
+      }
+      
+      const fleetOwnerProfile = await storage.getFleetOwner(fleetOwnerId);
+      
+      const responseData = {
+        id: user.id,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        email: user.email,
+        profileCompleted: user.profileCompleted
+      };
+      
+      // Add fleet owner profile data without duplicating ID
+      if (fleetOwnerProfile) {
+        const { userId, ...fleetOwnerDetails } = fleetOwnerProfile;
+        Object.assign(responseData, fleetOwnerDetails);
+      }
+      
+      return res.status(200).json(responseData);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
+  // Create a new fleet owner (resource endpoint)
+  app.post("/api/resource/FleetOwners", async (req: Request, res: Response) => {
+    try {
+      // Extract the required fields from the request body
+      const { fullName, phoneNumber, email, companyName, fleetSize, preferredLocations, registrationDoc } = req.body;
+      
+      // Validate input
+      if (!fullName || !phoneNumber) {
+        return res.status(400).json({ error: "Full Name and Mobile Number are required" });
+      }
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByPhone(phoneNumber);
+      if (existingUser) {
+        // If user exists but we need to update the fleet owner profile
+        if (existingUser.userType === UserType.FLEET_OWNER) {
+          // Update existing fleet owner
+          const fleetOwnerProfile = await storage.getFleetOwner(existingUser.id);
+          
+          if (fleetOwnerProfile) {
+            // Update fleet owner info
+            const updatedFleetOwner = await storage.updateFleetOwner(existingUser.id, {
+              companyName: companyName || fleetOwnerProfile.companyName,
+              fleetSize: fleetSize || fleetOwnerProfile.fleetSize,
+              preferredLocations: preferredLocations || fleetOwnerProfile.preferredLocations,
+              registrationDoc: registrationDoc || fleetOwnerProfile.registrationDoc
+            });
+            
+            // Check if profile is complete
+            const isProfileComplete = Boolean(
+              existingUser.fullName && 
+              existingUser.phoneNumber
+            );
+            
+            // Update profile completion status
+            await storage.updateUser(existingUser.id, { 
+              profileCompleted: isProfileComplete,
+              email: email || existingUser.email
+            });
+            
+            // Create response without duplicating fields
+            const responseData = {
+              id: existingUser.id,
+              fullName: existingUser.fullName,
+              phoneNumber: existingUser.phoneNumber,
+              email: email || existingUser.email,
+              profileCompleted: isProfileComplete
+            };
+            
+            // Add fleet owner profile data without duplicating ID
+            if (updatedFleetOwner) {
+              const { userId, ...fleetOwnerDetails } = updatedFleetOwner;
+              Object.assign(responseData, fleetOwnerDetails);
+            }
+            
+            return res.status(200).json(responseData);
+          }
+          
+          return res.status(404).json({ error: "Fleet owner profile not found" });
+        }
+        
+        return res.status(409).json({ error: "User with this phone number already exists but is not a fleet owner" });
+      }
+      
+      // Create the user with fleet owner type
+      const user = await storage.createUser({
+        fullName,
+        phoneNumber,
+        email: email || undefined,
+        userType: UserType.FLEET_OWNER,
+        language: "en"
+      });
+      
+      // Create fleet owner profile
+      const fleetOwnerData: InsertFleetOwner = {
+        userId: user.id,
+        companyName: companyName || null,
+        fleetSize: fleetSize || null,
+        preferredLocations: preferredLocations || null,
+        registrationDoc: registrationDoc || null
+      };
+      
+      const fleetOwnerProfile = await storage.createFleetOwner(fleetOwnerData);
+      
+      // Check if profile is complete and update user
+      const isProfileComplete = Boolean(
+        user.fullName && 
+        user.phoneNumber
+      );
+      
+      if (isProfileComplete) {
+        await storage.updateUser(user.id, { profileCompleted: isProfileComplete });
+      }
+      
+      // Return the created fleet owner
+      const responseData = {
+        id: user.id,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        email: user.email,
+        profileCompleted: isProfileComplete
+      };
+      
+      // Add fleet owner profile data without duplicating ID
+      if (fleetOwnerProfile) {
+        const { userId, ...fleetOwnerDetails } = fleetOwnerProfile;
+        Object.assign(responseData, fleetOwnerDetails);
+      }
+      
+      return res.status(201).json(responseData);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
+  // Update fleet owner information
+  app.put("/api/resource/FleetOwners/:id", async (req: Request, res: Response) => {
+    try {
+      const fleetOwnerId = parseInt(req.params.id);
+      
+      if (isNaN(fleetOwnerId)) {
+        return res.status(400).json({ error: "Invalid fleet owner ID" });
+      }
+      
+      const user = await storage.getUser(fleetOwnerId);
+      if (!user) {
+        return res.status(404).json({ error: "Fleet owner not found" });
+      }
+      
+      if (user.userType !== UserType.FLEET_OWNER) {
+        return res.status(400).json({ error: "User is not a fleet owner" });
+      }
+      
+      // Update user information if provided
+      const { fullName, phoneNumber, email, ...fleetOwnerInfo } = req.body;
+      
+      let updatedUser = user;
+      if (fullName || phoneNumber || email) {
+        const userUpdates: Partial<User> = {};
+        if (fullName) userUpdates.fullName = fullName;
+        if (phoneNumber) userUpdates.phoneNumber = phoneNumber;
+        if (email) userUpdates.email = email;
+        
+        // Check if the new phone number is already in use
+        if (phoneNumber && phoneNumber !== user.phoneNumber) {
+          const existingUser = await storage.getUserByPhone(phoneNumber);
+          if (existingUser) {
+            return res.status(409).json({ error: "Phone number already in use" });
+          }
+        }
+        
+        updatedUser = await storage.updateUser(fleetOwnerId, userUpdates) as User;
+      }
+      
+      // Update fleet owner-specific information if any is provided
+      let fleetOwnerProfile = await storage.getFleetOwner(fleetOwnerId);
+      
+      if (Object.keys(fleetOwnerInfo).length > 0) {
+        if (fleetOwnerProfile) {
+          fleetOwnerProfile = await storage.updateFleetOwner(fleetOwnerId, fleetOwnerInfo) as FleetOwner;
+        } else {
+          fleetOwnerProfile = await storage.createFleetOwner({
+            userId: fleetOwnerId,
+            ...fleetOwnerInfo
+          });
+        }
+        
+        // Update profile completion status based on data completeness
+        const isProfileComplete = Boolean(
+          updatedUser.fullName && 
+          updatedUser.phoneNumber
+        );
+        
+        await storage.updateUser(fleetOwnerId, { profileCompleted: isProfileComplete });
+        updatedUser = { ...updatedUser, profileCompleted: isProfileComplete };
+      }
+      
+      // Create response without duplicating fields
+      const responseData = {
+        id: updatedUser.id,
+        fullName: updatedUser.fullName,
+        phoneNumber: updatedUser.phoneNumber,
+        email: updatedUser.email,
+        profileCompleted: updatedUser.profileCompleted
+      };
+      
+      // Add fleet owner profile data without duplicating ID
+      if (fleetOwnerProfile) {
+        const { userId, ...fleetOwnerDetails } = fleetOwnerProfile;
+        Object.assign(responseData, fleetOwnerDetails);
+      }
+      
+      return res.status(200).json(responseData);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
+  // Delete a fleet owner
+  app.delete("/api/resource/FleetOwners/:id", async (req: Request, res: Response) => {
+    try {
+      const fleetOwnerId = parseInt(req.params.id);
+      
+      if (isNaN(fleetOwnerId)) {
+        return res.status(400).json({ error: "Invalid fleet owner ID" });
+      }
+      
+      const user = await storage.getUser(fleetOwnerId);
+      if (!user) {
+        return res.status(404).json({ error: "Fleet owner not found" });
+      }
+      
+      if (user.userType !== UserType.FLEET_OWNER) {
+        return res.status(400).json({ error: "User is not a fleet owner" });
+      }
+      
+      // In a real application with proper database, we would delete the user
+      // Since we don't have a method to delete users in our MemStorage interface,
+      // we'll return a success response for demonstration purposes
+      
+      return res.status(200).json({ 
+        message: "Fleet owner deleted successfully",
+        note: "In a real implementation, the fleet owner would be removed from the database"
       });
     } catch (err) {
       return handleError(err as Error, res);
