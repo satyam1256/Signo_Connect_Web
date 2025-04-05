@@ -317,11 +317,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Create a new driver (registration endpoint)
+  // Create a new driver (resource endpoint)
   app.post("/api/resource/Drivers", async (req: Request, res: Response) => {
     try {
       // Extract the required fields from the request body
-      const { fullName, phoneNumber } = req.body;
+      const { fullName, phoneNumber, experience, preferredLocations, vehicleTypes, drivingLicense, identityProof } = req.body;
       
       // Validate input
       if (!fullName || !phoneNumber) {
@@ -331,7 +331,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user already exists
       const existingUser = await storage.getUserByPhone(phoneNumber);
       if (existingUser) {
-        return res.status(409).json({ error: "User with this phone number already exists" });
+        // If user exists but we need to update the driver profile
+        if (existingUser.userType === UserType.DRIVER) {
+          // Update existing driver
+          const driverProfile = await storage.getDriver(existingUser.id);
+          
+          if (driverProfile) {
+            // Update driver info
+            const updatedDriver = await storage.updateDriver(existingUser.id, {
+              experience: experience || driverProfile.experience,
+              preferredLocations: preferredLocations || driverProfile.preferredLocations,
+              vehicleTypes: vehicleTypes || driverProfile.vehicleTypes,
+              drivingLicense: drivingLicense || driverProfile.drivingLicense,
+              identityProof: identityProof || driverProfile.identityProof
+            });
+            
+            // Check if profile is complete
+            const isProfileComplete = Boolean(
+              existingUser.fullName && 
+              existingUser.phoneNumber && 
+              updatedDriver?.preferredLocations && 
+              updatedDriver?.preferredLocations.length > 0 &&
+              updatedDriver?.experience && 
+              updatedDriver?.vehicleTypes && 
+              updatedDriver?.vehicleTypes.length > 0
+            );
+            
+            // Update profile completion status
+            await storage.updateUser(existingUser.id, { profileCompleted: isProfileComplete });
+            
+            return res.status(200).json({
+              id: existingUser.id,
+              fullName: existingUser.fullName,
+              phoneNumber: existingUser.phoneNumber,
+              profileCompleted: isProfileComplete,
+              ...updatedDriver
+            });
+          }
+          
+          return res.status(404).json({ error: "Driver profile not found" });
+        }
+        
+        return res.status(409).json({ error: "User with this phone number already exists but is not a driver" });
       }
       
       // Create the user with driver type
@@ -342,23 +383,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         language: "en"
       });
       
-      // Generate OTP for verification
-      const otp = generateOTP();
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 15); // OTP valid for 15 minutes
+      // Create driver profile
+      const driverData: InsertDriver = {
+        userId: user.id,
+        experience: experience || null,
+        preferredLocations: preferredLocations || null,
+        vehicleTypes: vehicleTypes || null,
+        drivingLicense: drivingLicense || null,
+        identityProof: identityProof || null
+      };
       
-      await storage.createOtpVerification({
+      const driverProfile = await storage.createDriver(driverData);
+      
+      // Check if profile is complete and update user
+      const isProfileComplete = Boolean(
+        user.fullName && 
+        user.phoneNumber && 
+        driverProfile?.preferredLocations && 
+        driverProfile?.preferredLocations.length > 0 &&
+        driverProfile?.experience && 
+        driverProfile?.vehicleTypes && 
+        driverProfile?.vehicleTypes.length > 0
+      );
+      
+      if (isProfileComplete) {
+        await storage.updateUser(user.id, { profileCompleted: isProfileComplete });
+      }
+      
+      // Return the created driver
+      return res.status(201).json({
+        id: user.id,
+        fullName: user.fullName,
         phoneNumber: user.phoneNumber,
-        otp,
-        expiresAt
-      });
-      
-      // In a real application, we would send SMS with OTP
-      // For demo purposes, return the OTP directly
-      return res.status(201).json({ 
-        userId: user.id, 
-        message: "Driver registered successfully. OTP sent to your phone number", 
-        otpForDemo: otp 
+        profileCompleted: isProfileComplete,
+        ...driverProfile
       });
     } catch (err) {
       return handleError(err as Error, res);
