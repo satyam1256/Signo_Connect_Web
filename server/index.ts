@@ -5,18 +5,45 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 // Enable CORS for all origins
+// Configure CORS with full options for external access
 app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: ['*', 'https://localhost:3000', 'http://localhost:5000', 'postman://', 'null', 'https://localhost', 'http://localhost'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'Origin', 'Accept', 'X-Requested-With'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
 }));
+
+// Enable preflight requests for all routes
+app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Add API key validation middleware for endpoints that need protection
+// For security in a production app, use a proper secret key stored in environment variables
+const API_KEY = 'transport-marketplace-api-key';
 
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+  // Check API key for external access to resource endpoints
+  if (path.startsWith("/api/resource")) {
+    const apiKey = req.headers['x-api-key'] || req.query.api_key;
+    
+    // For testing purposes, require API key for all requests to resource endpoints
+    // In production, you might want to allow localhost without API key
+    if (apiKey === API_KEY) {
+      // Valid API key, proceed
+      next();
+    } else {
+      log(`Unauthorized API access attempt: ${req.method} ${path}`);
+      return res.status(403).json({ error: "Unauthorized: Invalid or missing API key" });
+    }
+  } else {
+    next();
+  }
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
@@ -39,8 +66,6 @@ app.use((req, res, next) => {
       log(logLine);
     }
   });
-
-  next();
 });
 
 (async () => {

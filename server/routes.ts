@@ -9,7 +9,8 @@ import {
   jobInsertSchema,
   UserType,
   type User,
-  type Driver
+  type Driver,
+  type InsertDriver
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -305,13 +306,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const driverProfile = await storage.getDriver(driverId);
       
-      return res.status(200).json({
+      const responseData = {
         id: user.id,
         fullName: user.fullName,
         phoneNumber: user.phoneNumber,
-        profileCompleted: user.profileCompleted,
-        ...driverProfile
-      });
+        profileCompleted: user.profileCompleted
+      };
+      
+      // Add driver profile data without duplicating ID
+      if (driverProfile) {
+        const { userId, ...driverDetails } = driverProfile;
+        Object.assign(responseData, driverDetails);
+      }
+      
+      return res.status(200).json(responseData);
     } catch (err) {
       return handleError(err as Error, res);
     }
@@ -360,13 +368,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Update profile completion status
             await storage.updateUser(existingUser.id, { profileCompleted: isProfileComplete });
             
-            return res.status(200).json({
+            // Create response without duplicating fields
+            const responseData = {
               id: existingUser.id,
               fullName: existingUser.fullName,
               phoneNumber: existingUser.phoneNumber,
-              profileCompleted: isProfileComplete,
-              ...updatedDriver
-            });
+              profileCompleted: isProfileComplete
+            };
+            
+            // Add driver profile data without duplicating ID
+            if (updatedDriver) {
+              const { userId, ...driverDetails } = updatedDriver;
+              Object.assign(responseData, driverDetails);
+            }
+            
+            return res.status(200).json(responseData);
           }
           
           return res.status(404).json({ error: "Driver profile not found" });
@@ -411,13 +427,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Return the created driver
-      return res.status(201).json({
+      const responseData = {
         id: user.id,
         fullName: user.fullName,
         phoneNumber: user.phoneNumber,
-        profileCompleted: isProfileComplete,
-        ...driverProfile
-      });
+        profileCompleted: isProfileComplete
+      };
+      
+      // Add driver profile data without duplicating ID
+      if (driverProfile) {
+        const { userId, ...driverDetails } = driverProfile;
+        Object.assign(responseData, driverDetails);
+      }
+      
+      return res.status(201).json(responseData);
     } catch (err) {
       return handleError(err as Error, res);
     }
@@ -492,13 +515,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedUser = { ...updatedUser, profileCompleted: isProfileComplete };
       }
       
-      return res.status(200).json({
+      // Create response without duplicating fields
+      const responseData = {
         id: updatedUser.id,
         fullName: updatedUser.fullName,
         phoneNumber: updatedUser.phoneNumber,
-        profileCompleted: updatedUser.profileCompleted,
-        ...driverProfile
-      });
+        profileCompleted: updatedUser.profileCompleted
+      };
+      
+      // Add driver profile data without duplicating ID
+      if (driverProfile) {
+        const { userId, ...driverDetails } = driverProfile;
+        Object.assign(responseData, driverDetails);
+      }
+      
+      return res.status(200).json(responseData);
     } catch (err) {
       return handleError(err as Error, res);
     }
