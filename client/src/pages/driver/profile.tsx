@@ -160,7 +160,6 @@ const DriverProfilePage = () => {
           language: data.language || "English",
           location: data.location || "",
           about: data.about || "",
-          profileImage: data.profileImage || null,
           experience: data.experience || "",
           preferredLocations: data.preferredLocations || [],
           vehicleTypes: data.vehicleTypes || [],
@@ -201,66 +200,15 @@ const DriverProfilePage = () => {
   
   // Handle profile update
   const handleProfileUpdate = async () => {
-    if ((Object.keys(editedProfile).length > 0 || profileImage) && user) {
+    if (Object.keys(editedProfile).length > 0 && user) {
       setIsUpdatingProfile(true);
       try {
-        // Handle profile image upload if a new image is selected
-        let profileImageUrl = profile.profileImage;
-        
-        if (profileImage) {
-          // Compress and convert image to base64 string
-          const compressedImagePromise = new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              const img = new Image();
-              img.onload = () => {
-                // Create canvas for image compression
-                const canvas = document.createElement('canvas');
-                
-                // Calculate new dimensions while maintaining aspect ratio
-                const MAX_WIDTH = 500;
-                const MAX_HEIGHT = 500;
-                let width = img.width;
-                let height = img.height;
-                
-                if (width > height) {
-                  if (width > MAX_WIDTH) {
-                    height *= MAX_WIDTH / width;
-                    width = MAX_WIDTH;
-                  }
-                } else {
-                  if (height > MAX_HEIGHT) {
-                    width *= MAX_HEIGHT / height;
-                    height = MAX_HEIGHT;
-                  }
-                }
-                
-                // Resize image using canvas
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx?.drawImage(img, 0, 0, width, height);
-                
-                // Get compressed image as base64 string with reduced quality
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                resolve(dataUrl);
-              };
-              img.src = e.target?.result as string;
-            };
-            reader.readAsDataURL(profileImage);
-          });
-          
-          // Wait for compression to complete
-          profileImageUrl = await compressedImagePromise;
-        }
-        
-        // Combine all profile data that will be sent
+        // First get the combined profile data that will be sent
         const updatedProfileData = {
           ...editedProfile,
           userId: user.id,
           fullName: editedProfile.fullName || profile.fullName,
           phoneNumber: editedProfile.phoneNumber || profile.phoneNumber,
-          profileImage: profileImageUrl,
         };
         
         // Send data to the API
@@ -290,18 +238,15 @@ const DriverProfilePage = () => {
         // Calculate the new completion percentage with the full updated data
         const newCompletionPercentage = calculateProfileCompletion(refreshedData);
         
-        // Update local state with all the new data including completion percentage and profile image
+        // Update local state with all the new data including completion percentage
         const completeUpdatedProfile = { 
           ...profile, 
-          ...refreshedData,
           ...editedProfile,
-          completionPercentage: newCompletionPercentage,
-          profileImage: profileImage ? refreshedData.profileImage : profile.profileImage
+          completionPercentage: newCompletionPercentage
         };
         
-        // Update the profile state with the refreshed data and reset profile image state
+        // Update the profile state with the refreshed data
         setProfile(completeUpdatedProfile);
-        setProfileImage(null);
 
         // Update user context if name or profile completion status changed
         if (editedProfile.fullName || completeUpdatedProfile.completionPercentage !== profile.completionPercentage) {
@@ -437,11 +382,11 @@ const DriverProfilePage = () => {
                     <p className="text-neutral-600 mb-4">{profile.about}</p>
 
                     <div className="flex flex-wrap gap-2">
-                      {profile.skills?.map((skill, index) => (
+                      {profile.skills.map((skill, index) => (
                         <Badge key={index} variant="secondary" className="bg-neutral-100">
                           {skill}
                         </Badge>
-                      )) || null}
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -516,22 +461,22 @@ const DriverProfilePage = () => {
                       <div className="col-span-1 sm:col-span-2">
                         <h4 className="font-medium">Preferred Locations</h4>
                         <div className="flex flex-wrap gap-2 mt-1">
-                          {profile.preferredLocations?.map((location, index) => (
+                          {profile.preferredLocations.map((location, index) => (
                             <Badge key={index} variant="outline">
                               {location}
                             </Badge>
-                          )) || null}
+                          ))}
                         </div>
                       </div>
 
                       <div className="col-span-1 sm:col-span-2">
                         <h4 className="font-medium">Vehicle Types</h4>
                         <div className="flex flex-wrap gap-2 mt-1">
-                          {profile.vehicleTypes?.map((type, index) => (
+                          {profile.vehicleTypes.map((type, index) => (
                             <Badge key={index} variant="outline">
                               {type}
                             </Badge>
-                          )) || null}
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -700,12 +645,12 @@ const DriverProfilePage = () => {
                       <Info className="h-4 w-4 mr-2" /> Complete your profile
                     </h4>
                     <ul className="text-amber-600 text-sm space-y-1">
-                      {missingItems?.map((item, index) => (
+                      {missingItems.map((item, index) => (
                         <li key={index} className="flex items-center">
                           <ChevronRight className="h-3 w-3 mr-1 flex-shrink-0" />
                           Add your {item}
                         </li>
-                      )) || null}
+                      ))}
                     </ul>
                   </div>
                 )}
@@ -873,11 +818,11 @@ const DriverProfilePage = () => {
                     disabled={isUpdatingProfile}
                   >
                     <option value="">Select experience</option>
-                    {Array.from({ length: 20 }, (_, i) => i + 1)?.map(year => (
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map(year => (
                       <option key={year} value={`${year} year${year > 1 ? 's' : ''}`}>
                         {year} year{year > 1 ? 's' : ''}
                       </option>
-                    )) || null}
+                    ))}
                   </select>
                 </div>
               </div>
@@ -942,12 +887,11 @@ const DriverProfilePage = () => {
                           type="checkbox"
                           id={`vehicle-${type}`}
                           className="mr-2 h-4 w-4"
-                          checked={(editedProfile.vehicleTypes?.includes(type) || profile.vehicleTypes?.includes(type)) ?? false}
+                          checked={editedProfile.vehicleTypes?.includes(type) || profile.vehicleTypes.includes(type)}
                           onChange={(e) => {
-                            const currentTypes = editedProfile.vehicleTypes || profile.vehicleTypes || [];
                             const updatedTypes = e.target.checked
-                              ? [...currentTypes, type]
-                              : currentTypes.filter(t => t !== type);
+                              ? [...(editedProfile.vehicleTypes || profile.vehicleTypes), type]
+                              : (editedProfile.vehicleTypes || profile.vehicleTypes).filter(t => t !== type);
                             
                             setEditedProfile({
                               ...editedProfile,
@@ -960,7 +904,7 @@ const DriverProfilePage = () => {
                           {type}
                         </Label>
                       </div>
-                    )) || null}
+                    ))}
                   </div>
                 </div>
               </div>
