@@ -437,11 +437,11 @@ const DriverProfilePage = () => {
                     <p className="text-neutral-600 mb-4">{profile.about}</p>
 
                     <div className="flex flex-wrap gap-2">
-                      {profile.skills.map((skill, index) => (
+                      {profile.skills?.map((skill, index) => (
                         <Badge key={index} variant="secondary" className="bg-neutral-100">
                           {skill}
                         </Badge>
-                      ))}
+                      )) || null}
                     </div>
                   </div>
                 </div>
@@ -516,22 +516,22 @@ const DriverProfilePage = () => {
                       <div className="col-span-1 sm:col-span-2">
                         <h4 className="font-medium">Preferred Locations</h4>
                         <div className="flex flex-wrap gap-2 mt-1">
-                          {profile.preferredLocations.map((location, index) => (
+                          {profile.preferredLocations?.map((location, index) => (
                             <Badge key={index} variant="outline">
                               {location}
                             </Badge>
-                          ))}
+                          )) || null}
                         </div>
                       </div>
 
                       <div className="col-span-1 sm:col-span-2">
                         <h4 className="font-medium">Vehicle Types</h4>
                         <div className="flex flex-wrap gap-2 mt-1">
-                          {profile.vehicleTypes.map((type, index) => (
+                          {profile.vehicleTypes?.map((type, index) => (
                             <Badge key={index} variant="outline">
                               {type}
                             </Badge>
-                          ))}
+                          )) || null}
                         </div>
                       </div>
                     </div>
@@ -700,12 +700,12 @@ const DriverProfilePage = () => {
                       <Info className="h-4 w-4 mr-2" /> Complete your profile
                     </h4>
                     <ul className="text-amber-600 text-sm space-y-1">
-                      {missingItems.map((item, index) => (
+                      {missingItems?.map((item, index) => (
                         <li key={index} className="flex items-center">
                           <ChevronRight className="h-3 w-3 mr-1 flex-shrink-0" />
                           Add your {item}
                         </li>
-                      ))}
+                      )) || null}
                     </ul>
                   </div>
                 )}
@@ -873,11 +873,11 @@ const DriverProfilePage = () => {
                     disabled={isUpdatingProfile}
                   >
                     <option value="">Select experience</option>
-                    {Array.from({ length: 20 }, (_, i) => i + 1).map(year => (
+                    {Array.from({ length: 20 }, (_, i) => i + 1)?.map(year => (
                       <option key={year} value={`${year} year${year > 1 ? 's' : ''}`}>
                         {year} year{year > 1 ? 's' : ''}
                       </option>
-                    ))}
+                    )) || null}
                   </select>
                 </div>
               </div>
@@ -942,11 +942,12 @@ const DriverProfilePage = () => {
                           type="checkbox"
                           id={`vehicle-${type}`}
                           className="mr-2 h-4 w-4"
-                          checked={editedProfile.vehicleTypes?.includes(type) || profile.vehicleTypes.includes(type)}
+                          checked={(editedProfile.vehicleTypes?.includes(type) || profile.vehicleTypes?.includes(type)) ?? false}
                           onChange={(e) => {
+                            const currentTypes = editedProfile.vehicleTypes || profile.vehicleTypes || [];
                             const updatedTypes = e.target.checked
-                              ? [...(editedProfile.vehicleTypes || profile.vehicleTypes), type]
-                              : (editedProfile.vehicleTypes || profile.vehicleTypes).filter(t => t !== type);
+                              ? [...currentTypes, type]
+                              : currentTypes.filter(t => t !== type);
                             
                             setEditedProfile({
                               ...editedProfile,
@@ -959,7 +960,7 @@ const DriverProfilePage = () => {
                           {type}
                         </Label>
                       </div>
-                    ))}
+                    )) || null}
                   </div>
                 </div>
               </div>
