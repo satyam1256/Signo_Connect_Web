@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -16,6 +16,7 @@ import {
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { registerDriverProfileRoutes } from "./driver-profile-routes";
 
 function generateOTP(): string {
   // Always return "123456" for testing
@@ -25,6 +26,27 @@ function generateOTP(): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Reset storage data on server start (for development purposes)
   storage.resetData();
+  
+  // API Key authentication middleware
+  const apiKeyMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    // API Key can be provided in headers or as query parameter
+    const apiKey = req.headers["x-api-key"] || req.query.api_key;
+    
+    // Hardcoded API key for testing/development
+    const validApiKey = "982b6d71c35c4c8";
+    
+    if (apiKey === validApiKey) {
+      next();
+    } else {
+      res.status(403).json({ error: "Invalid or missing API key" });
+    }
+  };
+  
+  // Apply API Key middleware to resource endpoints
+  app.use("/api/resource", apiKeyMiddleware);
+  
+  // Register driver profile routes
+  registerDriverProfileRoutes(app);
 
   // Error handler middleware
   const handleError = (err: Error, res: Response) => {
@@ -258,8 +280,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get driver profile by ID
+  app.get("/api/resource/drivers/profile", async (req: Request, res: Response) => {
+    try {
+      const driverId = parseInt(req.query.driver_id as string);
+      
+      if (isNaN(driverId)) {
+        return res.status(400).json({ error: "Invalid driver ID" });
+      }
+      
+      const user = await storage.getUser(driverId);
+      if (!user) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      if (user.userType !== UserType.DRIVER) {
+        return res.status(400).json({ error: "User is not a driver" });
+      }
+      
+      const driverProfile = await storage.getDriver(driverId);
+      
+      const responseData = {
+        id: user.id,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        profileCompleted: user.profileCompleted
+      };
+      
+      // Add driver profile data without duplicating ID
+      if (driverProfile) {
+        const { userId, ...driverDetails } = driverProfile;
+        Object.assign(responseData, driverDetails);
+      }
+      
+      return res.status(200).json(responseData);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
+  // Update driver profile
+  app.put("/api/resource/drivers/profile", async (req: Request, res: Response) => {
+    try {
+      const driverId = parseInt(req.query.driver_id as string);
+      
+      if (isNaN(driverId)) {
+        return res.status(400).json({ error: "Invalid driver ID" });
+      }
+      
+      const user = await storage.getUser(driverId);
+      if (!user) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      if (user.userType !== UserType.DRIVER) {
+        return res.status(400).json({ error: "User is not a driver" });
+      }
+      
+      // Update user information if provided
+      const { fullName, phoneNumber, ...driverInfo } = req.body;
+      
+      let updatedUser = user;
+      if (fullName || phoneNumber) {
+        const userUpdates: Partial<User> = {};
+        if (fullName) userUpdates.fullName = fullName;
+        if (phoneNumber) userUpdates.phoneNumber = phoneNumber;
+        
+        // Check if the new phone number is already in use
+        if (phoneNumber && phoneNumber !== user.phoneNumber) {
+          const existingUser = await storage.getUserByPhone(phoneNumber);
+          if (existingUser && existingUser.id !== driverId) {
+            return res.status(409).json({ error: "Phone number already in use" });
+          }
+        }
+        
+        updatedUser = await storage.updateUser(driverId, userUpdates) as User;
+      }
+      
+      // Update driver-specific information if any is provided
+      let driverProfile = await storage.getDriver(driverId);
+      
+      if (Object.keys(driverInfo).length > 0) {
+        if (driverProfile) {
+          driverProfile = await storage.updateDriver(driverId, driverInfo) as Driver;
+        } else {
+          driverProfile = await storage.createDriver({
+            userId: driverId,
+            ...driverInfo
+          });
+        }
+        
+        // Update profile completion status based on data completeness
+        const updatedDriver = await storage.getDriver(driverId);
+        
+        // Check if all essential fields are filled
+        const isProfileComplete = Boolean(
+          updatedUser.fullName && 
+          updatedUser.phoneNumber && 
+          updatedDriver?.preferredLocations && 
+          updatedDriver?.preferredLocations.length > 0 &&
+          updatedDriver?.experience && 
+          updatedDriver?.vehicleTypes && 
+          updatedDriver.vehicleTypes.length > 0
+        );
+        
+        await storage.updateUser(driverId, { profileCompleted: isProfileComplete });
+        updatedUser = { ...updatedUser, profileCompleted: isProfileComplete };
+      }
+      
+      // Create response without duplicating fields
+      const responseData = {
+        id: updatedUser.id,
+        fullName: updatedUser.fullName,
+        phoneNumber: updatedUser.phoneNumber,
+        profileCompleted: updatedUser.profileCompleted
+      };
+      
+      // Add driver profile data without duplicating ID
+      if (driverProfile) {
+        const { userId, ...driverDetails } = driverProfile;
+        Object.assign(responseData, driverDetails);
+      }
+      
+      return res.status(200).json(responseData);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
   // Get all drivers
-  app.get("/api/resource/Drivers", async (req: Request, res: Response) => {
+  app.get("/api/resource/drivers", async (req: Request, res: Response) => {
     try {
       // Get all drivers (implement a method to get all drivers in a real application)
       // Since we don't have a direct method to get all users, we'll use a workaround
@@ -289,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get a specific driver by ID
-  app.get("/api/resource/Drivers/:id", async (req: Request, res: Response) => {
+  app.get("/api/resource/drivers/:id", async (req: Request, res: Response) => {
     try {
       const driverId = parseInt(req.params.id);
       
@@ -328,7 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create a new driver (resource endpoint)
-  app.post("/api/resource/Drivers", async (req: Request, res: Response) => {
+  app.post("/api/resource/drivers", async (req: Request, res: Response) => {
     try {
       // Extract the required fields from the request body
       const { fullName, phoneNumber, experience, preferredLocations, vehicleTypes, drivingLicense, identityProof } = req.body;
@@ -449,7 +599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update driver information
-  app.put("/api/resource/Drivers/:id", async (req: Request, res: Response) => {
+  app.put("/api/resource/drivers/:id", async (req: Request, res: Response) => {
     try {
       const driverId = parseInt(req.params.id);
       
@@ -538,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Delete a driver
-  app.delete("/api/resource/Drivers/:id", async (req: Request, res: Response) => {
+  app.delete("/api/resource/drivers/:id", async (req: Request, res: Response) => {
     try {
       const driverId = parseInt(req.params.id);
       
@@ -567,9 +717,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return handleError(err as Error, res);
     }
   });
+  
+  // Get driver profile by ID
+  app.get("/api/resource/drivers/profile", async (req: Request, res: Response) => {
+    try {
+      const driverId = parseInt(req.query.driver_id as string);
+      
+      if (isNaN(driverId)) {
+        return res.status(400).json({ error: "Invalid driver ID" });
+      }
+      
+      const user = await storage.getUser(driverId);
+      if (!user) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      if (user.userType !== UserType.DRIVER) {
+        return res.status(400).json({ error: "User is not a driver" });
+      }
+      
+      const driverProfile = await storage.getDriver(driverId);
+      
+      const responseData = {
+        id: user.id,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        profileCompleted: user.profileCompleted
+      };
+      
+      // Add driver profile data without duplicating ID
+      if (driverProfile) {
+        const { userId, ...driverDetails } = driverProfile;
+        Object.assign(responseData, driverDetails);
+      }
+      
+      return res.status(200).json(responseData);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
+  
+  // Update driver profile
+  app.put("/api/resource/drivers/profile", async (req: Request, res: Response) => {
+    try {
+      const driverId = parseInt(req.query.driver_id as string);
+      
+      if (isNaN(driverId)) {
+        return res.status(400).json({ error: "Invalid driver ID" });
+      }
+      
+      const user = await storage.getUser(driverId);
+      if (!user) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+      
+      if (user.userType !== UserType.DRIVER) {
+        return res.status(400).json({ error: "User is not a driver" });
+      }
+      
+      // Update user information if provided
+      const { fullName, phoneNumber, ...driverInfo } = req.body;
+      
+      let updatedUser = user;
+      if (fullName || phoneNumber) {
+        const userUpdates: Partial<User> = {};
+        if (fullName) userUpdates.fullName = fullName;
+        if (phoneNumber) userUpdates.phoneNumber = phoneNumber;
+        
+        // Check if the new phone number is already in use
+        if (phoneNumber && phoneNumber !== user.phoneNumber) {
+          const existingUser = await storage.getUserByPhone(phoneNumber);
+          if (existingUser && existingUser.id !== driverId) {
+            return res.status(409).json({ error: "Phone number already in use" });
+          }
+        }
+        
+        updatedUser = await storage.updateUser(driverId, userUpdates) as User;
+      }
+      
+      // Update driver-specific information if any is provided
+      let driverProfile = await storage.getDriver(driverId);
+      
+      if (Object.keys(driverInfo).length > 0) {
+        if (driverProfile) {
+          driverProfile = await storage.updateDriver(driverId, driverInfo) as Driver;
+        } else {
+          driverProfile = await storage.createDriver({
+            userId: driverId,
+            ...driverInfo
+          });
+        }
+        
+        // Update profile completion status based on data completeness
+        const updatedDriver = await storage.getDriver(driverId);
+        
+        // Check if all essential fields are filled
+        const isProfileComplete = Boolean(
+          updatedUser.fullName && 
+          updatedUser.phoneNumber && 
+          updatedDriver?.preferredLocations && 
+          updatedDriver?.preferredLocations.length > 0 &&
+          updatedDriver?.experience && 
+          updatedDriver?.vehicleTypes && 
+          updatedDriver.vehicleTypes.length > 0
+        );
+        
+        await storage.updateUser(driverId, { profileCompleted: isProfileComplete });
+        updatedUser = { ...updatedUser, profileCompleted: isProfileComplete };
+      }
+      
+      // Create response without duplicating fields
+      const responseData = {
+        id: updatedUser.id,
+        fullName: updatedUser.fullName,
+        phoneNumber: updatedUser.phoneNumber,
+        profileCompleted: updatedUser.profileCompleted
+      };
+      
+      // Add driver profile data without duplicating ID
+      if (driverProfile) {
+        const { userId, ...driverDetails } = driverProfile;
+        Object.assign(responseData, driverDetails);
+      }
+      
+      return res.status(200).json(responseData);
+    } catch (err) {
+      return handleError(err as Error, res);
+    }
+  });
 
   // Get all fleet owners
-  app.get("/api/resource/FleetOwners", async (req: Request, res: Response) => {
+  app.get("/api/resource/fleet-owners", async (req: Request, res: Response) => {
     try {
       // Collect fleet owners by trying user IDs (simplified for demo)
       const fleetOwners = [];
@@ -596,7 +874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get a specific fleet owner by ID
-  app.get("/api/resource/FleetOwners/:id", async (req: Request, res: Response) => {
+  app.get("/api/resource/fleet-owners/:id", async (req: Request, res: Response) => {
     try {
       const fleetOwnerId = parseInt(req.params.id);
       
@@ -636,7 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create a new fleet owner (resource endpoint)
-  app.post("/api/resource/FleetOwners", async (req: Request, res: Response) => {
+  app.post("/api/resource/fleet-owners", async (req: Request, res: Response) => {
     try {
       // Extract the required fields from the request body
       const { fullName, phoneNumber, email, companyName, fleetSize, preferredLocations, registrationDoc } = req.body;
@@ -751,7 +1029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update fleet owner information
-  app.put("/api/resource/FleetOwners/:id", async (req: Request, res: Response) => {
+  app.put("/api/resource/fleet-owners/:id", async (req: Request, res: Response) => {
     try {
       const fleetOwnerId = parseInt(req.params.id);
       
@@ -834,7 +1112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Delete a fleet owner
-  app.delete("/api/resource/FleetOwners/:id", async (req: Request, res: Response) => {
+  app.delete("/api/resource/fleet-owners/:id", async (req: Request, res: Response) => {
     try {
       const fleetOwnerId = parseInt(req.params.id);
       
