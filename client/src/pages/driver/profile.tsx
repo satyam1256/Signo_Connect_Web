@@ -203,31 +203,57 @@ const DriverProfilePage = () => {
     if (Object.keys(editedProfile).length > 0 && user) {
       setIsUpdatingProfile(true);
       try {
-        // Update local state
-        const updatedProfile = { ...profile, ...editedProfile };
-        setProfile(updatedProfile);
-
+        // First get the combined profile data that will be sent
+        const updatedProfileData = {
+          ...editedProfile,
+          userId: user.id,
+          fullName: editedProfile.fullName || profile.fullName,
+          phoneNumber: editedProfile.phoneNumber || profile.phoneNumber,
+        };
+        
         // Send data to the API
         const response = await fetch(`/api/resource/Drivers/${user.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            ...editedProfile,
-            userId: user.id,
-            fullName: editedProfile.fullName || profile.fullName,
-            phoneNumber: editedProfile.phoneNumber || profile.phoneNumber,
-          }),
+          body: JSON.stringify(updatedProfileData),
         });
 
         if (!response.ok) {
           throw new Error('Failed to update profile');
         }
+        
+        // Get the response data
+        const responseData = await response.json();
+        
+        // Re-fetch complete profile to get updated data
+        const refreshResponse = await fetch(`/api/resource/Drivers/${user.id}`);
+        if (!refreshResponse.ok) {
+          throw new Error('Failed to refresh profile data');
+        }
+        
+        const refreshedData = await refreshResponse.json();
+        
+        // Calculate the new completion percentage with the full updated data
+        const newCompletionPercentage = calculateProfileCompletion(refreshedData);
+        
+        // Update local state with all the new data including completion percentage
+        const completeUpdatedProfile = { 
+          ...profile, 
+          ...editedProfile,
+          completionPercentage: newCompletionPercentage
+        };
+        
+        // Update the profile state with the refreshed data
+        setProfile(completeUpdatedProfile);
 
-        // Update user context if name was changed
-        if (editedProfile.fullName && user) {
-          updateUser({ fullName: editedProfile.fullName });
+        // Update user context if name or profile completion status changed
+        if (editedProfile.fullName || completeUpdatedProfile.completionPercentage !== profile.completionPercentage) {
+          updateUser({ 
+            fullName: editedProfile.fullName || profile.fullName,
+            profileCompleted: completeUpdatedProfile.completionPercentage >= 80 // Mark as completed if >= 80%
+          });
         }
 
         // Show success notification
@@ -236,7 +262,7 @@ const DriverProfilePage = () => {
           description: "Your profile information has been updated successfully.",
         });
 
-        // Clear the edited profile
+        // Clear the edited profile and close edit mode
         setEditedProfile({});
         setIsEditingProfile(false);
       } catch (error) {

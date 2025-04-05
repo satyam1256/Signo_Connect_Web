@@ -416,9 +416,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Update profile completion status
-        await storage.updateUser(driverId, { profileCompleted: true });
-        updatedUser = { ...updatedUser, profileCompleted: true };
+        // Update profile completion status based on data completeness
+        const updatedDriver = await storage.getDriver(driverId);
+        
+        // Check if all essential fields are filled
+        const isProfileComplete = Boolean(
+          updatedUser.fullName && 
+          updatedUser.phoneNumber && 
+          updatedDriver?.location && 
+          updatedDriver?.experience && 
+          updatedDriver?.about && 
+          updatedDriver?.vehicleTypes && 
+          updatedDriver.vehicleTypes.length > 0 && 
+          updatedDriver?.preferredLocations && 
+          updatedDriver.preferredLocations.length > 0
+        );
+        
+        await storage.updateUser(driverId, { profileCompleted: isProfileComplete });
+        updatedUser = { ...updatedUser, profileCompleted: isProfileComplete };
       }
       
       return res.status(200).json({
