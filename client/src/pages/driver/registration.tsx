@@ -112,7 +112,7 @@ const DriverRegistration = () => {
   // API Mutations
   const registerMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/register", {
+      const response = await apiRequest("POST", "https://4fb5-2401-4900-45c0-c660-71cb-e6ea-e573-e373.ngrok-free.app/api/method/signo_connect.api.proxy/Drivers", {
         fullName: data.fullName,
         phoneNumber: data.countryCode + data.phoneNumber,
         userType: "driver"
