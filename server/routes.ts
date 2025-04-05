@@ -423,13 +423,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const isProfileComplete = Boolean(
           updatedUser.fullName && 
           updatedUser.phoneNumber && 
-          updatedDriver?.location && 
-          updatedDriver?.experience && 
-          updatedDriver?.about && 
-          updatedDriver?.vehicleTypes && 
-          updatedDriver.vehicleTypes.length > 0 && 
           updatedDriver?.preferredLocations && 
-          updatedDriver.preferredLocations.length > 0
+          updatedDriver?.preferredLocations.length > 0 &&
+          updatedDriver?.experience && 
+          updatedDriver?.vehicleTypes && 
+          updatedDriver.vehicleTypes.length > 0
         );
         
         await storage.updateUser(driverId, { profileCompleted: isProfileComplete });
