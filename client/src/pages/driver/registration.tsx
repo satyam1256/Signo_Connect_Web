@@ -115,14 +115,16 @@ const DriverRegistration = () => {
       const response = await apiRequest("POST", "/api/register", {
         fullName: data.fullName,
         phoneNumber: data.countryCode + data.phoneNumber,
-        userType: UserType.DRIVER,
+        userType: "driver"
       });
       return response.json();
     },
     onSuccess: (data) => {
       if (data.userId) {
         setUserId(data.userId);
-        setPhoneNumber(basicInfoForm.getValues().countryCode + basicInfoForm.getValues().phoneNumber);
+        setPhoneNumber(
+          basicInfoForm.getValues().countryCode + basicInfoForm.getValues().phoneNumber
+        );
         stepper.nextStep();
       }
     },

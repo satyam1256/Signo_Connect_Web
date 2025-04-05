@@ -7,7 +7,7 @@ const app = express();
 // Enable CORS for all origins
 // Configure CORS with full options for external access
 app.use(cors({
-  origin: ['*', 'https://localhost:3000', 'http://localhost:5000', 'postman://', 'null', 'https://localhost', 'http://localhost'],
+  origin: true, // Allow any origin
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'Origin', 'Accept', 'X-Requested-With'],
   credentials: true,
