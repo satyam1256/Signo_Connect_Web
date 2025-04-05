@@ -208,17 +208,50 @@ const DriverProfilePage = () => {
         let profileImageUrl = profile.profileImage;
         
         if (profileImage) {
-          // Convert file to base64 string for easy storage
-          const reader = new FileReader();
-          const base64Promise = new Promise<string>((resolve) => {
-            reader.onloadend = () => {
-              const base64String = reader.result as string;
-              resolve(base64String);
+          // Compress and convert image to base64 string
+          const compressedImagePromise = new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const img = new Image();
+              img.onload = () => {
+                // Create canvas for image compression
+                const canvas = document.createElement('canvas');
+                
+                // Calculate new dimensions while maintaining aspect ratio
+                const MAX_WIDTH = 500;
+                const MAX_HEIGHT = 500;
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > height) {
+                  if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
+                  }
+                } else {
+                  if (height > MAX_HEIGHT) {
+                    width *= MAX_HEIGHT / height;
+                    height = MAX_HEIGHT;
+                  }
+                }
+                
+                // Resize image using canvas
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+                
+                // Get compressed image as base64 string with reduced quality
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                resolve(dataUrl);
+              };
+              img.src = e.target?.result as string;
             };
+            reader.readAsDataURL(profileImage);
           });
           
-          reader.readAsDataURL(profileImage);
-          profileImageUrl = await base64Promise;
+          // Wait for compression to complete
+          profileImageUrl = await compressedImagePromise;
         }
         
         // Combine all profile data that will be sent
