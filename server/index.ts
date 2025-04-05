@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: false }));
 
 // Add API key validation middleware for endpoints that need protection
 // For security in a production app, use a proper secret key stored in environment variables
-const API_KEY = 'transport-marketplace-api-key';
+const API_KEY = '982b6d71c35c4c8';
 
 app.use((req, res, next) => {
   const start = Date.now();
