@@ -31,6 +31,10 @@ export const drivers = pgTable("drivers", {
   identityProof: text("identity_proof"),
   experience: text("experience"),
   vehicleTypes: text("vehicle_types").array(),
+  profileImage: text("profile_image"),
+  about: text("about"),
+  location: text("location"),
+  availability: text("availability"),
 });
 
 // Fleet owner-specific information
@@ -82,6 +86,10 @@ export const driverInsertSchema = createInsertSchema(drivers).pick({
   identityProof: true,
   experience: true,
   vehicleTypes: true,
+  profileImage: true,
+  about: true,
+  location: true,
+  availability: true,
 });
 
 export const fleetOwnerInsertSchema = createInsertSchema(fleetOwners).pick({

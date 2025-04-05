@@ -160,6 +160,7 @@ const DriverProfilePage = () => {
           language: data.language || "English",
           location: data.location || "",
           about: data.about || "",
+          profileImage: data.profileImage || null,
           experience: data.experience || "",
           preferredLocations: data.preferredLocations || [],
           vehicleTypes: data.vehicleTypes || [],
@@ -200,15 +201,33 @@ const DriverProfilePage = () => {
   
   // Handle profile update
   const handleProfileUpdate = async () => {
-    if (Object.keys(editedProfile).length > 0 && user) {
+    if ((Object.keys(editedProfile).length > 0 || profileImage) && user) {
       setIsUpdatingProfile(true);
       try {
-        // First get the combined profile data that will be sent
+        // Handle profile image upload if a new image is selected
+        let profileImageUrl = profile.profileImage;
+        
+        if (profileImage) {
+          // Convert file to base64 string for easy storage
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve) => {
+            reader.onloadend = () => {
+              const base64String = reader.result as string;
+              resolve(base64String);
+            };
+          });
+          
+          reader.readAsDataURL(profileImage);
+          profileImageUrl = await base64Promise;
+        }
+        
+        // Combine all profile data that will be sent
         const updatedProfileData = {
           ...editedProfile,
           userId: user.id,
           fullName: editedProfile.fullName || profile.fullName,
           phoneNumber: editedProfile.phoneNumber || profile.phoneNumber,
+          profileImage: profileImageUrl,
         };
         
         // Send data to the API
@@ -238,15 +257,18 @@ const DriverProfilePage = () => {
         // Calculate the new completion percentage with the full updated data
         const newCompletionPercentage = calculateProfileCompletion(refreshedData);
         
-        // Update local state with all the new data including completion percentage
+        // Update local state with all the new data including completion percentage and profile image
         const completeUpdatedProfile = { 
           ...profile, 
+          ...refreshedData,
           ...editedProfile,
-          completionPercentage: newCompletionPercentage
+          completionPercentage: newCompletionPercentage,
+          profileImage: profileImage ? refreshedData.profileImage : profile.profileImage
         };
         
-        // Update the profile state with the refreshed data
+        // Update the profile state with the refreshed data and reset profile image state
         setProfile(completeUpdatedProfile);
+        setProfileImage(null);
 
         // Update user context if name or profile completion status changed
         if (editedProfile.fullName || completeUpdatedProfile.completionPercentage !== profile.completionPercentage) {
