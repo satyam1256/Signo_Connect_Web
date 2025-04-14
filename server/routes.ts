@@ -161,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create or update fleet owner profile
-  app.post("/api/fleet-owner-profile", async (req: Request, res: Response) => {
+  app.post("/api/transporter-profile", async (req: Request, res: Response) => {
     try {
       const fleetOwnerData = fleetOwnerInsertSchema.parse(req.body);
 
@@ -264,7 +264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get jobs by fleet owner
-  app.get("/api/fleet-owner/:id/jobs", async (req: Request, res: Response) => {
+  app.get("/api/transporter/:id/jobs", async (req: Request, res: Response) => {
     try {
       const fleetOwnerId = parseInt(req.params.id);
 
@@ -847,7 +847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all fleet owners
-  app.get("/api/resource/fleet-owners", async (req: Request, res: Response) => {
+  app.get("/api/resource/transporters", async (req: Request, res: Response) => {
     try {
       // Collect fleet owners by trying user IDs (simplified for demo)
       const fleetOwners = [];
@@ -874,7 +874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get a specific fleet owner by ID
-  app.get("/api/resource/fleet-owners/:id", async (req: Request, res: Response) => {
+  app.get("/api/resource/transporters/:id", async (req: Request, res: Response) => {
     try {
       const fleetOwnerId = parseInt(req.params.id);
       
@@ -914,7 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create a new fleet owner (resource endpoint)
-  app.post("/api/resource/fleet-owners", async (req: Request, res: Response) => {
+  app.post("/api/resource/transporters", async (req: Request, res: Response) => {
     try {
       // Extract the required fields from the request body
       const { fullName, phoneNumber, email, companyName, fleetSize, preferredLocations, registrationDoc } = req.body;
@@ -1029,7 +1029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update fleet owner information
-  app.put("/api/resource/fleet-owners/:id", async (req: Request, res: Response) => {
+  app.put("/api/resource/transporters/:id", async (req: Request, res: Response) => {
     try {
       const fleetOwnerId = parseInt(req.params.id);
       
@@ -1112,7 +1112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Delete a fleet owner
-  app.delete("/api/resource/fleet-owners/:id", async (req: Request, res: Response) => {
+  app.delete("/api/resource/transporters/:id", async (req: Request, res: Response) => {
     try {
       const fleetOwnerId = parseInt(req.params.id);
       

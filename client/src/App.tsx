@@ -10,14 +10,17 @@ import DriverDashboard from "@/pages/driver/dashboard";
 import DriverJobs from "@/pages/driver/jobs";
 import DriverAlerts from "@/pages/driver/alerts";
 import DriverProfile from "@/pages/driver/profile";
-import FleetOwnerRegistration from "@/pages/fleet-owner/registration";
-import FleetOwnerDashboard from "@/pages/fleet-owner/dashboard";
-import FleetOwnerJobs from "@/pages/fleet-owner/jobs";
-import FleetOwnerProfile from "@/pages/fleet-owner/profile";
-import FleetOwnerDrivers from "@/pages/fleet-owner/drivers";
+import TransporterRegistration from "@/pages/transporter/registration";
+import TransporterDashboard from "@/pages/transporter/dashboard";
+import TransporterJobsPage from "@/pages/transporter/jobs";
+import TransporterProfile from "@/pages/transporter/profile";
+import TransporterDrivers from "@/pages/transporter/drivers";
 import { AuthProvider } from "@/contexts/auth-context";
 
+
 function Router() {
+  
+
   return (
     <Switch>
       <Route path="/" component={WelcomePage} />
@@ -29,13 +32,13 @@ function Router() {
       <Route path="/driver/jobs" component={DriverJobs} />
       <Route path="/driver/alerts" component={DriverAlerts} />
       <Route path="/driver/profile" component={DriverProfile} />
-
+      {/* <Route path='/driver/pf2' component={DBP2}/> */}
       {/* Fleet Owner Routes */}
-      <Route path="/fleet-owner/register" component={FleetOwnerRegistration} />
-      <Route path="/fleet-owner/dashboard" component={FleetOwnerDashboard} />
-      <Route path="/fleet-owner/jobs" component={FleetOwnerJobs} />
-      <Route path="/fleet-owner/profile" component={FleetOwnerProfile} />
-      <Route path="/fleet-owner/drivers" component={FleetOwnerDrivers} />
+      <Route path="/transporter/register" component={TransporterRegistration} />
+      <Route path="/transporter/dashboard" component={TransporterDashboard} />
+      <Route path="/transporter/jobs" component={TransporterJobsPage} />
+      <Route path="/transporter/profile" component={TransporterProfile} />
+      <Route path="/transporter/drivers" component={TransporterDrivers} />
 
       {/* Fallback */}
       <Route component={NotFound} />

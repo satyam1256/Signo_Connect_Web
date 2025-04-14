@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -23,6 +23,33 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/contexts/auth-context";
 import { OtpInput } from "@/components/ui/otp-input";
 import signoLogo from "@/assets/signo-logo.png";
+import { jwtDecode } from "jwt-decode";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Textarea,
+  // TextareaContent,
+  // TextareaLabel,
+} from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { BottomNavigation } from "@/components/layout/bottom-navigation";
+import { UserType } from "@shared/schema";
 
 // Form schemas
 const phoneSchema = z.object({
@@ -37,6 +64,7 @@ enum LoginStep {
 }
 
 const LoginPage = () => {
+  console.log("AT login")
   const { t } = useLanguageStore();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -60,33 +88,21 @@ const LoginPage = () => {
   const onPhoneSubmit = async (values: z.infer<typeof phoneSchema>) => {
     setIsSubmitting(true);
     try {
-      await apiRequest(
-        "POST",
-        "/api/register",
-        {
-          fullName: values.fullName,
-          phoneNumber: values.phoneNumber,
-          userType: "driver", // Default to driver, will be overridden by actual value in database
-        }
-      );
 
-      // Save phone number for next step
+      // Store the response data for OTP verification
       setPhoneNumber(values.phoneNumber);
-
-      // Move to OTP step
       setStep(LoginStep.OTP);
 
-      // Success notification
       toast({
-        title: "Verification code sent",
-        description: `An OTP has been sent to ${values.phoneNumber}`,
+        title: "Success",
+        description: `Verification code sent to ${values.phoneNumber}`,
       });
     } catch (error) {
       console.error("Error during login:", error);
       toast({
         variant: "destructive",
-        title: "Login failed",
-        description: "We couldn't process your request. Please try again.",
+        title: "Error",
+        description: error instanceof Error ? error.message : "We couldn't process your request. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -102,62 +118,95 @@ const LoginPage = () => {
       // Always use 123456 for testing
       const testOtp = "123456";
       
-      const response = await apiRequest(
-        "POST",
-        "/api/verify-otp",
-        {
-          phoneNumber,
-          otp: testOtp, // Force the test OTP instead of using the input value
-        }
-      );
+      if (otp === testOtp) {
+        // Make another API call to get user data
+        const response = await fetch("http://localhost:8000/api/method/signo_connect.api.login2", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name1: phoneForm.getValues("fullName"),
+            phone_number: phoneNumber,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error('OTP verification failed');
-      }
-
-      const data = await response.json();
-
-      if (data.verified) {
-        // Fetch user data
-        const userResponse = await apiRequest(
-          "GET",
-          `/api/user/${data.userId}`
-        );
+        const data = await response.json();
         
-        if (!userResponse.ok) {
-          throw new Error('User data fetch failed');
+        const token = data.data.token as string;
+        
+        const decoded = jwtDecode<{
+          user_type: string;
+          user_id: string;
+          sid: string;
+          name: string;
+          phone_number: string;
+          license_number?: string | null;
+          exp: number;
+        }>(token);
+
+        console.log("Decoded token:", decoded);
+        console.log("Login SID:---> ", decoded.sid);
+        localStorage.setItem("userId" , decoded.user_id);
+        localStorage.setItem("SID" , decoded.sid);
+
+        console.log("Login verification response:", data);
+
+        if (!data.status) {
+          throw new Error(data.message || "Login verification failed");
         }
 
-        const userData = await userResponse.json();
+        // Map backend user data to frontend format
+        const userData = {
+          id: data.data.user.id,
+          fullName: data.data.user.name,
+          phoneNumber: data.data.user.phone_number,
+          userType: data.data.user.user_type,
+          token: data.data.token,
+          profileCompleted: false, // Default to false, user will be prompted to complete profile
+          // Add additional fields based on user type
+          ...(data.data.user.user_type === "transporter" && {
+            companyName: data.data.user.company_name,
+          }),
+          ...(data.data.user.user_type === "driver" && {
+            licenseNumber: data.data.user.dl_number,
+          }),
+        };
 
         // Login user
-        login(userData.user);
+        login(userData);
 
-        // Redirect based on user type
-        if (userData.user.userType === "driver") {
-          setLocation("/driver/dashboard");
-        } else {
-          setLocation("/fleet-owner/dashboard");
-        }
+        setTimeout(() => {
+          if (data.data.user.user_type === "driver") {
+            setLocation('/driver/dashboard');
+          }
+          else{
+            setLocation('/transporter/dashboard');
+          }
+          
+        }, 0);
+
+        // Redirect to the dashboard page after successful login
+        // setLocation('/driver/dashboard');
 
         // Success notification
         toast({
-          title: "Login successful",
-          description: "Welcome to SIGNO Connect",
+          title: "Success",
+          description: `Welcome to SIGNO Connect, ${userData.fullName}!`,
         });
       } else {
         toast({
           variant: "destructive",
-          title: "Verification failed",
-          description: "The OTP you provided is invalid. Please try again.",
+          title: "Error",
+          description: "Invalid verification code. Please try again.",
         });
       }
     } catch (error) {
       console.error("Error verifying OTP:", error);
       toast({
         variant: "destructive",
-        title: "Verification failed",
-        description: "We couldn't verify your OTP. Please try again.",
+        title: "Error",
+        description: error instanceof Error ? error.message : "We couldn't verify your OTP. Please try again.",
       });
     } finally {
       setIsSubmitting(false);

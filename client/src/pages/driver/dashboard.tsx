@@ -228,7 +228,7 @@ const DriverDashboard = () => {
               </div>
               <div>
                 <h2 className="text-xl font-medium">{t("welcome_user")} {user.fullName}!</h2>
-                <p className="text-primary-100">Delhi NCR Area</p>
+                <p className="text-primary-100">Delhi NCR</p>
               </div>
             </div>
 

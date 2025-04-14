@@ -216,7 +216,7 @@ const mockApplicants: Applicant[] = [
   }
 ];
 
-const FleetOwnerJobsPage = () => {
+const TransporterJobsPage = () => {
   const { user } = useAuth();
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
@@ -1364,10 +1364,10 @@ const FleetOwnerJobsPage = () => {
         </Tabs>
       </div>
 
-      <BottomNavigation userType="fleet_owner" />
+      <BottomNavigation userType="transporter" />
       <Chatbot />
     </div>
   );
 };
 
-export default FleetOwnerJobsPage;
+export default TransporterJobsPage;

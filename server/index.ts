@@ -7,7 +7,7 @@ const app = express();
 // Enable CORS for all origins
 // Configure CORS with full options for external access
 app.use(cors({
-  origin: true, // Allow any origin
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'Origin', 'Accept', 'X-Requested-With'],
   credentials: true,
@@ -17,17 +17,26 @@ app.use(cors({
 // Enhanced preflight handling
 app.options('*', (req, res) => {
   // Set CORS headers
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (origin && ['http://localhost:3000', 'http://127.0.0.1:3000'].includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key, Origin, Accept, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Max-Age', '86400'); // 24 hours
   res.sendStatus(200);
 });
+
 // Add custom CORS headers to every response
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (origin && ['http://localhost:3000', 'http://127.0.0.1:3000'].includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key, Origin, Accept, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
   next();
 });
 
@@ -103,10 +112,10 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
+  // ALWAYS serve the app on port 3000
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = 5000;
+  const port = 3000;
   server.listen({
     port,
     host: "0.0.0.0",
