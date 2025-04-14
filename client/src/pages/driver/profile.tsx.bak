@@ -270,7 +270,6 @@ const DriverProfilePage = () =>  {
         headers: {
           // "Cookie": `sid= ${SID}`,
           "Authorization": `token ${frappe_token}`
-          // Add cache control headers
         },
       });
       
@@ -285,8 +284,30 @@ const DriverProfilePage = () =>  {
       if (json.message && json.message.data) {
         console.log("API Response KEYS:", Object.keys(json.message.data));
         console.log("API Response Raw Data:", JSON.stringify(json.message.data, null, 2));
+        
+        // Add direct debugging for the fields we're interested in
+        console.log("DEBUG FIELDS - DIRECT ACCESS:");
+        console.log("name1:", json.message.data.name1);
+        console.log("emergency_contact_number:", json.message.data.emergency_contact_number);
+        console.log("dob:", json.message.data.dob);
+        
         console.log("Aadhar Number Present:", "aadhar_number" in json.message.data);
         console.log("All Aadhar related fields:", Object.keys(json.message.data).filter(key => key.includes('aadhar')));
+        
+        // Check for name, emergency contact and dob fields with different possible names
+        console.log("Name1 field:", json.message.data.name1);
+        console.log("Name field:", json.message.data.name);
+        console.log("Full name field:", json.message.data.full_name);
+        console.log("Emergency contact field:", json.message.data.emergency_contact_number);
+        console.log("Emergency contact alternatives:", 
+          json.message.data.emergency_contact,
+          json.message.data.emergency_number
+        );
+        console.log("DOB field:", json.message.data.dob);
+        console.log("DOB alternatives:", 
+          json.message.data.date_of_birth,
+          json.message.data.birth_date
+        );
       }
       
       // Set the profile data
@@ -309,6 +330,25 @@ const DriverProfilePage = () =>  {
         profileData.aadhar_back_pic = getFullImageUrl(profileData.aadhar_back_pic);
       }
       
+      // Check for alternative field names and map them if needed
+      if (!profileData.name1 && profileData.name) {
+        profileData.name1 = profileData.name;
+      } else if (!profileData.name1 && profileData.full_name) {
+        profileData.name1 = profileData.full_name;
+      }
+      
+      if (!profileData.emergency_contact_number && profileData.emergency_contact) {
+        profileData.emergency_contact_number = profileData.emergency_contact;
+      } else if (!profileData.emergency_contact_number && profileData.emergency_number) {
+        profileData.emergency_contact_number = profileData.emergency_number;
+      }
+      
+      if (!profileData.dob && profileData.date_of_birth) {
+        profileData.dob = profileData.date_of_birth;
+      } else if (!profileData.dob && profileData.birth_date) {
+        profileData.dob = profileData.birth_date;
+      }
+      
       // Ensure name property exists for the AvatarFallback component
       if (!profileData.name && profileData.name1) {
         profileData.name = profileData.name1;
@@ -318,8 +358,11 @@ const DriverProfilePage = () =>  {
       
       setData(profileData);
       
-      // Log specifically to check if aadhar_number is loaded correctly
+      // Log specifically to check if required fields are loaded correctly
       console.log("Loaded profile data:", profileData);
+      console.log("Name in loaded data:", profileData.name1);
+      console.log("Emergency contact in loaded data:", profileData.emergency_contact_number);
+      console.log("DOB in loaded data:", profileData.dob);
       console.log("Aadhar number in loaded data:", profileData.aadhar_number);
       
       // Also update the profile state with the latest data
@@ -353,7 +396,7 @@ const DriverProfilePage = () =>  {
       
       // Initialize data with empty object to prevent null reference errors
       setData({
-        // name: "",
+        name: "",
         name1: "",
         email: "",
         phone_number: "",
@@ -715,15 +758,15 @@ const DriverProfilePage = () =>  {
                 <div className="px-6 pb-6 relative">
                   <div className="absolute -top-12 left-6">
                     <Avatar className="w-24 h-24 border-4 border-white">
-                      <AvatarImage src={getFullImageUrl(data.profile_pic)} alt={data?.name1 || ""} />
+                      <AvatarImage src={getFullImageUrl(data.profile_pic)} alt={data?.name || ""} />
                       <AvatarFallback className="text-2xl bg-primary text-white">
-                        {getInitials(data?.name1)}
+                        {getInitials(data?.name || data?.name1)}
                       </AvatarFallback>
                     </Avatar>
                   </div>
 
                   <div className="pt-16">
-                    <h2 className="text-2xl font-bold mb-1">{(data?.name1 || "Driver Name").toUpperCase()}</h2>
+                    <h2 className="text-2xl font-bold mb-1">{(data?.name || data?.name1 || "Driver Name").toUpperCase()}</h2>
                     <div className="flex flex-col sm:flex-row sm:items-center text-neutral-600 gap-1 sm:gap-4 mb-4 flex-wrap">
                       <div className="flex items-center">
                         <Truck className="h-4 w-4 mr-2 text-neutral-500" />
@@ -897,546 +940,10 @@ const DriverProfilePage = () =>  {
                   </CardContent>
                 </Card>
               </TabsContent>
-
-              {/* Placeholder - Preferences Tab Content Needs State Management */}
-              <TabsContent value="preferences" className="mt-0 space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Notification Settings</CardTitle>
-                    {/* Add button to open Notification Settings Dialog */}
-                     <Button variant="ghost" size="sm" onClick={() => setNotificationSettingsOpen(true)}>
-                        <Settings className="h-4 w-4"/>
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-neutral-500 text-sm">Manage your notification preferences (job alerts, app updates, etc.) in the settings.</p>
-                    {/* Optionally show current status if fetched */}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Privacy Settings</CardTitle>
-                    {/* Add button to open relevant section in Account Settings? */}
-                  </CardHeader>
-                  <CardContent>
-                     <p className="text-neutral-500 text-sm">Manage profile visibility and data sharing options in account settings.</p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
             </Tabs>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Profile Completion</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm text-neutral-600">Profile Status</span>
-                <Badge variant={profileStatus.completionPercentage >= 90 ? "default" : "secondary"}>
-                  {profileStatus.completionPercentage}% Complete
-                </Badge>
-              </div>
-
-              <Progress value={profileStatus.completionPercentage} className="h-2 mb-4" />
-
-              {profileStatus.missingItems.length > 0 && profileStatus.completionPercentage < 100 && (
-                <div className="bg-amber-50 border border-amber-100 rounded-md p-3 mb-4">
-                  <h4 className="text-amber-700 font-medium text-sm flex items-center mb-2">
-                    <Info className="h-4 w-4 mr-2" /> Complete your profile
-                  </h4>
-                  <ul className="text-amber-600 text-sm space-y-1">
-                    {profileStatus.missingItems.slice(0, 3).map((item, index) => (
-                      <li key={index} className="flex items-center">
-                        <ChevronRight className="h-3 w-3 mr-1 flex-shrink-0" />
-                        Add your {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <Button
-                className="w-full"
-                onClick={() => setIsEditingProfile(true)}
-                disabled={profileStatus.completionPercentage === 100}
-              >
-                {profileStatus.completionPercentage === 100 ? "Profile Complete" : "Complete Profile"}
-              </Button>
-            </CardContent>
-          </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Account</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="grid divide-y divide-neutral-100">
-                  <button
-                    onClick={() => setAccountSettingsOpen(true)}
-                    className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
-                  >
-                    <Settings className="h-5 w-5 mr-3 text-neutral-500" />
-                    <span>Account Settings</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
-                  </button>
-
-                  <button
-                    onClick={() => setHelpSupportOpen(true)}
-                    className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
-                  >
-                    <HelpCircle className="h-5 w-5 mr-3 text-neutral-500" />
-                    <span>Help & Support</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
-                  </button>
-
-                  <button
-                    onClick={() => setNotificationSettingsOpen(true)}
-                    className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
-                  >
-                    <Bell className="h-5 w-5 mr-3 text-neutral-500" />
-                    <span>Notification Settings</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
-                  </button>
-
-                  <button
-                    onClick={() => setLanguageSettingsOpen(true)}
-                    className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
-                  >
-                    <Languages className="h-5 w-5 mr-3 text-neutral-500" />
-                    <span>Language Settings</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
-                  </button>
-
-                  <button
-                    onClick={logout}
-                    className="flex items-center py-3 px-6 hover:bg-red-50 transition-colors duration-200 text-left w-full text-red-600"
-                  >
-                    <LogOut className="h-5 w-5 mr-3" />
-                    <span>Logout</span>
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Account Information</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="grid divide-y divide-neutral-100 text-sm">
-                  <div className="p-4">
-                    <div className="text-neutral-500 mb-1">Account Type</div>
-                    <div className="capitalize">{user?.userType || "N/A"}</div>
-                  </div>
-                  {/* <div className="p-4">
-                    <div className="text-neutral-500 mb-1">Member Since</div>
-                    <div>{user?.created_at ? new Date(user.created_at).toLocaleDateString() : "N/A"}</div>
-                  </div> */}
-                  {/* <div className="p-4">
-                    <div className="text-neutral-500 mb-1">Last Login</div>
-                    <div>Today, 5:42 PM</div> Placeholder
-                  </div> */}
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
-
-      {/* Edit Profile Dialog */}
-      <Dialog open={isEditingProfile} onOpenChange={(open) => {
-        if (!open) {
-          // When dialog is closed, reset the edited profile state
-          setEditedProfile({});
-          setIsEditingProfile(false);
-        }
-      }}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Profile</DialogTitle>
-            <DialogDescription>
-              Update your profile information. Ensure all details are accurate.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="flex flex-col items-center space-y-4">
-               <Label>Profile Picture</Label>
-              <Avatar className="w-24 h-24">
-                <AvatarFallback>{(editedProfile.name1 || data?.name1)?.slice(0, 2).toUpperCase() || <UserIcon />}</AvatarFallback>
-              </Avatar>
-               <Input
-                 id="profile_picFile"
-                 type="file"
-                 accept="image/*"
-                 onChange={
-                  (e) => setprofile_pic(e.target.files?.[0] || null)
-                }
-                 className="text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
-               />
-            </div>
-            <Separator />
-            <div className="space-y-4">
-              <h3 className="font-medium text-lg">Personal Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name1">Full Name *</Label>
-                  <Input
-                    id="name1"
-                    value={editedProfile.name1 ?? (data?.name1 || "")} 
-                    onChange={(e) => setEditedProfile({...editedProfile, name1: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={editedProfile.email ?? (data?.email || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, email: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone_number">Phone Number *</Label>
-                  <Input
-                    id="phone_number"
-                    value={data?.phone_number || ""}
-                    readOnly
-                    className="bg-neutral-100"
-                  />
-                   <p className="text-xs text-neutral-500">Contact support to update phone number.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="emergency_contact_number">Emergency Contact</Label>
-                  <Input
-                    id="emergency_contact_number"
-                    value={editedProfile.emergency_contact_number ?? (data?.emergency_contact_number || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, emergency_contact_number: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Textarea
-                    id="address"
-                    value={editedProfile.address ?? (data?.address || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, address: e.target.value})}
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dob">Date of Birth</Label>
-                  <Input
-                    id="dob"
-                    type="date"
-                    value={editedProfile.dob ?? (data?.dob || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, dob: e.target.value})}
-                  />
-                </div>
-              </div>
-            </div>
-             <Separator />
-            <div className="space-y-4">
-              <h3 className="font-medium text-lg">Professional Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="experience">Experience (Years)</Label>
-                  <Input
-                    id="experience"
-                    type="number"
-                    min="0"
-                    value={editedProfile.experience ?? 0}
-                    onChange={(e) => setEditedProfile({...editedProfile, experience: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="catagory">Preferred Vehicle Type</Label>
-                  <Select
-                    value={editedProfile.catagory ?? (data?.catagory || "")}
-                    onValueChange={(value) => setEditedProfile({...editedProfile, catagory: value})}
-                  >
-                    <SelectTrigger id="catagory">
-                      <SelectValue placeholder="Select vehicle type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="heavy">Heavy Vehicle</SelectItem>
-                      <SelectItem value="medium">Medium Vehicle</SelectItem>
-                      <SelectItem value="light">Light Vehicle</SelectItem>
-                      <SelectItem value="Truck">Truck</SelectItem>
-                      <SelectItem value="trailer">Trailer</SelectItem>
-                      <SelectItem value="bus">Bus</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-             <Separator />
-            <div className="space-y-4">
-              <h3 className="font-medium text-lg">Documents</h3>
-              <div className="space-y-4 p-4 border rounded-md">
-                <h4 className="font-medium">Driving License</h4>
-                <div className="space-y-2">
-                  <Label htmlFor="dl_number">License Number *</Label>
-                  <Input
-                    id="dl_number"
-                    value={editedProfile.dl_number ?? (data?.dl_number || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, dl_number: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="dlFrontFile">Front Side {data?.dl_front_pic && !dlFront ? "(Uploaded)" : "*"}</Label>
-                    <Input
-                      id="dlFrontFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setDlFront(e.target.files?.[0] || null)}
-                       className="text-sm"
-                    />
-                    {data?.dl_front_pic && !dlFront && (
-                      <a href={getFullImageUrl(data?.dl_front_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {dlFront && <p className="text-xs text-green-600">New file selected: {dlFront.name}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="dlBackFile">Back Side {data?.dl_back_pic && !dlBack ? "(Uploaded)" : ""}</Label>
-                    <Input
-                      id="dlBackFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setDlBack(e.target.files?.[0] || null)}
-                      className="text-sm"
-                    />
-                     {data?.dl_back_pic && !dlBack && (
-                       <a href={getFullImageUrl(data?.dl_back_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {dlBack && <p className="text-xs text-green-600">New file selected: {dlBack.name}</p>}
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4 p-4 border rounded-md">
-                <h4 className="font-medium">Aadhar Card</h4>
-                <div className="space-y-2">
-                  <Label htmlFor="aadhar_number">Aadhar Number *</Label>
-                  <Input
-                    id="aadhar_number"
-                    ref={aadharInputRef}
-                    defaultValue={data?.aadhar_number || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      console.log("Updating aadhar_number to:", value);
-                      setEditedProfile(prev => ({...prev, aadhar_number: value}));
-                    }}
-                    required
-                  />
-                  {/* Debug info */}
-                  <p className="text-xs text-neutral-500">
-                    Current value: {editedProfile.aadhar_number !== undefined ? 
-                      `"${editedProfile.aadhar_number}"` : 
-                      `Using data value: "${data?.aadhar_number || ""}"`}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="aadhaar_frontFile">Front Side {data?.aadhar_front_pic && !aadhaar_front ? "(Uploaded)" : "*"}</Label>
-                    <Input
-                      id="aadhaar_frontFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setaadhaar_front(e.target.files?.[0] || null)}
-                      className="text-sm"
-                    />
-                     {data?.aadhar_front_pic && !aadhaar_front && (
-                       <a href={getFullImageUrl(data?.aadhar_front_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {aadhaar_front && <p className="text-xs text-green-600">New file selected: {aadhaar_front.name}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="aadhaar_backFile">Back Side {data?.aadhar_back_pic && !aadhaar_back ? "(Uploaded)" : ""}</Label>
-                    <Input
-                      id="aadhaar_backFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setaadhaar_back(e.target.files?.[0] || null)}
-                       className="text-sm"
-                    />
-                    {data?.aadhar_back_pic && !aadhaar_back && (
-                      <a href={getFullImageUrl(data?.aadhar_back_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {aadhaar_back && <p className="text-xs text-green-600">New file selected: {aadhaar_back.name}</p>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsEditingProfile(false);
-              setEditedProfile({});
-            }} disabled={isUpdatingProfile}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => handleProfileUpdate(editedProfile)}
-              disabled={
-                isUpdatingProfile ||
-                !Object.keys(editedProfile).some(key => editedProfile[key as keyof UserProfile] !== profile[key as keyof UserProfile])
-              }
-            >
-              {isUpdatingProfile ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </DialogFooter>
-
-        </DialogContent>
-      </Dialog>
-
-      {/* Account Settings Dialog (Structure Only) */}
-      <Dialog open={accountSettingsOpen} onOpenChange={setAccountSettingsOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Account Settings</DialogTitle>
-            <DialogDescription>
-              Manage your account settings and preferences. (Functionality not implemented)
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <p className="text-center text-neutral-500">Account settings options will appear here.</p>
-             <Separator />
-             <Button variant="outline" className="w-full justify-start">Change Password (Placeholder)</Button>
-             <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-50">Deactivate Account (Placeholder)</Button>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setAccountSettingsOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Help & Support Dialog (Structure Only) */}
-      <Dialog open={helpSupportOpen} onOpenChange={setHelpSupportOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Help & Support</DialogTitle>
-            <DialogDescription>
-              Get assistance and support.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <Button variant="outline" className="w-full justify-start">FAQ (Placeholder)</Button>
-             <Button variant="outline" className="w-full justify-start">Contact Support (Placeholder)</Button>
-             <Separator />
-             <div className="bg-neutral-50 p-4 rounded-md border border-neutral-200">
-              <h4 className="font-medium mb-2">Customer Support</h4>
-              <p className="text-sm text-neutral-600 mb-2">
-                Need immediate assistance? Our team is available 24/7 to help you.
-              </p>
-              <p className="text-sm font-medium">
-                Helpline: +91 1800-123-4567
-              </p>
-              <p className="text-sm text-neutral-600">
-                Email: support@signo-connect.com
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setHelpSupportOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Notification Settings Dialog (Structure Only) */}
-      <Dialog open={notificationSettingsOpen} onOpenChange={setNotificationSettingsOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Notification Settings</DialogTitle>
-            <DialogDescription>
-              Manage how you receive notifications. (Functionality not implemented)
-            </DialogDescription>
-          </DialogHeader>
-           <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <div className="flex items-center justify-between p-2 border rounded">
-                <Label htmlFor="placeholder-notif">Email Notifications</Label>
-                <Switch id="placeholder-notif" disabled/>
-             </div>
-              <div className="flex items-center justify-between p-2 border rounded">
-                <Label htmlFor="placeholder-notif-2">SMS Notifications</Label>
-                <Switch id="placeholder-notif-2" disabled/>
-             </div>
-              <p className="text-center text-neutral-500 text-sm">Full settings management coming soon.</p>
-          </div>
-          <DialogFooter>
-             <Button variant="outline" onClick={() => setNotificationSettingsOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setNotificationSettingsOpen(false)} disabled>
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Language Settings Dialog (Structure Only) */}
-      <Dialog open={languageSettingsOpen} onOpenChange={setLanguageSettingsOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Language Settings</DialogTitle>
-            <DialogDescription>
-              Choose your preferred language. (Functionality not implemented)
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <div className="flex items-center space-x-2 p-2 border rounded">
-                <input type="radio" id="lang-en-ph" name="language-ph" defaultChecked disabled/>
-                <Label htmlFor="lang-en-ph">English</Label>
-             </div>
-             <div className="flex items-center space-x-2 p-2 border rounded">
-                <input type="radio" id="lang-hi-ph" name="language-ph" disabled/>
-                <Label htmlFor="lang-hi-ph">हिंदी (Hindi)</Label>
-             </div>
-             <p className="text-center text-neutral-500 text-sm">More languages and settings coming soon.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLanguageSettingsOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setLanguageSettingsOpen(false)} disabled>
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <BottomNavigation userType="driver" />
-      <Chatbot />
     </div>
   );
 };
