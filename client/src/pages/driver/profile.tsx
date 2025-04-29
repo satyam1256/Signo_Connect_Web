@@ -54,6 +54,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast as hotToast } from "react-hot-toast"; 
 
 const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
+const x_key = import.meta.env.VITE_X_KEY
 
 const getProfileCompletionData = (data: Record<string, any> | null) => {
   // Return default values if data is null or undefined
@@ -181,12 +182,10 @@ const DriverProfilePage = () =>  {
 
 
   const [data,setData]= useState<any>(null);
-
-  // Helper function to ensure image URLs are properly formed
+  
   const getFullImageUrl = (url: string | null | undefined): string | undefined => {
     if (!url) return undefined;
     
-    // Handle relative paths from backend
     if (url.startsWith('/files')) {
       return `http://localhost:8000${url}`;
     }
@@ -194,22 +193,11 @@ const DriverProfilePage = () =>  {
     return url;
   };
 
-  // Debug effect to monitor editedProfile changes
-  useEffect(() => {
-    console.log("editedProfile changed:", editedProfile);
-    if (editedProfile.aadhar_number !== undefined) {
-      console.log("Current aadhar_number in form:", editedProfile.aadhar_number);
-    }
-  }, [editedProfile]);
-
-  
 
   // Add uploadFile function
   const uploadFile = async (file: File, type: string): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file, file.name);
-
-    // const SID = localStorage.getItem("SID");
     const myHeaders = new Headers();
     myHeaders.append("Authorization" ,`token ${frappe_token}`);
 
@@ -228,12 +216,9 @@ const DriverProfilePage = () =>  {
     }
 
     const data = await response.json();
-    console.log("File upload response:", data);
-    
-    // Check different possible locations of file_url in the response
+
     let fileUrl = data.file_url || data.message?.file_url || (data.status && data.file_url) || "";
     
-    // If we have a status: true and file URL that starts with /files, we need to form the complete URL
     if (data.status === true && typeof data.file_url === 'string') {
       if (data.file_url.startsWith('/files')) {
         fileUrl = `http://localhost:8000${data.file_url}`;
@@ -255,22 +240,18 @@ const DriverProfilePage = () =>  {
   const loadProfile = useCallback(async () => {
     if (!user) {
       console.log("loadProfile called without user, returning.");
-      return; // Should ideally be handled by useEffect check
+      return;
     }
 
     try {
       const userId = localStorage.getItem("userId") || user.id;
-      console.log("Token from env:", import.meta.env.VITE_FRAPPE_API_TOKEN);
-      console.log("Token:", frappe_token);
-      console.log("ENV:", import.meta.env);
+
 
       
       const res = await fetch(`http://localhost:8000/api/method/signo_connect.apis.driver.get_driver_profile?driver_id=${userId}`, {
         method: "GET",
         headers: {
-          // "Cookie": `sid= ${SID}`,
           "Authorization": `token ${frappe_token}`
-          // Add cache control headers
         },
       });
       
@@ -281,18 +262,10 @@ const DriverProfilePage = () =>  {
       const json = await res.json();
       console.log("API Response:", json);
       
-      // Enhanced debugging for the API response
-      if (json.message && json.message.data) {
-        console.log("API Response KEYS:", Object.keys(json.message.data));
-        console.log("API Response Raw Data:", JSON.stringify(json.message.data, null, 2));
-        console.log("Aadhar Number Present:", "aadhar_number" in json.message.data);
-        console.log("All Aadhar related fields:", Object.keys(json.message.data).filter(key => key.includes('aadhar')));
-      }
       
-      // Set the profile data
-      const profileData = json.message?.data || {}; // Add a fallback empty object
+      const profileData = json.message?.data || {};
       
-      // Process image URLs to ensure they're properly formatted
+
       if (profileData.profile_pic) {
         profileData.profile_pic = getFullImageUrl(profileData.profile_pic);
       }
@@ -309,20 +282,18 @@ const DriverProfilePage = () =>  {
         profileData.aadhar_back_pic = getFullImageUrl(profileData.aadhar_back_pic);
       }
       
-      // Ensure name property exists for the AvatarFallback component
+
       if (!profileData.name && profileData.name1) {
         profileData.name = profileData.name1;
       } else if (!profileData.name) {
-        profileData.name = ""; // Default to empty string if no name data available
+        profileData.name = ""; 
       }
       
       setData(profileData);
       
-      // Log specifically to check if aadhar_number is loaded correctly
       console.log("Loaded profile data:", profileData);
-      console.log("Aadhar number in loaded data:", profileData.aadhar_number);
       
-      // Also update the profile state with the latest data
+
       setProfile({
         name1: profileData.name1 || "",
         email: profileData.email || "",
@@ -334,7 +305,7 @@ const DriverProfilePage = () =>  {
         dl_number: profileData.dl_number || "",
         dl_front_pic: profileData.dl_front_pic || null,
         dl_back_pic: profileData.dl_back_pic || null,
-        aadhaar_front: profileData.aadhar_front_pic || null, // Match backend response fields
+        aadhaar_front: profileData.aadhar_front_pic || null, 
         aadhaar_back: profileData.aadhar_back_pic || null,
         aadhar_number: profileData.aadhar_number || "",
         dob: profileData.dob || "",
@@ -353,7 +324,6 @@ const DriverProfilePage = () =>  {
       
       // Initialize data with empty object to prevent null reference errors
       setData({
-        // name: "",
         name1: "",
         email: "",
         phone_number: "",
@@ -371,20 +341,18 @@ const DriverProfilePage = () =>  {
         profile_pic: null
       });
     } finally {
-      setIsProfileLoading(false); // Update loading state
+      setIsProfileLoading(false);
     }
   }, [user, toast]);
 
-  // Load profile on mount and when user changes
   useEffect(() => {
     if (!user) {
       navigate("/");
       return;
     }
 
-    setIsProfileLoading(true); // Set loading before calling
-    loadProfile(); // Call the memoized function
-    // Dependencies: user, navigate, and the stable loadProfile function
+    setIsProfileLoading(true);
+    loadProfile();
   }, [user, navigate, loadProfile]);
 
   // Handle profile update
@@ -393,10 +361,8 @@ const DriverProfilePage = () =>  {
 
     setIsUpdatingProfile(true);
     try {
-      console.log("--------------PROFILE------------");
       
       try {
-
 
         const fileUploads = [];
         
@@ -453,7 +419,6 @@ const DriverProfilePage = () =>  {
 
         const userId = localStorage.getItem("userId") || user.id;
 
-        // Get the direct value from the input ref or use the state value
         const aadharValue = aadharInputRef.current?.value || editedProfile.aadhar_number || (data?.aadhar_number || "")
         
         // Create a complete update object with all fields explicitly defined
@@ -480,11 +445,12 @@ const DriverProfilePage = () =>  {
         });
         
 
-        const res1 = await fetch(`http://localhost:8000/api/method/signo_connect.apis.driver.update_profile?driver_id=${userId}`, {
-          method: "POST",
+        const res1 = await fetch(`http://localhost:8000/api/method/signo_connect.api.proxy/Drivers/${userId}`, {
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `token ${frappe_token}`
+            "Authorization": `token ${frappe_token}`,
+            "x-key":x_key
           },
           body: JSON.stringify(updatePayload),
         });
@@ -495,36 +461,18 @@ const DriverProfilePage = () =>  {
           responseData = await res1.json();
           console.log("Update Response:", responseData);
           
-          // Enhanced debugging for update response
-          // if (responseData.message && responseData.message.data) {
-          //   console.log("Update Response KEYS:", Object.keys(responseData.message.data));
-          //   console.log("Update Response Raw Data:", JSON.stringify(responseData.message.data, null, 2));
-          //   console.log("Aadhar Number Present in response:", "aadhar_number" in responseData.message.data);
-          //   console.log("All Aadhar related fields in response:", Object.keys(responseData.message.data).filter(key => key.includes('aadhar')));
-          // }
-          
-          // Log specifically to check if aadhar_number is being returned correctly
-          // console.log("Aadhar number in request:", editedProfile.aadhar_number || (data?.aadhar_number || ""));
-          // console.log("Response data fields:", Object.keys(responseData?.message?.data || {}));
-          // if (responseData?.message?.data) {
-          //   console.log("Aadhar number in response:", responseData.message.data.aadhar_number);
-          // }
         } catch (jsonError) {
           console.error("Error parsing response JSON:", jsonError);
           throw new Error("Failed to parse server response");
         }
-        
-        // Check if response is OK after parsing
+
         if (!res1.ok) {
           console.error("Update Error Response:", responseData);
           throw new Error(responseData?.message || "Failed to update profile");
         }
         
         
-        
-        // Update the auth context user data to reflect changes across the app
         if (user) {
-          // Extract relevant data to update in the auth context
           const userUpdate: Partial<User> = {};
           
           if (editedProfile.name1) {
@@ -540,8 +488,7 @@ const DriverProfilePage = () =>  {
             updateUser(userUpdate);
           }
         }
-        
-        // Invalidate any queries that might use profile data
+
         // queryClient.invalidateQueries({ queryKey: [`/api/method/signo_connect.apis.driver.upload_image`] });
         queryClient.invalidateQueries({ queryKey: [`/api/method/signo_connect.apis.driver.get_driver_profile?driver_id=${user.id}`] });
         
@@ -571,9 +518,7 @@ const DriverProfilePage = () =>  {
         });
       }
       finally {
-        // Reset states after update attempt
         setIsUpdatingProfile(false);
-        // Clear edited profile state but don't do it here to prevent form reset if there's an error
       }
     } catch (error: any) {
       console.error("Error in profile update outer try block:", error);
@@ -586,7 +531,6 @@ const DriverProfilePage = () =>  {
     }
   };
 
-  // Render null if user is not available (useEffect handles redirect)
   if (!user) {
     return null;
   }
@@ -614,7 +558,6 @@ const DriverProfilePage = () =>  {
   // Get profile status only if data is available
   const profileStatus = getProfileCompletionData(data);
 
-  // Debug the data structure
   console.log("Data structure when rendering:", {
     hasData: !!data,
     keys: data ? Object.keys(data) : [],
@@ -628,7 +571,6 @@ const DriverProfilePage = () =>  {
     } : {}
   });
   
-  // Render null if user is not available or data is still null
   if (!user || !data) {
     if (!user) {
       navigate("/");
@@ -636,7 +578,6 @@ const DriverProfilePage = () =>  {
     return null;
   }
 
-  // Show loading state while fetching profile data
   if (isProfileLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-neutral-50">
@@ -727,7 +668,7 @@ const DriverProfilePage = () =>  {
                     <div className="flex flex-col sm:flex-row sm:items-center text-neutral-600 gap-1 sm:gap-4 mb-4 flex-wrap">
                       <div className="flex items-center">
                         <Truck className="h-4 w-4 mr-2 text-neutral-500" />
-                        <span>Driver {data?.experience ? `• ${data?.experience} years exp` : ""}</span>
+                        <span>Driver {data?.experience ? `• ${data?.experience} years exp` : " "}</span>
                       </div>
                       {data?.address && (
                         <div className="flex items-center">
@@ -1149,13 +1090,37 @@ const DriverProfilePage = () =>  {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="experience">Experience (Years)</Label>
-                  <Input
-                    id="experience"
-                    type="number"
-                    min="0"
-                    value={editedProfile.experience ?? 0}
-                    onChange={(e) => setEditedProfile({...editedProfile, experience: e.target.value})}
-                  />
+                  <Select
+                    value={editedProfile.experience ?? (data?.experience || "")}
+                    onValueChange={(value) => setEditedProfile({...editedProfile, experience: value})}
+                  >
+                    <SelectTrigger id="experience">
+                      <SelectValue placeholder="Select years of experience" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">0 years</SelectItem>
+                      <SelectItem value="1">1 year</SelectItem>
+                      <SelectItem value="2">2 years</SelectItem>
+                      <SelectItem value="3">3 years</SelectItem>
+                      <SelectItem value="4">4 years</SelectItem>
+                      <SelectItem value="5">5 years</SelectItem>
+                      <SelectItem value="6">6 years</SelectItem>
+                      <SelectItem value="7">7 years</SelectItem>
+                      <SelectItem value="8">8 years</SelectItem>
+                      <SelectItem value="9">9 years</SelectItem>
+                      <SelectItem value="10">10 years</SelectItem>
+                      <SelectItem value="11">11 years</SelectItem>
+                      <SelectItem value="12">12 years</SelectItem>
+                      <SelectItem value="13">13 years</SelectItem>
+                      <SelectItem value="14">14 years</SelectItem>
+                      <SelectItem value="15">15 years</SelectItem>
+                      <SelectItem value="16">16 years</SelectItem>
+                      <SelectItem value="17">17 years</SelectItem>
+                      <SelectItem value="18">18 years</SelectItem>
+                      <SelectItem value="19">19 years</SelectItem>
+                      <SelectItem value="20">20+ years</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

@@ -75,146 +75,31 @@ import { useAuth } from "@/contexts/auth-context";
 import { useLanguageStore } from "@/lib/i18n";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+// Import frappe_token from environment variables
+const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
+const x_key = "ffd9b415-ccd9-4af9-9808-0e96608ecaa3 ";
+
 interface Job {
-  id: number;
+  id: number | string;
+  feed_id:string;
+  feed?: string;
   title: string;
-  location: string;
-  salary: string;
   description: string;
-  requirements: string[];
-  applicantsCount: number;
-  postedDate: string;
-  status: 'active' | 'paused' | 'filled' | 'expired';
-  jobType: string;
-  vehicleType: string;
-  experience: string;
-  viewsCount: number;
+  no_of_openings?: number;
+  salary: string;
+  city: string; // Instead of location
+  type_of_job: string; // Instead of jobType
+  transporter: string;
+  transporter_name?: string;
+  questions: { question: string }[];
+  requirements?: string[]; // For UI display, mapped from questions
+  status: 'pending' | 'approved' | 'active' | 'paused' | 'filled' | 'expired';
+  // Fields below don't have backend implementations yet
+  // vehicleType?: string; 
+  // experience?: string; 
+  // postedDate?: string; 
+  // viewsCount?: number; 
 }
-
-interface Applicant {
-  id: number;
-  name: string;
-  location: string;
-  experience: string;
-  appliedDate: string;
-  status: 'pending' | 'viewed' | 'shortlisted' | 'rejected';
-  phone: string;
-  email?: string;
-  photo?: string;
-}
-
-const mockJobs: Job[] = [
-  {
-    id: 1,
-    title: "Long-haul Truck Driver",
-    location: "Delhi to Mumbai",
-    salary: "₹35,000-45,000/month",
-    description: "We're looking for experienced truck drivers for our Delhi-Mumbai route. Regular trips with competitive pay and benefits.",
-    requirements: ["5+ years experience", "Valid heavy vehicle license", "Clean driving record"],
-    applicantsCount: 12,
-    postedDate: "2 days ago",
-    status: 'active',
-    jobType: "Full-time",
-    vehicleType: "Heavy Vehicle",
-    experience: "5+ years",
-    viewsCount: 145
-  },
-  {
-    id: 2,
-    title: "City Delivery Driver",
-    location: "Delhi NCR",
-    salary: "₹22,000-28,000/month",
-    description: "Delivering packages within Delhi NCR. Daily routes with company-provided vehicle.",
-    requirements: ["2+ years experience", "Valid driving license", "Knowledge of Delhi roads"],
-    applicantsCount: 8,
-    postedDate: "1 week ago",
-    status: 'active',
-    jobType: "Full-time",
-    vehicleType: "Light Vehicle",
-    experience: "2+ years",
-    viewsCount: 98
-  },
-  {
-    id: 3,
-    title: "Part-time Delivery Driver",
-    location: "Gurgaon",
-    salary: "₹15,000-18,000/month",
-    description: "Weekend and evening shifts available for food and grocery delivery in Gurgaon area.",
-    requirements: ["Any experience level", "Two-wheeler or car", "Smartphone"],
-    applicantsCount: 5,
-    postedDate: "3 days ago",
-    status: 'paused',
-    jobType: "Part-time",
-    vehicleType: "Two-wheeler",
-    experience: "Entry Level",
-    viewsCount: 57
-  },
-  {
-    id: 4,
-    title: "Regional Truck Driver",
-    location: "North India",
-    salary: "₹30,000-40,000/month",
-    description: "Regional routes within North India. 3-5 day trips with competitive pay and allowances.",
-    requirements: ["3+ years experience", "Valid medium/heavy vehicle license", "Willing to travel"],
-    applicantsCount: 0,
-    postedDate: "Just now",
-    status: 'active',
-    jobType: "Contract",
-    vehicleType: "Medium Vehicle",
-    experience: "3+ years",
-    viewsCount: 12
-  }
-];
-
-const mockApplicants: Applicant[] = [
-  {
-    id: 1,
-    name: "Rahul Kumar",
-    location: "Delhi",
-    experience: "7 years",
-    appliedDate: "2 days ago",
-    status: 'shortlisted',
-    phone: "+91 9876543210",
-    email: "rahul.k@example.com"
-  },
-  {
-    id: 2,
-    name: "Amit Singh",
-    location: "Gurgaon",
-    experience: "5 years",
-    appliedDate: "3 days ago",
-    status: 'viewed',
-    phone: "+91 9876543211"
-  },
-  {
-    id: 3,
-    name: "Vikram Sharma",
-    location: "Noida",
-    experience: "8 years",
-    appliedDate: "1 day ago",
-    status: 'pending',
-    phone: "+91 9876543212",
-    email: "vikram.s@example.com"
-  },
-  {
-    id: 4,
-    name: "Manish Patel",
-    location: "Delhi",
-    experience: "4 years",
-    appliedDate: "4 days ago",
-    status: 'rejected',
-    phone: "+91 9876543213"
-  },
-  {
-    id: 5,
-    name: "Sanjay Gupta",
-    location: "Faridabad",
-    experience: "6 years",
-    appliedDate: "2 days ago",
-    status: 'pending',
-    phone: "+91 9876543214"
-  }
-];
 
 const TransporterJobsPage = () => {
   const { user } = useAuth();
@@ -222,59 +107,210 @@ const TransporterJobsPage = () => {
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
 
-  const [jobs, setJobs] = useState<Job[]>(mockJobs);
-  const [applicants, setApplicants] = useState<Applicant[]>(mockApplicants);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("active");
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [isEditingJob, setIsEditingJob] = useState(false);
-  const [showApplicants, setShowApplicants] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Log app startup for debugging
+  useEffect(() => {
+    console.log("TransporterJobsPage initialized");
+  }, []);
 
   // New job form
   const [newJob, setNewJob] = useState({
     title: "",
-    location: "",
+    city: "", 
     salary: "",
     description: "",
+    no_of_openings: 1,
+    requirements: [""], // Will be mapped to questions
+    type_of_job: "Full-time"
+    // vehicleType: "Heavy Vehicle",
+    // experience: "3+ years"
+  });
+  
+  // Add state for the job being edited
+  const [editingJobId, setEditingJobId] = useState<string | number | null>(null);
+  const [editJob, setEditJob] = useState({
+    title: "",
+    city: "", 
+    salary: "",
+    description: "",
+    no_of_openings: 1,
     requirements: [""],
-    jobType: "Full-time",
-    vehicleType: "Heavy Vehicle",
-    experience: "3+ years"
+    type_of_job: "Full-time",
   });
 
-  // Filter jobs based on search and status
+  // Add toast state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = 
       searchQuery === "" || 
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.location.toLowerCase().includes(searchQuery.toLowerCase());
+      job.city.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = 
       statusFilter === "all" || 
       job.status === statusFilter;
+      
 
     return matchesSearch && matchesStatus;
   });
 
-  // Filter applicants for selected job
-  const jobApplicants = applicants.filter(applicant => true); // In a real app, filter by job ID
+  
+  if (jobs.length > 0 && filteredJobs.length === 0) {
+    console.log("All jobs filtered out - possible status mismatch");
+    console.log("Job statuses:", jobs.map(job => job.status));
+  }
 
-  const handleStatusChange = (jobId: number, newStatus: 'active' | 'paused' | 'filled' | 'expired') => {
+  const handleStatusChange = async (jobId: number | string, newStatus: 'active' | 'paused' | 'filled' | 'expired') => {
+    try {
+      setIsLoading(true);
+      
+      setToast({ 
+        message: `Updating job status to ${newStatus}...`, 
+        type: "success" 
+      });
+      
+      // Find the job to get its feed value
+      const jobToUpdate = jobs.find(job => job.id === jobId);
+      if (!jobToUpdate) {
+        throw new Error('Job not found');
+      }
+      
     setJobs(jobs.map(job => 
       job.id === jobId ? { ...job, status: newStatus } : job
     ));
+      
+      console.log("Updating status for job ID:", jobId, "with feed:", jobToUpdate.feed);
+      
+      // Prepare API payload - Match expected format from backend
+      const statusUpdateData = {
+        job: jobId,
+        feed_id: jobToUpdate.feed,
+        status: newStatus.charAt(0).toUpperCase() + newStatus.slice(1)
+      };
+      
+      console.log("Status update payload:", statusUpdateData);
+      
+      const response = await fetch('http://localhost:8000/api/method/signo_connect.apis.transporter.update_job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `token ${frappe_token}`,
+          'x-key': x_key
+        },
+        body: JSON.stringify(statusUpdateData)
+      });
+      
+      const result = await response.json();
+      console.log("Status update response:", result);
+      
+      if (!response.ok || (result && result.exception)) {
+        const errorMessage = result.exception || result.message || 'Unknown error';
+        throw new Error('Failed to update job status: ' + errorMessage);
+      }
+      
+
+      setToast({ 
+        message: `Job status updated to ${newStatus}!`, 
+        type: "success" 
+      });
+      
+
+      
+    } catch (error) {
+      console.error('Error updating job status:', error);
+      
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setToast({
+        message: errorMessage,
+        type: "error"
+      });
+
+      await fetchJobs();
+    } finally {
+      setIsLoading(false);
+      
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+    }
   };
 
-  const handleDeleteJob = (jobId: number) => {
+  const handleDeleteJob = async (jobId: number | string) => {
+    try {
+      setIsLoading(true);
+      
+
+      setToast({ 
+        message: "Deleting job...", 
+        type: "success" 
+      });
+      
     setJobs(jobs.filter(job => job.id !== jobId));
+      
+      console.log("Deleting job ID:", jobId);
+      
+
+      const deleteJobData = {
+        job: jobId
+      };
+      
+      console.log("Delete job payload:", deleteJobData);
+      
+
+      const response = await fetch('http://localhost:8000/api/method/signo_connect.apis.transporter.delete_job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `token ${frappe_token}`,
+          'x-key': x_key
+        },
+        body: JSON.stringify(deleteJobData)
+      });
+      
+      const result = await response.json();
+      console.log("Delete job response:", result);
+      
+      if (!response.ok || (result && result.exception)) {
+        const errorMessage = result.exception || result.message || 'Unknown error';
+        throw new Error('Failed to delete job: ' + errorMessage);
+      }
+      
+
+      setToast({ 
+        message: "Job deleted successfully!", 
+        type: "success" 
+      });
+      
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setToast({
+        message: errorMessage,
+        type: "error"
+      });
+      
+
+      await fetchJobs();
+    } finally {
+      setIsLoading(false);
+      
+
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+    }
   };
 
-  const handleApplicantStatusChange = (applicantId: number, newStatus: 'pending' | 'viewed' | 'shortlisted' | 'rejected') => {
-    setApplicants(applicants.map(applicant => 
-      applicant.id === applicantId ? { ...applicant, status: newStatus } : applicant
-    ));
-  };
 
   const addRequirementField = () => {
     setNewJob({
@@ -303,55 +339,324 @@ const TransporterJobsPage = () => {
     });
   };
 
-  const handleCreateJob = () => {
-    // Validate form fields
-    if (!newJob.title || !newJob.location || !newJob.salary || !newJob.description) {
+
+  const addEditRequirementField = () => {
+    setEditJob({
+      ...editJob,
+      requirements: [...editJob.requirements, ""]
+    });
+  };
+
+  const updateEditRequirement = (index: number, value: string) => {
+    const updatedRequirements = [...editJob.requirements];
+    updatedRequirements[index] = value;
+    setEditJob({
+      ...editJob,
+      requirements: updatedRequirements
+    });
+  };
+
+  const removeEditRequirement = (index: number) => {
+    if (editJob.requirements.length <= 1) return;
+
+    const updatedRequirements = [...editJob.requirements];
+    updatedRequirements.splice(index, 1);
+    setEditJob({
+      ...editJob,
+      requirements: updatedRequirements
+    });
+  };
+
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+
+  const fetchJobs = async () => {
+    setIsLoading(true);
+    
+    try {
+
+      const transporter_id = localStorage.getItem('userId') || "SIG00031";
+      
+      const response = await fetch(`http://localhost:8000/api/method/signo_connect.apis.transporter.get_posted_jobs?transporter=${transporter_id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `token ${frappe_token}`,
+          'x-key': x_key
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch jobs');
+      }
+
+      const result = await response.json();
+
+      
+      if (result.status && result.data && Array.isArray(result.data)) {
+        
+        
+        const fetchedJobs = result.data.map((job: any) => {
+
+          const jobDetails = job._job || {};
+          
+          
+          let questions = [];
+          try {
+            if (job.questions_json && typeof job.questions_json === 'string') {
+              const parsedQuestions = JSON.parse(job.questions_json);
+              questions = parsedQuestions.map((q: any) => ({ question: q.question })); // Keep as objects
+              
+            }
+          } catch (e) {
+            console.error('Error parsing questions JSON for job', job.name, ":", e);
+          }
+          
+          let status = (job.status || jobDetails.status || 'pending').toLowerCase();
+          
+          
+          // For testing: convert 'pending' status to 'active' so jobs show up
+          if (status === 'pending') {
+            status = 'active';
+          }
+
+          
+          return {
+            feed_id: job.name,
+            title: job.title || jobDetails.title || '',
+            description: job.description || jobDetails.description || '',
+            no_of_openings: jobDetails.no_of_openings !== null ? parseInt(jobDetails.no_of_openings) : 0,
+            salary: job.salary || jobDetails.salary || "Not specified",
+            city: job.city || jobDetails.city || "Not specified",
+            type_of_job: jobDetails.type_of_job || "Full-time",
+            transporter: job.transporter || jobDetails.transporter,
+            transporter_name: jobDetails.transporter_name || "Your Company",
+            questions: questions,
+            status: status,
+            postedDate: job.created_at ? new Date(job.created_at).toLocaleDateString() : "Recently",
+            applications: job.applications || 0
+          };
+        });
+        
+        setJobs(fetchedJobs);
+      } else {
+        console.error('Unexpected API response structure:', result);
+        setToast({
+          message: "Invalid response format from server",
+          type: "error"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      setToast({
+        message: "Failed to load jobs. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setIsLoading(false);
+      
+
+      if (toast?.type === "error") {
+        setTimeout(() => {
+          setToast(null);
+        }, 3000);
+      }
+    }
+  };
+
+  const handleCreateJob = async () => {
+
+    if (!newJob.title || !newJob.city || !newJob.salary || !newJob.description) {
       alert("Please fill in all required fields");
       return;
     }
 
     const filteredRequirements = newJob.requirements.filter(req => req.trim() !== "");
-
     if (filteredRequirements.length === 0) {
       alert("Please add at least one job requirement");
       return;
     }
 
-    // Create new job
-    const createdJob: Job = {
-      id: Math.max(0, ...jobs.map(j => j.id)) + 1,
+    setIsSubmitting(true);
+    setIsLoading(true);
+    
+    setToast({ message: "Creating job...", type: "success" });
+
+
+    const transporter_id = localStorage.getItem('userId') ;
+
+
+    const questionsArray = filteredRequirements.map(question => ({ question }));
+
+
+    const jobData = {
+      transporter: transporter_id,
       title: newJob.title,
-      location: newJob.location,
-      salary: newJob.salary,
       description: newJob.description,
-      requirements: filteredRequirements,
-      applicantsCount: 0,
-      postedDate: "Just now",
-      status: 'active',
-      jobType: newJob.jobType,
-      vehicleType: newJob.vehicleType,
-      experience: newJob.experience,
-      viewsCount: 0
+      type_of_job: newJob.type_of_job,
+      job: {
+        salary: newJob.salary,
+        city: newJob.city,
+        no_of_openings: newJob.no_of_openings.toString()
+      },
+      questions: questionsArray
     };
+  
 
-    setJobs([createdJob, ...jobs]);
+    try {
+      const response = await fetch('http://localhost:8000/api/method/signo_connect.apis.transporter.post_job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `token ${frappe_token}`,
+          'x-key':x_key
+        },
+        body: JSON.stringify(jobData)
+      });
 
-    // Reset form
+      if (!response.ok) {
+        throw new Error('Failed to post job');
+      }
+
+      
+      setIsCreatingJob(false);
+
     setNewJob({
       title: "",
-      location: "",
+      city: "",
       salary: "",
       description: "",
+      no_of_openings: 1,
       requirements: [""],
-      jobType: "Full-time",
-      vehicleType: "Heavy Vehicle",
-      experience: "3+ years"
-    });
+      type_of_job: "Full-time"
+      });
 
-    setIsCreatingJob(false);
+
+      setToast({ message: "Job created successfully!", type: "success" });
+      
+      await fetchJobs();
+      
+    } catch (error) {
+      console.error('Error posting job:', error);
+      
+
+      setToast({ message: "Failed to post job. Please try again.", type: "error" });
+    } finally {
+      setIsSubmitting(false);
+      setIsLoading(false);
+      
+
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+    }
   };
 
-  // If no user is logged in, redirect to welcome page
+
+  const openEditDialog = (job: Job) => {
+    setEditingJobId(job.feed_id);
+    setEditJob({
+      title: job.title,
+      city: job.city,
+      salary: job.salary,
+      description: job.description,
+      no_of_openings: job.no_of_openings || 1,
+      requirements: job.questions.map((q: any) => q.question || ''),
+      type_of_job: job.type_of_job,
+    });
+    setIsEditingJob(true);
+  };
+  
+  const handleEditJob = async () => {
+    if (!editingJobId) return;
+    
+    if (!editJob.title || !editJob.city || !editJob.salary || !editJob.description) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    const filteredRequirements = editJob.requirements.filter(req => req.trim() !== "");
+    if (filteredRequirements.length === 0) {
+      alert("Please add at least one job requirement");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setIsLoading(true);
+    
+    setToast({ message: "Updating job...", type: "success" });
+
+    try {
+      const transporter_id = localStorage.getItem('userId');
+
+      const jobData = {
+        feed_id: editingJobId,
+        transporter: transporter_id,
+        title: editJob.title,
+        description: editJob.description,
+        job: {
+          title: editJob.title,
+          description: editJob.description,
+          type_of_job: editJob.type_of_job,
+          salary: editJob.salary,
+          city: editJob.city,
+          no_of_openings: editJob.no_of_openings.toString(),
+          questions: editJob.requirements.map(question => ({ question }))
+        },
+        questions: editJob.requirements.map(question => ({ question }))
+      };
+      
+      console.log("Job update payload:", jobData);
+
+      const response = await fetch('http://localhost:8000/api/method/signo_connect.apis.transporter.update_job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `token ${frappe_token}`,
+          'x-key': x_key
+        },
+        body: JSON.stringify(jobData)
+      });
+
+      const result = await response.json();
+      console.log("Edit job response:", result);
+      
+      if (!response.ok || (result && result.exception)) {
+        const errorMessage = result.exception || result.message || 'Unknown error';
+        throw new Error('Failed to update job: ' + errorMessage);
+      }
+
+
+      setIsEditingJob(false);
+      setEditingJobId(null);
+      
+      setToast({ message: "Job updated successfully!", type: "success" });
+      
+
+      await fetchJobs();
+      
+    } catch (error) {
+      console.error('Error updating job:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setToast({
+        message: errorMessage,
+        type: "error"
+      });
+    } finally {
+      setIsSubmitting(false);
+      setIsLoading(false);
+      
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+    }
+  };
+
+
   useEffect(() => {
     if (!user) {
       navigate("/");
@@ -364,6 +669,20 @@ const TransporterJobsPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 pb-16">
+      {toast && (
+        <div 
+          className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-5 ${
+            toast.type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'
+          }`}
+        >
+          {toast.type === 'error' ? 
+            <XCircle className="h-5 w-5" /> : 
+            <CheckCircle2 className="h-5 w-5" />
+          }
+          <span className="font-medium">{toast.message}</span>
+        </div>
+      )}
+      
       <Header>
         <h1 className="text-xl font-bold text-neutral-800 ml-2">
           {t("jobs")}
@@ -427,12 +746,12 @@ const TransporterJobsPage = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="location">Location</Label>
+                        <Label htmlFor="city">Location</Label>
                         <Input 
-                          id="location" 
+                          id="city" 
                           placeholder="e.g., Delhi to Mumbai"
-                          value={newJob.location}
-                          onChange={(e) => setNewJob({...newJob, location: e.target.value})}
+                          value={newJob.city}
+                          onChange={(e) => setNewJob({...newJob, city: e.target.value})}
                         />
                       </div>
 
@@ -449,12 +768,12 @@ const TransporterJobsPage = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="jobType">Job Type</Label>
+                        <Label htmlFor="type_of_job">Job Type</Label>
                         <Select 
-                          value={newJob.jobType}
-                          onValueChange={(value) => setNewJob({...newJob, jobType: value})}
+                          value={newJob.type_of_job}
+                          onValueChange={(value) => setNewJob({...newJob, type_of_job: value})}
                         >
-                          <SelectTrigger id="jobType">
+                          <SelectTrigger id="type_of_job">
                             <SelectValue placeholder="Select job type" />
                           </SelectTrigger>
                           <SelectContent>
@@ -462,43 +781,6 @@ const TransporterJobsPage = () => {
                             <SelectItem value="Part-time">Part-time</SelectItem>
                             <SelectItem value="Contract">Contract</SelectItem>
                             <SelectItem value="Temporary">Temporary</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="vehicleType">Vehicle Type</Label>
-                        <Select 
-                          value={newJob.vehicleType}
-                          onValueChange={(value) => setNewJob({...newJob, vehicleType: value})}
-                        >
-                          <SelectTrigger id="vehicleType">
-                            <SelectValue placeholder="Select vehicle type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Heavy Vehicle">Heavy Vehicle</SelectItem>
-                            <SelectItem value="Medium Vehicle">Medium Vehicle</SelectItem>
-                            <SelectItem value="Light Vehicle">Light Vehicle</SelectItem>
-                            <SelectItem value="Two-wheeler">Two-wheeler</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="experience">Experience Required</Label>
-                        <Select 
-                          value={newJob.experience}
-                          onValueChange={(value) => setNewJob({...newJob, experience: value})}
-                        >
-                          <SelectTrigger id="experience">
-                            <SelectValue placeholder="Select experience" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Entry Level">Entry Level</SelectItem>
-                            <SelectItem value="1+ year">1+ year</SelectItem>
-                            <SelectItem value="2+ years">2+ years</SelectItem>
-                            <SelectItem value="3+ years">3+ years</SelectItem>
-                            <SelectItem value="5+ years">5+ years</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -550,13 +832,27 @@ const TransporterJobsPage = () => {
                         ))}
                       </div>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="no_of_openings">Number of Openings</Label>
+                      <Input 
+                        id="no_of_openings" 
+                        type="number"
+                        min="1"
+                        placeholder="e.g., 5"
+                        value={newJob.no_of_openings}
+                        onChange={(e) => setNewJob({...newJob, no_of_openings: parseInt(e.target.value) || 1})}
+                      />
+                    </div>
                   </div>
 
                   <SheetFooter>
                     <Button variant="outline" onClick={() => setIsCreatingJob(false)}>
                       Cancel
                     </Button>
-                    <Button onClick={handleCreateJob}>Post Job</Button>
+                    <Button onClick={handleCreateJob} disabled={isSubmitting}>
+                      {isSubmitting ? "Posting..." : "Post Job"}
+                    </Button>
                   </SheetFooter>
                 </SheetContent>
               </Sheet>
@@ -590,12 +886,12 @@ const TransporterJobsPage = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="location">Location</Label>
+                        <Label htmlFor="city">Location</Label>
                         <Input 
-                          id="location" 
+                          id="city" 
                           placeholder="e.g., Delhi to Mumbai"
-                          value={newJob.location}
-                          onChange={(e) => setNewJob({...newJob, location: e.target.value})}
+                          value={newJob.city}
+                          onChange={(e) => setNewJob({...newJob, city: e.target.value})}
                         />
                       </div>
 
@@ -612,12 +908,12 @@ const TransporterJobsPage = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="jobType">Job Type</Label>
+                        <Label htmlFor="type_of_job">Job Type</Label>
                         <Select 
-                          value={newJob.jobType}
-                          onValueChange={(value) => setNewJob({...newJob, jobType: value})}
+                          value={newJob.type_of_job}
+                          onValueChange={(value) => setNewJob({...newJob, type_of_job: value})}
                         >
-                          <SelectTrigger id="jobType">
+                          <SelectTrigger id="type_of_job">
                             <SelectValue placeholder="Select job type" />
                           </SelectTrigger>
                           <SelectContent>
@@ -625,43 +921,6 @@ const TransporterJobsPage = () => {
                             <SelectItem value="Part-time">Part-time</SelectItem>
                             <SelectItem value="Contract">Contract</SelectItem>
                             <SelectItem value="Temporary">Temporary</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="vehicleType">Vehicle Type</Label>
-                        <Select 
-                          value={newJob.vehicleType}
-                          onValueChange={(value) => setNewJob({...newJob, vehicleType: value})}
-                        >
-                          <SelectTrigger id="vehicleType">
-                            <SelectValue placeholder="Select vehicle type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Heavy Vehicle">Heavy Vehicle</SelectItem>
-                            <SelectItem value="Medium Vehicle">Medium Vehicle</SelectItem>
-                            <SelectItem value="Light Vehicle">Light Vehicle</SelectItem>
-                            <SelectItem value="Two-wheeler">Two-wheeler</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="experience">Experience Required</Label>
-                        <Select 
-                          value={newJob.experience}
-                          onValueChange={(value) => setNewJob({...newJob, experience: value})}
-                        >
-                          <SelectTrigger id="experience">
-                            <SelectValue placeholder="Select experience" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Entry Level">Entry Level</SelectItem>
-                            <SelectItem value="1+ year">1+ year</SelectItem>
-                            <SelectItem value="2+ years">2+ years</SelectItem>
-                            <SelectItem value="3+ years">3+ years</SelectItem>
-                            <SelectItem value="5+ years">5+ years</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -713,13 +972,27 @@ const TransporterJobsPage = () => {
                         ))}
                       </div>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="no_of_openings">Number of Openings</Label>
+                      <Input 
+                        id="no_of_openings" 
+                        type="number"
+                        min="1"
+                        placeholder="e.g., 5"
+                        value={newJob.no_of_openings}
+                        onChange={(e) => setNewJob({...newJob, no_of_openings: parseInt(e.target.value) || 1})}
+                      />
+                    </div>
                   </div>
 
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCreatingJob(false)}>
                       Cancel
                     </Button>
-                    <Button onClick={handleCreateJob}>Post Job</Button>
+                    <Button onClick={handleCreateJob} disabled={isSubmitting}>
+                      {isSubmitting ? "Posting..." : "Post Job"}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -727,11 +1000,10 @@ const TransporterJobsPage = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="all" className="w-full">
+        <Tabs defaultValue="active" className="w-full">
           <TabsList className="w-full grid grid-cols-4 mb-6">
             <TabsTrigger value="all">All Jobs ({jobs.length})</TabsTrigger>
             <TabsTrigger value="active">Active ({jobs.filter(j => j.status === 'active').length})</TabsTrigger>
-            <TabsTrigger value="applicants">Applicants ({applicants.length})</TabsTrigger>
             <TabsTrigger value="saved">Templates</TabsTrigger>
           </TabsList>
 
@@ -778,16 +1050,18 @@ const TransporterJobsPage = () => {
                               </div>
                               <div className="flex items-center">
                                 <MapPin className="h-4 w-4 mr-2" />
-                                <span>{job.location}</span>
+                                <span>{job.city}</span>
                               </div>
                               <div className="flex items-center">
                                 <BadgeIndianRupee className="h-4 w-4 mr-2" />
                                 <span>{job.salary}</span>
                               </div>
+                              {/* Comment out postedDate as it's not in the backend
                               <div className="flex items-center">
                                 <Calendar className="h-4 w-4 mr-2" />
                                 <span>Posted {job.postedDate}</span>
                               </div>
+                              */}
                             </div>
                           </div>
 
@@ -830,7 +1104,7 @@ const TransporterJobsPage = () => {
                                       <MapPin className="h-5 w-5 mr-3 text-neutral-500" />
                                       <div>
                                         <h4 className="font-medium">Location</h4>
-                                        <p className="text-neutral-600">{job.location}</p>
+                                        <p className="text-neutral-600">{job.city}</p>
                                       </div>
                                     </div>
 
@@ -842,6 +1116,7 @@ const TransporterJobsPage = () => {
                                       </div>
                                     </div>
 
+                                    {/* Comment out postedDate as it's not in the backend
                                     <div className="flex items-center">
                                       <Calendar className="h-5 w-5 mr-3 text-neutral-500" />
                                       <div>
@@ -849,15 +1124,18 @@ const TransporterJobsPage = () => {
                                         <p className="text-neutral-600">{job.postedDate}</p>
                                       </div>
                                     </div>
+                                    */}
 
                                     <div className="flex items-center">
                                       <Clock className="h-5 w-5 mr-3 text-neutral-500" />
                                       <div>
                                         <h4 className="font-medium">Job Type</h4>
-                                        <p className="text-neutral-600">{job.jobType}</p>
+                                        <p className="text-neutral-600">{job.type_of_job}</p>
                                       </div>
                                     </div>
 
+
+                                    {/* Comment out vehicleType as it's not in the backend
                                     <div className="flex items-center">
                                       <Truck className="h-5 w-5 mr-3 text-neutral-500" />
                                       <div>
@@ -865,7 +1143,9 @@ const TransporterJobsPage = () => {
                                         <p className="text-neutral-600">{job.vehicleType}</p>
                                       </div>
                                     </div>
+                                    */}
 
+                                    {/* Comment out experience as it's not in the backend
                                     <div className="flex items-center">
                                       <Briefcase className="h-5 w-5 mr-3 text-neutral-500" />
                                       <div>
@@ -873,7 +1153,9 @@ const TransporterJobsPage = () => {
                                         <p className="text-neutral-600">{job.experience}</p>
                                       </div>
                                     </div>
+                                    */}
 
+                                    {/* Comment out viewsCount as it's not in the backend
                                     <div className="flex items-center">
                                       <Eye className="h-5 w-5 mr-3 text-neutral-500" />
                                       <div>
@@ -881,6 +1163,7 @@ const TransporterJobsPage = () => {
                                         <p className="text-neutral-600">{job.viewsCount} views</p>
                                       </div>
                                     </div>
+                                    */}
                                   </div>
 
                                   <Separator className="mb-4" />
@@ -893,36 +1176,26 @@ const TransporterJobsPage = () => {
                                   <div>
                                     <h3 className="text-lg font-medium mb-3">Requirements</h3>
                                     <ul className="list-disc pl-5 space-y-1 text-neutral-700">
-                                      {job.requirements.map((req, index) => (
-                                        <li key={index}>{req}</li>
+                                      {job.questions?.map((q: any, index: number) => (
+                                        <li key={index}>{q.question}</li>
                                       ))}
                                     </ul>
                                   </div>
                                 </div>
 
                                 <DialogFooter>
-                                  <Button variant="outline" onClick={() => {}}>
+                                  <Button variant="outline" onClick={() => {
+                                    openEditDialog(job);
+                                    const closeButton = document.querySelector('[data-radix-collection-item]');
+                                    if (closeButton) {
+                                      (closeButton as HTMLElement).click();
+                                    }
+                                  }}>
                                     Edit Job
-                                  </Button>
-                                  <Button onClick={() => {}}>
-                                    View Applicants ({job.applicantsCount})
                                   </Button>
                                 </DialogFooter>
                               </DialogContent>
                             </Dialog>
-
-                            <Button
-                              variant="default"
-                              size={isMobile ? "sm" : "default"}
-                              onClick={() => {
-                                setSelectedJob(job);
-                                setShowApplicants(true);
-                              }}
-                            >
-                              <Users className="h-4 w-4 sm:mr-2" />
-                              <span className="hidden sm:inline">Applicants</span>
-                              <Badge className="ml-1">{job.applicantsCount}</Badge>
-                            </Button>
 
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -932,7 +1205,7 @@ const TransporterJobsPage = () => {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Job Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => {}}>
+                                <DropdownMenuItem onClick={() => openEditDialog(job)}>
                                   <Edit className="h-4 w-4 mr-2" />
                                   Edit Job
                                 </DropdownMenuItem>
@@ -977,7 +1250,7 @@ const TransporterJobsPage = () => {
                         <Separator className="mb-3" />
 
                         <div className="flex flex-wrap gap-2 mb-1">
-                          {job.requirements.map((req, index) => (
+                          {job.requirements?.map((req, index) => (
                             <Badge key={index} variant="outline">
                               {req}
                             </Badge>
@@ -987,8 +1260,10 @@ const TransporterJobsPage = () => {
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-end mt-4">
                           <div className="flex items-center justify-between w-full sm:w-auto">
                             <div className="flex items-center text-neutral-500 text-sm sm:hidden">
+                              {/* Comment out viewsCount as it's not in the backend
                               <Eye className="h-4 w-4 mr-1" />
                               <span>{job.viewsCount} views</span>
+                              */}
                             </div>
 
                             <div className="flex sm:hidden items-center gap-2">
@@ -1011,8 +1286,10 @@ const TransporterJobsPage = () => {
                           </div>
 
                           <div className="hidden sm:flex items-center gap-2 text-neutral-500 text-sm">
+                            {/* Comment out viewsCount as it's not in the backend
                             <Eye className="h-4 w-4" />
                             <span>{job.viewsCount} views</span>
+                            */}
                           </div>
 
                           <div className="hidden sm:flex items-center gap-3">
@@ -1069,41 +1346,109 @@ const TransporterJobsPage = () => {
                         <div className="flex flex-wrap gap-x-6 gap-y-2 text-neutral-500 text-sm mb-3">
                           <div className="flex items-center">
                             <MapPin className="h-4 w-4 mr-2" />
-                            <span>{job.location}</span>
+                            <span>{job.city}</span>
                           </div>
                           <div className="flex items-center">
                             <BadgeIndianRupee className="h-4 w-4 mr-2" />
                             <span>{job.salary}</span>
                           </div>
+                          {/* Comment out postedDate as it's not in the backend
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-2" />
                             <span>Posted {job.postedDate}</span>
                           </div>
+                          */}
                         </div>
                       </div>
 
                       <div className="flex items-center sm:items-start gap-3">
+                        <Dialog>
+                          <DialogTrigger asChild>
                         <Button
                           variant="outline"
                           size={isMobile ? "sm" : "default"}
-                          onClick={() => {}}
                         >
                           <Eye className="h-4 w-4 sm:mr-2" />
                           <span className="hidden sm:inline">View Details</span>
                         </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>Job Details</DialogTitle>
+                            </DialogHeader>
 
-                        <Button
-                          variant="default"
-                          size={isMobile ? "sm" : "default"}
-                          onClick={() => {
-                            setSelectedJob(job);
-                            setShowApplicants(true);
-                          }}
-                        >
-                          <Users className="h-4 w-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Applicants</span>
-                          <Badge className="ml-1">{job.applicantsCount}</Badge>
+                            <div className="py-4">
+                              <div className="flex items-center gap-3 mb-3">
+                                <h2 className="text-2xl font-semibold text-neutral-900">{job.title}</h2>
+                                <Badge variant="default">
+                                  Active
+                                </Badge>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-6">
+                                <div className="flex items-center">
+                                  <Building className="h-5 w-5 mr-3 text-neutral-500" />
+                                  <div>
+                                    <h4 className="font-medium">Company</h4>
+                                    <p className="text-neutral-600">{user?.fullName || "Your Company"}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center">
+                                  <MapPin className="h-5 w-5 mr-3 text-neutral-500" />
+                                  <div>
+                                    <h4 className="font-medium">Location</h4>
+                                    <p className="text-neutral-600">{job.city}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center">
+                                  <BadgeIndianRupee className="h-5 w-5 mr-3 text-neutral-500" />
+                                  <div>
+                                    <h4 className="font-medium">Salary</h4>
+                                    <p className="text-neutral-600">{job.salary}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center">
+                                  <Clock className="h-5 w-5 mr-3 text-neutral-500" />
+                                  <div>
+                                    <h4 className="font-medium">Job Type</h4>
+                                    <p className="text-neutral-600">{job.type_of_job}</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <Separator className="mb-4" />
+
+                              <div className="mb-6">
+                                <h3 className="text-lg font-medium mb-3">Job Description</h3>
+                                <p className="text-neutral-700 whitespace-pre-line">{job.description}</p>
+                              </div>
+
+                              <div>
+                                <h3 className="text-lg font-medium mb-3">Requirements</h3>
+                                <ul className="list-disc pl-5 space-y-1 text-neutral-700">
+                                  {job.questions?.map((q: any, index: number) => (
+                                    <li key={index}>{q.question}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+
+                            <DialogFooter>
+                              <Button variant="outline" onClick={() => {
+                                openEditDialog(job);
+                                const closeButton = document.querySelector('[data-radix-collection-item]');
+                                if (closeButton) {
+                                  (closeButton as HTMLElement).click();
+                                }
+                              }}>
+                                Edit Job
                         </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1113,7 +1458,7 @@ const TransporterJobsPage = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Job Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEditDialog(job)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Edit Job
                             </DropdownMenuItem>
@@ -1134,14 +1479,25 @@ const TransporterJobsPage = () => {
 
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between mt-4">
                       <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">{job.jobType}</Badge>
-                        <Badge variant="outline">{job.vehicleType}</Badge>
-                        <Badge variant="outline">{job.experience}</Badge>
+                        <Badge variant="outline">{job.type_of_job}</Badge>
                       </div>
 
-                      <div className="flex items-center gap-2 text-neutral-500 text-sm">
-                        <Eye className="h-4 w-4" />
-                        <span>{job.viewsCount} views</span>
+                      <div className="flex items-center gap-3">
+                        <Label htmlFor={`active-status-${job.id}`} className="text-sm">Status:</Label>
+                        <Select 
+                          value={job.status}
+                          onValueChange={(value) => handleStatusChange(job.id, value as any)}
+                        >
+                          <SelectTrigger id={`active-status-${job.id}`} className="h-9 w-[130px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="paused">Paused</SelectItem>
+                            <SelectItem value="filled">Filled</SelectItem>
+                            <SelectItem value="expired">Expired</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </CardContent>
@@ -1150,211 +1506,17 @@ const TransporterJobsPage = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="applicants" className="mt-0">
-            <Sheet open={showApplicants} onOpenChange={setShowApplicants}>
-              <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>Applicants {selectedJob ? `for ${selectedJob.title}` : ""}</SheetTitle>
-                  <SheetDescription>
-                    Review and manage job applications
-                  </SheetDescription>
-                </SheetHeader>
-
-                <div className="py-4 space-y-4">
-                  {jobApplicants.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
-                        <Users className="h-6 w-6 text-neutral-400" />
-                      </div>
-                      <h3 className="text-lg font-medium mb-2">No applicants yet</h3>
-                      <p className="text-neutral-500 max-w-md mx-auto">
-                        This job doesn't have any applicants yet. Check back later or promote your job post.
-                      </p>
-                    </div>
-                  ) : (
-                    jobApplicants.map((applicant) => (
-                      <Card key={applicant.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3">
-                              <div className="w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center">
-                                <User className="h-5 w-5 text-neutral-500" />
-                              </div>
-
-                              <div>
-                                <h4 className="font-medium">{applicant.name}</h4>
-                                <div className="flex flex-col text-sm text-neutral-500 mt-1">
-                                  <div className="flex items-center">
-                                    <MapPin className="h-3 w-3 mr-1" />
-                                    <span>{applicant.location}</span>
-                                  </div>
-                                  <div className="flex items-center">
-                                    <Briefcase className="h-3 w-3 mr-1" />
-                                    <span>{applicant.experience} experience</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <Badge variant={
-                              applicant.status === 'shortlisted' ? 'default' :
-                              applicant.status === 'viewed' ? 'outline' :
-                              applicant.status === 'rejected' ? 'destructive' :
-                              'secondary'
-                            }>
-                              {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
-                            </Badge>
-                          </div>
-
-                          <div className="flex justify-between items-center mt-4">
-                            <span className="text-xs text-neutral-500">Applied {applicant.appliedDate}</span>
-
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                  Change Status
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleApplicantStatusChange(applicant.id, 'viewed')}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Mark as Viewed
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleApplicantStatusChange(applicant.id, 'shortlisted')}>
-                                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                                  Shortlist
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleApplicantStatusChange(applicant.id, 'rejected')}>
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Reject
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 mt-4">
-                            <Button variant="secondary" size="sm" className="w-full">
-                              View Profile
-                            </Button>
-                            <Button size="sm" className="w-full">
-                              Contact
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Job Applicants</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {applicants.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
-                      <Users className="h-6 w-6 text-neutral-400" />
-                    </div>
-                    <h3 className="text-lg font-medium mb-2">No applicants yet</h3>
-                    <p className="text-neutral-500 max-w-md mx-auto mb-4">
-                      Your job postings don't have any applicants yet. Promote your job posts to attract more candidates.
-                    </p>
-                    <Button onClick={() => setIsCreatingJob(true)}>Post New Job</Button>
-                  </div>
-                ) : (
-                  <div className="grid divide-y divide-neutral-100">
-                    {applicants.map((applicant) => (
-                      <div key={applicant.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center">
-                            <User className="h-5 w-5 text-neutral-500" />
-                          </div>
-
-                          <div>
-                            <div className="flex items-center gap-3">
-                              <h4 className="font-medium text-lg">{applicant.name}</h4>
-                              <Badge variant={
-                                applicant.status === 'shortlisted' ? 'default' :
-                                applicant.status === 'viewed' ? 'outline' :
-                                applicant.status === 'rejected' ? 'destructive' :
-                                'secondary'
-                              }>
-                                {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
-                              </Badge>
-                            </div>
-
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-neutral-500 mt-1">
-                              <div className="flex items-center">
-                                <MapPin className="h-4 w-4 mr-1" />
-                                <span>{applicant.location}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <Briefcase className="h-4 w-4 mr-1" />
-                                <span>{applicant.experience} experience</span>
-                              </div>
-                              <div className="flex items-center">
-                                <Clock className="h-4 w-4 mr-1" />
-                                <span>Applied {applicant.appliedDate}</span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 mt-2">
-                              <div className="flex items-center">
-                                <Phone className="h-4 w-4 mr-1 text-neutral-400" />
-                                <span>{applicant.phone}</span>
-                              </div>
-                              {applicant.email && (
-                                <div className="flex items-center">
-                                  <Mail className="h-4 w-4 mr-1 text-neutral-400" />
-                                  <span>{applicant.email}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 sm:flex-col sm:items-end">
-                          <Select
-                            value={applicant.status}
-                            onValueChange={(value) => handleApplicantStatusChange(applicant.id, value as any)}
-                          >
-                            <SelectTrigger className="w-[180px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="viewed">Viewed</SelectItem>
-                              <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                              <SelectItem value="rejected">Rejected</SelectItem>
-                            </SelectContent>
-                          </Select>
-
-                          <Button variant="outline" size="sm" className="sm:mt-2 whitespace-nowrap">
-                            View Profile
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="saved" className="mt-0">
             <Card>
               <CardHeader>
                 <CardTitle>Job Templates</CardTitle>
               </CardHeader>
               <CardContent className="text-center py-12">
-                <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
+                    <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
                   <FileText className="h-6 w-6 text-neutral-400" />
-                </div>
+                    </div>
                 <h3 className="text-lg font-medium mb-2">No job templates saved</h3>
-                <p className="text-neutral-500 max-w-md mx-auto mb-4">
+                    <p className="text-neutral-500 max-w-md mx-auto mb-4">
                   Save your frequently posted jobs as templates to quickly create new job postings.
                 </p>
                 <Button variant="outline">Create Template</Button>
@@ -1362,7 +1524,141 @@ const TransporterJobsPage = () => {
             </Card>
           </TabsContent>
         </Tabs>
+                          </div>
+
+      {/* Edit Job Dialog */}
+      <Dialog open={isEditingJob} onOpenChange={setIsEditingJob}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Job</DialogTitle>
+            <DialogDescription>
+              Update the details of this job posting
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Job Title</Label>
+              <Input 
+                id="edit-title" 
+                placeholder="e.g., Long-haul Truck Driver"
+                value={editJob.title}
+                onChange={(e) => setEditJob({...editJob, title: e.target.value})}
+              />
+                            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-city">Location</Label>
+                <Input 
+                  id="edit-city" 
+                  placeholder="e.g., Delhi to Mumbai"
+                  value={editJob.city}
+                  onChange={(e) => setEditJob({...editJob, city: e.target.value})}
+                />
+                            </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-salary">Salary</Label>
+                <Input 
+                  id="edit-salary" 
+                  placeholder="e.g., ₹30,000-40,000/month"
+                  value={editJob.salary}
+                  onChange={(e) => setEditJob({...editJob, salary: e.target.value})}
+                />
+                          </div>
+                        </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-type_of_job">Job Type</Label>
+                          <Select
+                  value={editJob.type_of_job}
+                  onValueChange={(value) => setEditJob({...editJob, type_of_job: value})}
+                          >
+                  <SelectTrigger id="edit-type_of_job">
+                    <SelectValue placeholder="Select job type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                    <SelectItem value="Full-time">Full-time</SelectItem>
+                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="Contract">Contract</SelectItem>
+                    <SelectItem value="Temporary">Temporary</SelectItem>
+                            </SelectContent>
+                          </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Job Description</Label>
+              <Textarea 
+                id="edit-description" 
+                placeholder="Enter detailed job description, responsibilities, etc."
+                rows={4}
+                value={editJob.description}
+                onChange={(e) => setEditJob({...editJob, description: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Requirements</Label>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={addEditRequirementField}
+                >
+                  Add Requirement
+                          </Button>
+                        </div>
+
+              <div className="space-y-3">
+                {editJob.requirements.map((req, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input 
+                      placeholder={`Requirement ${index + 1}`}
+                      value={req}
+                      onChange={(e) => updateEditRequirement(index, e.target.value)}
+                    />
+                    {editJob.requirements.length > 1 && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => removeEditRequirement(index)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    )}
+                      </div>
+                    ))}
+                  </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-no_of_openings">Number of Openings</Label>
+              <Input 
+                id="edit-no_of_openings" 
+                type="number"
+                min="1"
+                placeholder="e.g., 5"
+                value={editJob.no_of_openings}
+                onChange={(e) => setEditJob({...editJob, no_of_openings: parseInt(e.target.value) || 1})}
+              />
+                </div>
       </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditingJob(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditJob} disabled={isSubmitting}>
+              {isSubmitting ? "Updating..." : "Update Job"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <BottomNavigation userType="transporter" />
       <Chatbot />

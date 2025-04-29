@@ -27,6 +27,7 @@ import { jwtDecode } from "jwt-decode";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import type { User } from "@/contexts/auth-context";
 import {
   Dialog,
   DialogContent,
@@ -44,12 +45,11 @@ import {
 } from "@/components/ui/select";
 import {
   Textarea,
-  // TextareaContent,
-  // TextareaLabel,
 } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { BottomNavigation } from "@/components/layout/bottom-navigation";
 import { UserType } from "@shared/schema";
+import Cookies from "js-cookie";
 
 // Form schemas
 const phoneSchema = z.object({
@@ -57,7 +57,6 @@ const phoneSchema = z.object({
   phoneNumber: z.string().min(10, "Enter a valid phone number").max(15),
 });
 
-// Login steps
 enum LoginStep {
   PHONE = 1,
   OTP = 2,
@@ -89,7 +88,6 @@ const LoginPage = () => {
     setIsSubmitting(true);
     try {
 
-      // Store the response data for OTP verification
       setPhoneNumber(values.phoneNumber);
       setStep(LoginStep.OTP);
 
@@ -110,86 +108,48 @@ const LoginPage = () => {
   };
 
   // Handle OTP verification
+
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) return;
-
+  
     setIsSubmitting(true);
     try {
-      // Always use 123456 for testing
       const testOtp = "123456";
-      
+  
       if (otp === testOtp) {
-        // Make another API call to get user data
-        const response = await fetch("http://localhost:8000/api/method/signo_connect.api.login2", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name1: phoneForm.getValues("fullName"),
-            phone_number: phoneNumber,
-          }),
-        });
-
-        const data = await response.json();
-        
-        const token = data.data.token as string;
-        
-        const decoded = jwtDecode<{
-          user_type: string;
-          user_id: string;
-          sid: string;
-          name: string;
-          phone_number: string;
-          license_number?: string | null;
-          exp: number;
-        }>(token);
-
-        console.log("Decoded token:", decoded);
-        console.log("Login SID:---> ", decoded.sid);
-        localStorage.setItem("userId" , decoded.user_id);
-        localStorage.setItem("SID" , decoded.sid);
-
-        console.log("Login verification response:", data);
-
-        if (!data.status) {
-          throw new Error(data.message || "Login verification failed");
+        // Match phone number from cookie
+        const cookiePhoneNumber = Cookies.get("phoneNumber");
+        const userId = Cookies.get("userId");
+        const rawUserType = Cookies.get("userType");
+  
+        if (!cookiePhoneNumber || !userId || !rawUserType) {
+          throw new Error("Required user data not found in cookies.");
         }
+  
+        const normalizeLast10 = (num: string) => num.replace(/\D/g, "").slice(-10);
 
-        // Map backend user data to frontend format
-        const userData = {
-          id: data.data.user.id,
-          fullName: data.data.user.name,
-          phoneNumber: data.data.user.phone_number,
-          userType: data.data.user.user_type,
-          token: data.data.token,
-          profileCompleted: false, // Default to false, user will be prompted to complete profile
-          // Add additional fields based on user type
-          ...(data.data.user.user_type === "transporter" && {
-            companyName: data.data.user.company_name,
-          }),
-          ...(data.data.user.user_type === "driver" && {
-            licenseNumber: data.data.user.dl_number,
-          }),
+        if (normalizeLast10(cookiePhoneNumber) !== normalizeLast10(phoneNumber)) {
+          throw new Error("Phone number mismatch. Please try again.");
+        }
+  
+        const userType = rawUserType === "driver" || rawUserType === "transporter" ? rawUserType : "driver";
+  
+        const userData: User = {
+          id: userId,
+          fullName: phoneForm.getValues("fullName"),
+          phoneNumber: cookiePhoneNumber,
+          userType: userType,
+          profileCompleted: false,
         };
-
-        // Login user
+  
         login(userData);
-
-        setTimeout(() => {
-          if (data.data.user.user_type === "driver") {
-            setLocation('/driver/dashboard');
-          }
-          else{
-            setLocation('/transporter/dashboard');
-          }
-          
-        }, 0);
-
-        // Redirect to the dashboard page after successful login
-        // setLocation('/driver/dashboard');
-
-        // Success notification
+  
+        if (userType === "driver") {
+          setLocation("/driver/dashboard");
+        } else {
+          setLocation("/transporter/dashboard");
+        }
+  
         toast({
           title: "Success",
           description: `Welcome to SIGNO Connect, ${userData.fullName}!`,
@@ -206,13 +166,13 @@ const LoginPage = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error instanceof Error ? error.message : "We couldn't verify your OTP. Please try again.",
+        description:
+          error instanceof Error ? error.message : "OTP verification failed.",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-
   // Reset OTP and go back to phone step
   const handleBackToPhone = () => {
     setOtp("");

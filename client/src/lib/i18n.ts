@@ -21,12 +21,12 @@ type TranslationKey =
   | "welcome"
   | "welcome_subtitle"
   | "driver"
-  | "fleet_owner"
+  | "transporter"
   | "already_have_account"
   | "sign_in"
   | "back"
   | "driver_registration"
-  | "fleet_owner_registration"
+  | "transporter_registration"
   | "create_account_steps"
   | "basic_info"
   | "verification"
@@ -99,12 +99,12 @@ const translations: Translations = {
     welcome: "Welcome to SIGNO Connect",
     welcome_subtitle: "The logistics marketplace connecting drivers and transporters",
     driver: "Driver",
-    fleet_owner: "Fleet Owner/Transporter",
+    transporter: "Fleet Owner/Transporter",
     already_have_account: "Already have an account?",
     sign_in: "Sign in",
     back: "Back",
     driver_registration: "Driver Registration",
-    fleet_owner_registration: "Fleet Owner Registration",
+    transporter_registration: "Fleet Owner Registration",
     create_account_steps: "Create your account in a few easy steps",
     basic_info: "Basic Info",
     verification: "Verification",
@@ -173,12 +173,12 @@ const translations: Translations = {
     welcome: "SIGNO Connect में आपका स्वागत है",
     welcome_subtitle: "ड्राइवरों और ट्रांसपोर्टरों को जोड़ने वाला लॉजिस्टिक्स मार्केटप्लेस",
     driver: "ड्राइवर",
-    fleet_owner: "फ्लीट मालिक/ट्रांसपोर्टर",
+    transporter: "फ्लीट मालिक/ट्रांसपोर्टर",
     already_have_account: "क्या आपके पास पहले से एक खाता है?",
     sign_in: "साइन इन करें",
     back: "वापस",
     driver_registration: "ड्राइवर पंजीकरण",
-    fleet_owner_registration: "फ्लीट मालिक पंजीकरण",
+    transporter_registration: "फ्लीट मालिक पंजीकरण",
     create_account_steps: "कुछ आसान चरणों में अपना खाता बनाएं",
     basic_info: "बुनियादी जानकारी",
     verification: "सत्यापन",
@@ -247,12 +247,12 @@ const translations: Translations = {
     welcome: "SIGNO Connect-ലേക്ക് സ്വാഗതം",
     welcome_subtitle: "ഡ്രൈവർമാരെയും ട്രാൻസ്പോർട്ടർമാരെയും ബന്ധിപ്പിക്കുന്ന ലോജിസ്റ്റിക്സ് മാർക്കറ്റ്പ്ലേസ്",
     driver: "ഡ്രൈവർ",
-    fleet_owner: "ഫ്ലീറ്റ് ഉടമ/ട്രാൻസ്പോർട്ടർ",
+    transporter: "ഫ്ലീറ്റ് ഉടമ/ട്രാൻസ്പോർട്ടർ",
     already_have_account: "ഇതിനകം ഒരു അക്കൗണ്ട് ഉണ്ടോ?",
     sign_in: "സൈൻ ഇൻ",
     back: "തിരികെ",
     driver_registration: "ഡ്രൈവർ രജിസ്ട്രേഷൻ",
-    fleet_owner_registration: "ഫ്ലീറ്റ് ഉടമ രജിസ്ട്രേഷൻ",
+    transporter_registration: "ഫ്ലീറ്റ് ഉടമ രജിസ്ട്രേഷൻ",
     create_account_steps: "ചുരുക്കം ചില നടപടികളിലൂടെ നിങ്ങളുടെ അക്കൗണ്ട് സൃഷ്ടിക്കുക",
     basic_info: "അടിസ്ഥാന വിവരം",
     verification: "പരിശോധന",
@@ -321,12 +321,12 @@ const translations: Translations = {
     welcome: "SIGNO Connect-க்கு வரவேற்கிறோம்",
     welcome_subtitle: "டிரைவர்கள் மற்றும் போக்குவரத்தாளர்களை இணைக்கும் லாஜிஸ்டிக்ஸ் சந்தை",
     driver: "டிரைவர்",
-    fleet_owner: "வாகன உரிமையாளர்/போக்குவரத்தாளர்",
+    transporter: "வாகன உரிமையாளர்/போக்குவரத்தாளர்",
     already_have_account: "ஏற்கனவே கணக்கு உள்ளதா?",
     sign_in: "உள்நுழைக",
     back: "பின்செல்",
     driver_registration: "டிரைவர் பதிவு",
-    fleet_owner_registration: "வாகன உரிமையாளர் பதிவு",
+    transporter_registration: "வாகன உரிமையாளர் பதிவு",
     create_account_steps: "சில எளிய படிகளில் உங்கள் கணக்கை உருவாக்கவும்",
     basic_info: "அடிப்படை தகவல்",
     verification: "சரிபார்ப்பு",

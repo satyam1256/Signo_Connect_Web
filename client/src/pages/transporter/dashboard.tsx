@@ -20,7 +20,6 @@ import { Chatbot } from "@/components/features/chatbot";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguageStore } from "@/lib/i18n";
 
-// Sample driver type (would normally be from shared schema)
 interface Driver {
   id: number;
   name: string;
@@ -35,13 +34,12 @@ const TransporterDashboard = () => {
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
 
-  // Get recommended drivers based on preferred locations
+
   const { data: recommendedDrivers, isLoading: driversLoading } = useQuery<Driver[]>({
     queryKey: ['/api/drivers'],
     enabled: !!user
   });
 
-  // If no user is logged in, redirect to welcome page
   useEffect(() => {
     if (!user) {
       navigate("/");
@@ -52,13 +50,12 @@ const TransporterDashboard = () => {
     return null;
   }
 
-  // We'll use the user's full name for display
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 pb-16">
       <Header>
         <h1 className="text-xl font-bold text-neutral-800 ml-2">
-          {t("fleet_owner")}
+          {t("transporter")}
         </h1>
         <div className="ml-auto mr-4">
           <Button 

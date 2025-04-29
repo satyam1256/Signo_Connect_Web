@@ -31,6 +31,9 @@ import { useLanguageStore } from "@/lib/i18n";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "react-hot-toast";
 import { Textarea } from "@/components/ui/textarea";
+import Cookies from "js-cookie";
+const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
+const x_key = import.meta.env.VITE_X_KEY;
 
 // --- Zod Schemas (Unchanged) ---
 const basicInfoSchema = z.object({
@@ -59,7 +62,7 @@ interface TransporterRegistrationResponse {
         phone_number?: string;
         company_name?: string;
         data?: { 
-            sid?: string;
+            // sid?: string;
             transporter_id?: string;
         }
     };
@@ -70,9 +73,11 @@ interface TransporterRegistrationResponse {
         company_name?: string;
     };
     status?: boolean;
-    _server_messages?: string; 
+    _server_messages?: string;
+    doc?: {
+        name: string;
+    }
 }
-
 
 const TransporterRegistration = () => {
   const { t } = useLanguageStore();
@@ -95,7 +100,6 @@ const TransporterRegistration = () => {
 
   const stepper = useStepper({ steps: steps.length });
 
-  // --- Forms (Unchanged) ---
   const basicInfoForm = useForm<z.infer<typeof basicInfoSchema>>({
     resolver: zodResolver(basicInfoSchema),
     defaultValues: {
@@ -123,17 +127,17 @@ const TransporterRegistration = () => {
     },
   });
 
-  // Register transporter mutation (Mutation function is unchanged)
   const registerTransporterMutation = useMutation<TransporterRegistrationResponse, Error, any>({
     mutationFn: async (data) => {
-      console.log("Registering transporter with data:", data); 
       const response = await fetch(
-        "http://localhost:8000/api/method/signo_connect.apis.transporter.register",
-        { /* ... fetch options unchanged ... */ 
+        "http://localhost:8000/api/method/signo_connect.api.proxy/Transporters",
+        {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                "Authorization": `token ${frappe_token}`,
+                "x-key":x_key
             },
             body: JSON.stringify({
                 name1: data.fullName, 
@@ -148,7 +152,6 @@ const TransporterRegistration = () => {
       );
 
       const responseText = await response.text(); 
-      console.log("Raw API Response Text:", responseText);
 
       if (!response.ok) {
         console.error("API Error Response Status:", response.status);
@@ -170,38 +173,26 @@ const TransporterRegistration = () => {
 
       try {
         const responseData: TransporterRegistrationResponse = JSON.parse(responseText);
-        console.log("Parsed API Response JSON:", responseData);
 
-        const sid = responseData.message?.data?.sid;
-        const transporterIdFromNested = responseData.message?.data?.transporter_id;
+        const transporterIdFromDoc = responseData.doc?.name;
 
-        if (sid) {
-            console.log("Transporter Registration SID:", sid);
-            localStorage.setItem("SID", sid);
+       if (transporterIdFromDoc) {
+            localStorage.setItem("userId", transporterIdFromDoc);
         } else {
-            console.warn("SID not found in response message.data");
-        }
-        
-        if (transporterIdFromNested) {
-            console.log("Transporter ID from message.data:", transporterIdFromNested);
-            localStorage.setItem("userId", transporterIdFromNested);
-        } else {
-             const transporterIdFromData = responseData.data?.transporter_id;
-             const transporterIdFromMessage = responseData.message?.transporter_id;
-             if (transporterIdFromData) {
-                console.log("Transporter ID from data:", transporterIdFromData);
+            const transporterIdFromData = responseData.data?.transporter_id;
+            const transporterIdFromMessage = responseData.message?.transporter_id;
+            if (transporterIdFromData) {
                 localStorage.setItem("userId", transporterIdFromData);
-             } else if (transporterIdFromMessage) {
-                console.log("Transporter ID from message:", transporterIdFromMessage);
+            } else if (transporterIdFromMessage) {
                 localStorage.setItem("userId", transporterIdFromMessage);
-             } else {
+            } else {
                 console.warn("Transporter ID not found in any expected location.");
-             }
+            }
         }
 
-        const finalTransporterId = transporterIdFromNested || responseData.data?.transporter_id || responseData.message?.transporter_id;
+        const finalTransporterId = transporterIdFromDoc || responseData.data?.transporter_id || responseData.message?.transporter_id;
         if (!finalTransporterId) {
-          throw new Error("Registration succeeded but response format is missing transporter_id.");
+            throw new Error("Registration succeeded but response format is missing transporter_id.");
         }
         
         return responseData;
@@ -211,63 +202,56 @@ const TransporterRegistration = () => {
         throw new Error("Invalid JSON response from server: " + responseText);
       }
     },
-    // MODIFIED onSuccess: Removed login() call
-    onSuccess: (data, variables) => { // Added 'variables' to access submitted data easily
-      console.log("Mutation onSuccess triggered. Data:", data);
-      console.log("Mutation variables (submitted data):", variables);
+   
+    onSuccess: (data, variables) => {
 
-      const userData = data.message?.data || data.data || data.message; 
-      const transporterId = userData?.transporter_id;
+      // const userData = data.message?.data || data.data || data.message; 
+      const transporterId = data.doc?.name || data.message?.data?.transporter_id || data.data?.transporter_id || data.message?.transporter_id;
       const phoneNumberFromResponse = data.message?.phone_number || data.data?.phone_number;
 
       if (transporterId) {
         console.log("Successfully found transporter_id:", transporterId);
         
-        // Store necessary info in state for later use in goToDashboard
         setUserId(transporterId); 
-        // Use phone from response, fallback to submitted variable data
         const submittedPhone = variables.countryCode + variables.phoneNumber;
         setUserPhoneNumber(phoneNumberFromResponse || submittedPhone || ""); 
-        // Store full name from submitted variables
         setUserFullName(variables.fullName || ""); 
-        
+
+        Cookies.set("phoneNumber", submittedPhone, { expires: 7 });
+        Cookies.set("userId", transporterId, { expires: 7 });
+        Cookies.set("userType", "transporter" , { expires: 7});
+    
+
         setPendingRegistrationData(null); 
         setRegistrationComplete(true); 
         toast.success("Registration successful!");
         
-        // --- login() call REMOVED from here ---
-        
-        console.log("Advancing to the next step (Success screen).");
-        stepper.nextStep(); // <-- MOVE TO SUCCESS STEP
+        stepper.nextStep();
 
       } else {
-        console.error("Registration response successful, but transporter_id is missing:", userData);
+        console.error("Registration response successful, but transporter_id is missing:", data);
         toast.error("Registration response format invalid. Cannot proceed.");
       }
     },
-    // onError unchanged
     onError: (error: Error) => {
       console.error("Mutation onError triggered:", error);
       toast.error(error.message || "Registration failed. Please try again.");
     },
   });
 
-  // --- Form Submit Handlers (Unchanged, except for added console logs/state setting) ---
   const onBasicInfoSubmit = (data: z.infer<typeof basicInfoSchema>) => {
     console.log("Basic Info Submitted:", data);
     setPendingRegistrationData(data);
     setUserPhoneNumber(data.countryCode + data.phoneNumber); 
-    setUserFullName(data.fullName); // Also store full name from basic info
-    stepper.nextStep(); // Go to OTP
+    setUserFullName(data.fullName);
+    stepper.nextStep();
   };
 
   const onOtpSubmit = (data: z.infer<typeof otpSchema>) => {
     console.log("OTP Submitted:", data);
-    // --- IMPORTANT: Replace with actual OTP verification logic ---
-    if (true) { // TEMPORARILY bypass OTP check 
+    if (true) { 
       if (pendingRegistrationData) {
-        console.log("OTP verified (using bypass/test). Proceeding to Company Details.");
-        stepper.nextStep(); // Go to Company Details
+        stepper.nextStep(); 
       } else {
         toast.error("Missing basic registration info. Please go back.");
         console.error("OTP submitted but pendingRegistrationData is null.");
@@ -275,11 +259,9 @@ const TransporterRegistration = () => {
     } else {
       toast.error("Invalid OTP."); 
     }
-    // --- End of OTP verification logic ---
   };
 
   const onCompanySubmit = async (companyData: z.infer<typeof companySchema>) => {
-    console.log("Company Details Submitted:", companyData);
     if (pendingRegistrationData) {
       const registrationData = {
         ...pendingRegistrationData,
@@ -288,7 +270,6 @@ const TransporterRegistration = () => {
         address: companyData.address,
         fleetSize: companyData.fleetSize
       };
-      console.log("Calling registerTransporterMutation with combined data:", registrationData);
       registerTransporterMutation.mutate(registrationData); 
     } else {
       toast.error("Missing basic registration info. Please restart the process.");
@@ -296,9 +277,7 @@ const TransporterRegistration = () => {
     }
   };
 
-  // MODIFIED goToDashboard: Added login() call
   const goToDashboard = () => {
-    // Ensure we have all the necessary info stored in state from onSuccess
     if (userId && userFullName && userPhoneNumber && registrationComplete) {
         console.log("Go to Dashboard clicked. Logging in user:", {
             id: userId,
@@ -308,16 +287,15 @@ const TransporterRegistration = () => {
             profileCompleted: registrationComplete,
         });
         
-        // *** Call login() HERE before navigating ***
+
         login({
             id: userId,
-            fullName: userFullName, // Use state variable
-            phoneNumber: userPhoneNumber, // Use state variable
+            fullName: userFullName, 
+            phoneNumber: userPhoneNumber, 
             userType: "transporter",
-            profileCompleted: registrationComplete, // Use state variable
+            profileCompleted: registrationComplete, 
         });
 
-        console.log("Navigating to transporter dashboard for userId:", userId);
         navigate("/transporter/dashboard");
 
     } else {
@@ -327,14 +305,13 @@ const TransporterRegistration = () => {
   };
 
   return (
-    // --- JSX Structure Unchanged ---
     <div className="min-h-screen flex flex-col bg-neutral-50">
       <Header showBack backTo="/" />
 
       <div className="flex-grow container mx-auto px-4 py-6 max-w-md">
         <Card className="mb-6">
           <CardContent className="p-6">
-            <h2 className="text-2xl font-bold mb-2 text-neutral-800">{t("fleet_owner_registration")}</h2>
+            <h2 className="text-2xl font-bold mb-2 text-neutral-800">{t("transporter_registration")}</h2>
             <p className="text-neutral-500 mb-6">{t("create_account_steps")}</p>
 
             <ProgressSteps 
@@ -419,7 +396,7 @@ const TransporterRegistration = () => {
                             <FormLabel>
                             {t("email_address")}{" "}
                             <span className="text-neutral-500 text-xs">
-                                ({t("optional")})
+                                {/* ({t("optional")}) */}
                             </span>
                             </FormLabel>
                             <FormControl>
@@ -463,24 +440,29 @@ const TransporterRegistration = () => {
                         </p>
                     </div>
                     <FormField
-                        control={otpForm.control}
-                        name="otp"
-                        render={({ field }) => (
+                      control={otpForm.control}
+                      name="otp"
+                      render={({ field }) => (
                         <FormItem>
-                            <FormLabel>
+                          <FormLabel>
                             {t("enter_otp")}
                             <span className="text-red-500">*</span>
-                            </FormLabel>
-                            <FormControl>
-                            <OtpInput
+                          </FormLabel>
+                          <FormControl>
+                            <>
+                              <OtpInput
                                 length={6}
                                 value={field.value}
                                 onChange={field.onChange}
-                            />
-                            </FormControl>
-                            <FormMessage />
+                              />
+                              <p className="text-sm text-gray-500 mt-2">
+                                If not received, please enter <span className="font-semibold">123456</span>
+                              </p>
+                            </>
+                          </FormControl>
+                          <FormMessage />
                         </FormItem>
-                        )}
+                      )}
                     />
                     <div className="text-center">
                         <p className="text-neutral-500">

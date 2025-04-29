@@ -18,7 +18,7 @@ import { Chatbot } from "@/components/features/chatbot";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguageStore } from "@/lib/i18n";
 
-// Sample driver type (would normally be from shared schema)
+
 interface Driver {
   id: number;
   name: string;
@@ -35,13 +35,13 @@ const TransporterDrivers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
-  // Get drivers based on current filters
+
   const { data: drivers, isLoading: driversLoading } = useQuery<Driver[]>({
     queryKey: ['/api/drivers'],
     enabled: !!user
   });
 
-  // If no user is logged in, redirect to welcome page
+
   useEffect(() => {
     if (!user) {
       navigate("/");
