@@ -209,7 +209,7 @@ const TransporterJobsPage = () => {
       });
       
       const result = await response.json();
-      console.log("Status update response:", result);
+      console.log("Update Status response------> ", result);
       
       if (!response.ok || (result && result.exception)) {
         const errorMessage = result.exception || result.message || 'Unknown error';
@@ -597,7 +597,7 @@ const TransporterJobsPage = () => {
         transporter: transporter_id,
         title: editJob.title,
         description: editJob.description,
-        job: {
+        _job: {
           title: editJob.title,
           description: editJob.description,
           type_of_job: editJob.type_of_job,
