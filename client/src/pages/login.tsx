@@ -117,7 +117,7 @@ const LoginPage = () => {
       const testOtp = "123456";
   
       if (otp === testOtp) {
-        // Match phone number from cookie
+
         const cookiePhoneNumber = Cookies.get("phoneNumber");
         const userId = Cookies.get("userId");
         const rawUserType = Cookies.get("userType");
@@ -141,6 +141,23 @@ const LoginPage = () => {
           userType: userType,
           profileCompleted: false,
         };
+
+        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+        const cookieOptions = { 
+          expires: new Date(Date.now() + sevenDays),
+          path: '/' 
+        };
+
+        Object.entries({
+          userId,
+          phoneNumber: cookiePhoneNumber,
+          userType
+        }).forEach(([key, value]) => {
+          if (Cookies.get(key)) {
+            Cookies.set(key, value, cookieOptions);
+          }
+        });
+
   
         login(userData);
   
