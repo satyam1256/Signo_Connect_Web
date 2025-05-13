@@ -130,7 +130,7 @@ const TransporterRegistration = () => {
   const registerTransporterMutation = useMutation<TransporterRegistrationResponse, Error, any>({
     mutationFn: async (data) => {
       const response = await fetch(
-        "https://internal.signodrive.com/api/method/signo_connect.api.proxy/Transporters",
+        "http://localhost:8000/api/method/signo_connect.api.proxy/Transporters",
         {
             method: 'POST',
             headers: {
