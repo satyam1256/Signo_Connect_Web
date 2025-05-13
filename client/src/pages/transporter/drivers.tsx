@@ -89,7 +89,7 @@ const TransporterDrivers = () => {
     queryFn: async () => {
       try{
         const response = await fetch(
-          `http://localhost:8000/api/method/signo_connect.api.proxy/Drivers?filters=[["is_active", "in", [0, 1]]]&limit_page_length=100&limit_start=0`,{
+          `https://internal.signodrive.com/api/method/signo_connect.api.proxy/Drivers?filters=[["is_active", "in", [0, 1]]]&limit_page_length=100&limit_start=0`,{
           method: "GET",
           headers: { 
             "Authorization": `token ${frappe_token}`,
