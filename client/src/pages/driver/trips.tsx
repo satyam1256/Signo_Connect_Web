@@ -16,7 +16,8 @@ import {
   X,
   FileText,
   User,
-  Users
+  Users,
+  Activity
 } from "lucide-react";
 import { format } from "date-fns";
 import { useForm } from "react-hook-form";
@@ -74,51 +75,45 @@ import type { Trip } from "@/types/trip";
 // Form schema for trip validation
 const tripFormSchema = z.object({
   // Basic trip details
-  namingSeries: z.string().optional(),
-  vehicleId: z.coerce.number().optional(),
-  vehicleTypeId: z.coerce.number().optional(),
-  driverId: z.coerce.number(),
-  driverName: z.string().optional(),
-  driverPhoneNumber: z.string().optional(),
+  naming_series: z.string().optional(),
+  vehicle: z.string().optional(),
+  vehicle_type: z.string().optional(),
+  driver: z.string().optional(),
+  driver_name: z.string().optional(),
+  driver_phone_number: z.string().optional(),
   origin: z.string().min(1, "Origin is required"),
   destination: z.string().min(1, "Destination is required"),
   
   // Financial information
-  tripCost: z.coerce.number().nonnegative("Trip cost must be positive or zero").optional(),
-  pendingAmount: z.coerce.number().nonnegative("Pending amount must be positive or zero").optional(),
-  paidAmount: z.coerce.number().nonnegative("Paid amount must be positive or zero").optional(),
+  trip_cost: z.coerce.number().nonnegative("Trip cost must be positive or zero").optional(),
+  pending_amount: z.coerce.number().nonnegative("Pending amount must be positive or zero").optional(),
+  paid_amount: z.coerce.number().nonnegative("Paid amount must be positive or zero").optional(),
   
   // Status and dates
   status: z.enum(["upcoming", "waiting", "completed", "in-progress", "cancelled"]),
-  startedOn: z.string().optional(),
-  endedOn: z.string().optional(),
+  created_on: z.string().optional(),
+  started_on: z.string().optional(),
+  ended_on: z.string().optional(),
   eta: z.string().optional(),
-  etaStr: z.string().optional(),
+  eta_str: z.string().optional(),
   
   // Transporter details
-  transporterId: z.coerce.number().optional(),
-  transporterName: z.string().optional(),
+  transporter: z.string().optional(),
+  transporter_name: z.string().optional(),
   
   // Odometer and images
-  odoStart: z.string().optional(),
-  odoStartPic: z.string().optional(),
-  odoEnd: z.string().optional(),
-  odoEndPic: z.string().optional(),
-  tripPic: z.string().optional(),
+  odo_start: z.string().optional(),
+  odo_start_pic: z.string().optional(),
+  odo_end: z.string().optional(),
+  odo_end_pic: z.string().optional(),
+  trip_pic: z.string().optional(),
   
   // Additional info
-  shareText: z.string().optional(),
-  startedBy: z.enum(["Driver", "Transporter"]).optional(),
-  isActive: z.boolean().optional(),
-  
-  // Legacy fields (for backward compatibility)
-  startDate: z.string().optional(),
-  endDate: z.string().optional(), 
-  distance: z.coerce.number().positive("Distance must be positive").optional(),
-  duration: z.coerce.number().positive("Duration must be positive").optional(),
-  vehicleType: z.string().optional(),
-  earnings: z.coerce.number().nonnegative("Earnings must be positive or zero").optional(),
-  rating: z.coerce.number().min(0).max(5).nullable().optional(),
+  documents: z.string().optional(),
+  share_text: z.string().optional(),
+  started_by: z.enum(["Driver", "Transporter"]).optional(),
+  is_active: z.boolean().optional(),
+  handover_checklist: z.string().optional(),
 });
 
 type TripFormValues = z.infer<typeof tripFormSchema>;
@@ -130,7 +125,7 @@ const DriverTripsPage = () => {
   const queryClient = useQueryClient();
   const [isAddTripOpen, setIsAddTripOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  const [tripToDelete, setTripToDelete] = useState<number | null>(null);
+  const [tripToDelete, setTripToDelete] = useState<string | null>(null);
   const [expandedTrips, setExpandedTrips] = useState<number[]>([]);
 
   // Form for creating/editing trips
@@ -138,27 +133,45 @@ const DriverTripsPage = () => {
     resolver: zodResolver(tripFormSchema),
     defaultValues: {
       // Basic trip details
-      namingSeries: "",
+      naming_series: "",
+      vehicle: "",
+      vehicle_type: "",
+      driver: "",
+      driver_name: "",
+      driver_phone_number: "",
       origin: "",
       destination: "",
       
       // Financial information
-      tripCost: 0,
-      pendingAmount: 0,
-      paidAmount: 0,
+      trip_cost: 0,
+      pending_amount: 0,
+      paid_amount: 0,
       
       // Status and dates
       status: "upcoming",
+      created_on: new Date().toISOString(),
+      started_on: "",
+      ended_on: "",
+      eta: "",
+      eta_str: "",
+      
+      // Transporter details
+      transporter: "",
+      transporter_name: "",
+      
+      // Odometer and images
+      odo_start: "",
+      odo_start_pic: "",
+      odo_end: "",
+      odo_end_pic: "",
+      trip_pic: "",
       
       // Additional info
-      isActive: true,
-      
-      // Legacy fields
-      distance: 0,
-      duration: 0,
-      vehicleType: "",
-      earnings: 0,
-      rating: null,
+      documents: "",
+      share_text: "",
+      started_by: "Driver",
+      is_active: true,
+      handover_checklist: "",
     },
   });
 
@@ -181,7 +194,7 @@ const DriverTripsPage = () => {
       
       const tripData = {
         ...data,
-        driverId: user.id,
+        driver: user.id.toString(),
       };
       
       return fetch('/api/trips', {
@@ -247,8 +260,8 @@ const DriverTripsPage = () => {
 
   // Delete trip mutation
   const deleteTripMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return fetch(`/api/trips/${id}`, {
+    mutationFn: async (naming_series: string) => {
+      return fetch(`/api/trips/${naming_series}`, {
         method: 'DELETE',
       }).then(res => {
         if (!res.ok) throw new Error('Failed to delete trip');
@@ -284,47 +297,45 @@ const DriverTripsPage = () => {
     if (editingTrip) {
       form.reset({
         // Basic trip details
-        namingSeries: editingTrip.namingSeries || "",
+        naming_series: editingTrip.naming_series || "",
+        vehicle: editingTrip.vehicle || "",
+        vehicle_type: editingTrip.vehicle_type || "",
+        driver: editingTrip.driver || "",
+        driver_name: editingTrip.driver_name || user?.fullName || "",
+        driver_phone_number: editingTrip.driver_phone_number || user?.phoneNumber || "",
         origin: editingTrip.origin,
         destination: editingTrip.destination,
         
         // Financial information
-        tripCost: editingTrip.tripCost ?? editingTrip.earnings ?? 0,
-        pendingAmount: editingTrip.pendingAmount ?? 0,
-        paidAmount: editingTrip.paidAmount ?? 0,
+        trip_cost: editingTrip.trip_cost || 0,
+        pending_amount: editingTrip.pending_amount || 0,
+        paid_amount: editingTrip.paid_amount || 0,
         
         // Status and dates
         status: editingTrip.status as "upcoming" | "waiting" | "completed" | "in-progress" | "cancelled",
-        startedOn: editingTrip.startedOn ? new Date(editingTrip.startedOn).toISOString().substring(0, 16) : 
-                 editingTrip.startDate ? new Date(editingTrip.startDate).toISOString().substring(0, 16) : "",
-        endedOn: editingTrip.endedOn ? new Date(editingTrip.endedOn).toISOString().substring(0, 16) : 
-               editingTrip.endDate ? new Date(editingTrip.endDate).toISOString().substring(0, 16) : "",
+        created_on: editingTrip.created_on || new Date().toISOString(),
+        started_on: editingTrip.started_on ? new Date(editingTrip.started_on).toISOString().substring(0, 16) : "",
+        ended_on: editingTrip.ended_on ? new Date(editingTrip.ended_on).toISOString().substring(0, 16) : "",
         eta: editingTrip.eta ? new Date(editingTrip.eta).toISOString().substring(0, 16) : "",
-        etaStr: editingTrip.etaStr || "",
+        eta_str: editingTrip.eta_str || "",
         
-        // Driver & Transporter details
-        driverName: editingTrip.driverName || user?.fullName || "",
-        driverPhoneNumber: editingTrip.driverPhoneNumber || user?.phoneNumber || "",
-        transporterId: editingTrip.transporterId,
-        transporterName: editingTrip.transporterName || "",
+        // Transporter details
+        transporter: editingTrip.transporter || "",
+        transporter_name: editingTrip.transporter_name || "",
         
-        // Odometer and metrics
-        odoStart: editingTrip.odoStart || "",
-        odoEnd: editingTrip.odoEnd || "",
+        // Odometer and images
+        odo_start: editingTrip.odo_start || "",
+        odo_start_pic: editingTrip.odo_start_pic || "",
+        odo_end: editingTrip.odo_end || "",
+        odo_end_pic: editingTrip.odo_end_pic || "",
+        trip_pic: editingTrip.trip_pic || "",
         
         // Additional info
-        isActive: editingTrip.isActive ?? true,
-        shareText: editingTrip.shareText || "",
-        startedBy: editingTrip.startedBy === "Driver" || editingTrip.startedBy === "Transporter" ? editingTrip.startedBy : "Driver",
-        
-        // Legacy fields
-        startDate: editingTrip.startDate ? new Date(editingTrip.startDate).toISOString().substring(0, 16) : "",
-        endDate: editingTrip.endDate ? new Date(editingTrip.endDate).toISOString().substring(0, 16) : "",
-        distance: editingTrip.distance ?? 0,
-        duration: editingTrip.duration ?? 0,
-        vehicleType: editingTrip.vehicleType || "",
-        earnings: editingTrip.earnings ?? 0,
-        rating: editingTrip.rating,
+        documents: editingTrip.documents || "",
+        share_text: editingTrip.share_text || "",
+        started_by: editingTrip.started_by || "Driver",
+        is_active: editingTrip.is_active ?? true,
+        handover_checklist: editingTrip.handover_checklist || "",
       });
       setIsAddTripOpen(true);
     }
@@ -334,52 +345,59 @@ const DriverTripsPage = () => {
     setEditingTrip(null);
     form.reset({
       // Basic trip details
-      namingSeries: `TR-${Math.floor(10000 + Math.random() * 90000)}`,
+      naming_series: `TR-${Math.floor(10000 + Math.random() * 90000)}`,
+      vehicle: "",
+      vehicle_type: "",
+      driver: user?.id.toString() || "",
+      driver_name: user?.fullName || "",
+      driver_phone_number: user?.phoneNumber || "",
       origin: "",
       destination: "",
       
       // Financial information
-      tripCost: 0,
-      pendingAmount: 0,
-      paidAmount: 0,
+      trip_cost: 0,
+      pending_amount: 0,
+      paid_amount: 0,
       
       // Status and dates
       status: "upcoming",
-      startedOn: new Date().toISOString().substring(0, 16),
-      endedOn: "",
+      created_on: new Date().toISOString(),
+      started_on: new Date().toISOString().substring(0, 16),
+      ended_on: "",
       eta: "",
+      eta_str: "",
       
-      // Driver details - pre-populate with current user if available
-      driverName: user?.fullName || "",
-      driverPhoneNumber: user?.phoneNumber || "",
+      // Transporter details
+      transporter: "",
+      transporter_name: "",
+      
+      // Odometer and images
+      odo_start: "",
+      odo_start_pic: "",
+      odo_end: "",
+      odo_end_pic: "",
+      trip_pic: "",
       
       // Additional info
-      isActive: true,
-      shareText: "",
-      startedBy: "Driver",
-      
-      // Legacy fields
-      startDate: new Date().toISOString().substring(0, 16),
-      endDate: new Date().toISOString().substring(0, 16),
-      distance: 0,
-      duration: 0,
-      vehicleType: "",
-      earnings: 0,
-      rating: null,
+      documents: "",
+      share_text: "",
+      started_by: "Driver",
+      is_active: true,
+      handover_checklist: "",
     });
     setIsAddTripOpen(true);
   };
 
   const onSubmit = (data: TripFormValues) => {
     if (editingTrip) {
-      updateTripMutation.mutate({ id: editingTrip.id, trip: data });
+      updateTripMutation.mutate({ id: parseInt(editingTrip.naming_series, 10), trip: data });
     } else {
       createTripMutation.mutate(data);
     }
   };
 
-  const handleDeleteTrip = (id: number) => {
-    setTripToDelete(id);
+  const handleDeleteTrip = (naming_series: string) => {
+    setTripToDelete(naming_series);
   };
 
   const confirmDelete = () => {
@@ -388,11 +406,11 @@ const DriverTripsPage = () => {
     }
   };
 
-  const toggleTripExpand = (id: number) => {
-    if (expandedTrips.includes(id)) {
-      setExpandedTrips(expandedTrips.filter(tripId => tripId !== id));
+  const toggleTripExpand = (naming_series: string) => {
+    if (expandedTrips.includes(Number(naming_series))) {
+      setExpandedTrips(expandedTrips.filter(series => series !== Number(naming_series)));
     } else {
-      setExpandedTrips([...expandedTrips, id]);
+      setExpandedTrips([...expandedTrips, Number(naming_series)]);
     }
   };
 
@@ -447,259 +465,227 @@ const DriverTripsPage = () => {
         ) : trips && trips.length > 0 ? (
           <div className="space-y-4">
             {trips.map((trip) => (
-              <Card key={trip.id} className="overflow-hidden">
-                <CardHeader className="py-3 px-4 bg-neutral-50 border-b cursor-pointer" onClick={() => toggleTripExpand(trip.id)}>
+                <Card key={trip.naming_series} className="overflow-hidden">
+                <CardHeader className="py-3 px-4 bg-neutral-50 border-b cursor-pointer" onClick={() => toggleTripExpand(trip.naming_series)}>
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center space-x-2">
-                      {trip.namingSeries ? (
-                        <div className="font-mono text-xs bg-neutral-200 py-1 px-2 rounded mr-2">{trip.namingSeries}</div>
-                      ) : null}
-                      <MapPin className="h-4 w-4 text-[#FF6D00]" />
-                      <div>
-                        <span className="font-medium">{trip.origin}</span>
-                        <span className="mx-2 text-neutral-400">→</span>
-                        <span className="font-medium">{trip.destination}</span>
-                      </div>
+                  <div className="flex items-center space-x-2">
+                    {trip.naming_series ? (
+                    <div className="font-mono text-xs bg-neutral-200 py-1 px-2 rounded mr-2">{trip.naming_series}</div>
+                    ) : null}
+                    <MapPin className="h-4 w-4 text-[#FF6D00]" />
+                    <div>
+                    <span className="font-medium">{trip.origin}</span>
+                    <span className="mx-2 text-neutral-400">→</span>
+                    <span className="font-medium">{trip.destination}</span>
                     </div>
-                    <div className="flex items-center">
-                      <Badge className={getStatusColor(trip.status)}>
-                        {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
-                      </Badge>
-                      {expandedTrips.includes(trip.id) ? (
-                        <ChevronUp className="h-4 w-4 text-neutral-400 ml-2" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-neutral-400 ml-2" />
-                      )}
-                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <Badge className={getStatusColor(trip.status)}>
+                    {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
+                    </Badge>
+                    {expandedTrips.includes(Number(trip.naming_series)) ? (
+                    <ChevronUp className="h-4 w-4 text-neutral-400 ml-2" />
+                    ) : (
+                    <ChevronDown className="h-4 w-4 text-neutral-400 ml-2" />
+                    )}
+                  </div>
                   </div>
                 </CardHeader>
 
-                {expandedTrips.includes(trip.id) && (
+                {expandedTrips.includes(Number(trip.naming_series)) && (
                   <CardContent className="p-4">
-                    {/* Timeline Information */}
-                    <div className="mb-4 pb-4 border-b">
-                      <h4 className="text-sm font-semibold mb-3">Trip Timeline</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm text-neutral-500">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            <span>Started:</span>
-                          </div>
-                          <p className="text-sm font-medium">{formatDate(trip.startedOn || trip.startDate)}</p>
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm text-neutral-500">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            <span>Ended:</span>
-                          </div>
-                          <p className="text-sm font-medium">{formatDate(trip.endedOn || trip.endDate)}</p>
-                        </div>
-                        
-                        {trip.eta && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <Clock className="h-4 w-4 mr-2" />
-                              <span>ETA:</span>
-                            </div>
-                            <p className="text-sm font-medium">{formatDate(trip.eta)}</p>
-                          </div>
-                        )}
-                        
-                        {trip.etaStr && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <Clock className="h-4 w-4 mr-2" />
-                              <span>ETA String:</span>
-                            </div>
-                            <p className="text-sm font-medium">{trip.etaStr}</p>
-                          </div>
-                        )}
+                  {/* Timeline Information */}
+                  <div className="mb-4 pb-4 border-b">
+                    <h4 className="text-sm font-semibold mb-3">Trip Timeline</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      <span>Started:</span>
                       </div>
+                      <p className="text-sm font-medium">{formatDate(trip.started_on)}</p>
                     </div>
                     
-                    {/* Vehicle & Driver Information */}
-                    <div className="mb-4 pb-4 border-b">
-                      <h4 className="text-sm font-semibold mb-3">Vehicle & Driver</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        {trip.vehicleType && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <Truck className="h-4 w-4 mr-2" />
-                              <span>Vehicle Type:</span>
-                            </div>
-                            <p className="text-sm font-medium">{trip.vehicleType}</p>
-                          </div>
-                        )}
-                        
-                        {trip.driverName && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <User className="h-4 w-4 mr-2" />
-                              <span>Driver:</span>
-                            </div>
-                            <p className="text-sm font-medium">{trip.driverName}</p>
-                          </div>
-                        )}
-                        
-                        {trip.transporterName && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <Users className="h-4 w-4 mr-2" />
-                              <span>Transporter:</span>
-                            </div>
-                            <p className="text-sm font-medium">{trip.transporterName}</p>
-                          </div>
-                        )}
-                        
-                        {trip.startedBy && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <User className="h-4 w-4 mr-2" />
-                              <span>Started By:</span>
-                            </div>
-                            <p className="text-sm font-medium">{trip.startedBy}</p>
-                          </div>
-                        )}
+                    <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      <span>Ended:</span>
                       </div>
+                      <p className="text-sm font-medium">{formatDate(trip.ended_on)}</p>
                     </div>
                     
-                    {/* Trip Metrics */}
-                    <div className="mb-4 pb-4 border-b">
-                      <h4 className="text-sm font-semibold mb-3">Trip Metrics</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        {trip.distance !== undefined && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <MapPin className="h-4 w-4 mr-2" />
-                              <span>Distance:</span>
-                            </div>
-                            <p className="text-sm font-medium">{trip.distance} km</p>
-                          </div>
-                        )}
-                        
-                        {trip.duration !== undefined && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <Clock className="h-4 w-4 mr-2" />
-                              <span>Duration:</span>
-                            </div>
-                            <p className="text-sm font-medium">{trip.duration} hrs</p>
-                          </div>
-                        )}
-                        
-                        {trip.odoStart && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <Truck className="h-4 w-4 mr-2" />
-                              <span>Odometer Start:</span>
-                            </div>
-                            <p className="text-sm font-medium">{trip.odoStart}</p>
-                          </div>
-                        )}
-                        
-                        {trip.odoEnd && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <Truck className="h-4 w-4 mr-2" />
-                              <span>Odometer End:</span>
-                            </div>
-                            <p className="text-sm font-medium">{trip.odoEnd}</p>
-                          </div>
-                        )}
+                    {trip.eta && (
+                      <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                        <Clock className="h-4 w-4 mr-2" />
+                        <span>ETA:</span>
                       </div>
-                    </div>
-                    
-                    {/* Financial Details */}
-                    <div className="mb-4 pb-4 border-b">
-                      <h4 className="text-sm font-semibold mb-3">Financial Details</h4>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm text-neutral-500">
-                            <IndianRupee className="h-4 w-4 mr-2" />
-                            <span>Trip Cost:</span>
-                          </div>
-                          <p className="text-sm font-medium">₹{(trip.tripCost || trip.earnings || 0).toLocaleString('en-IN')}</p>
-                        </div>
-                        
-                        {trip.paidAmount !== undefined && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <IndianRupee className="h-4 w-4 mr-2" />
-                              <span>Paid:</span>
-                            </div>
-                            <p className="text-sm font-medium">₹{trip.paidAmount.toLocaleString('en-IN')}</p>
-                          </div>
-                        )}
-                        
-                        {trip.pendingAmount !== undefined && (
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm text-neutral-500">
-                              <IndianRupee className="h-4 w-4 mr-2" />
-                              <span>Pending:</span>
-                            </div>
-                            <p className="text-sm font-medium">₹{trip.pendingAmount.toLocaleString('en-IN')}</p>
-                          </div>
-                        )}
+                      <p className="text-sm font-medium">{formatDate(trip.eta)}</p>
                       </div>
+                    )}
+                    
+                    {trip.eta_str && (
+                      <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                        <Clock className="h-4 w-4 mr-2" />
+                        <span>ETA String:</span>
+                      </div>
+                      <p className="text-sm font-medium">{trip.eta_str}</p>
+                      </div>
+                    )}
+                    </div>
+                  </div>
+                  
+                  {/* Vehicle & Driver Information */}
+                  <div className="mb-4 pb-4 border-b">
+                    <h4 className="text-sm font-semibold mb-3">Vehicle & Driver</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                    {trip.vehicle_type && (
+                      <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                        <Truck className="h-4 w-4 mr-2" />
+                        <span>Vehicle Type:</span>
+                      </div>
+                      <p className="text-sm font-medium">{trip.vehicle_type}</p>
+                      </div>
+                    )}
+                    
+                    {trip.driver_name && (
+                      <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                        <User className="h-4 w-4 mr-2" />
+                        <span>Driver:</span>
+                      </div>
+                      <p className="text-sm font-medium">{trip.driver_name}</p>
+                      </div>
+                    )}
+                    
+                    {trip.transporter_name && (
+                      <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                        <Users className="h-4 w-4 mr-2" />
+                        <span>Transporter:</span>
+                      </div>
+                      <p className="text-sm font-medium">{trip.transporter_name}</p>
+                      </div>
+                    )}
+                    
+                    {trip.started_by && (
+                      <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                        <User className="h-4 w-4 mr-2" />
+                        <span>Started By:</span>
+                      </div>
+                      <p className="text-sm font-medium">{trip.started_by}</p>
+                      </div>
+                    )}
+                    </div>
+                  </div>
+                  
+                  {/* Trip Metrics */}
+                  <div className="mb-4 pb-4 border-b">
+                    <h4 className="text-sm font-semibold mb-3">Trip Metrics</h4>
+                    <div className="grid grid-cols-2 gap-4">
+
+                    {trip.odo_start && (
+                      <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                        <Truck className="h-4 w-4 mr-2" />
+                        <span>Odometer Start:</span>
+                      </div>
+                      <p className="text-sm font-medium">{trip.odo_start}</p>
+                      </div>
+                    )}
+                    
+                    {trip.odo_end && (
+                      <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                        <Truck className="h-4 w-4 mr-2" />
+                        <span>Odometer End:</span>
+                      </div>
+                      <p className="text-sm font-medium">{trip.odo_end}</p>
+                      </div>
+                    )}
+                    </div>
+                  </div>
+                  
+                  {/* Financial Details */}
+                  <div className="mb-4 pb-4 border-b">
+                    <h4 className="text-sm font-semibold mb-3">Financial Details</h4>
+                    <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                      <IndianRupee className="h-4 w-4 mr-2" />
+                      <span>Trip Cost:</span>
+                      </div>
+                      <p className="text-sm font-medium">₹{(trip.trip_cost || 0).toLocaleString('en-IN')}</p>
                     </div>
                     
-                    {/* Additional Details */}
-                    <div className="mb-4">
-                      {trip.shareText && (
-                        <div className="space-y-1 mb-4">
-                          <div className="flex items-center text-sm text-neutral-500">
-                            <FileText className="h-4 w-4 mr-2" />
-                            <span>Notes:</span>
-                          </div>
-                          <p className="text-sm bg-neutral-50 p-2 rounded">{trip.shareText}</p>
-                        </div>
-                      )}
-                      
-                      {trip.rating !== null && (
-                        <div className="flex items-center mb-4">
-                          <div className="flex items-center text-sm text-neutral-500 mr-2">
-                            <Star className="h-4 w-4 mr-1" />
-                            <span>Rating:</span>
-                          </div>
-                          <div className="flex">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`h-4 w-4 ${
-                                  star <= (trip.rating || 0)
-                                    ? "text-yellow-400 fill-yellow-400"
-                                    : "text-neutral-200"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    {trip.paid_amount !== undefined && (
+                      <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                        <IndianRupee className="h-4 w-4 mr-2" />
+                        <span>Paid:</span>
+                      </div>
+                      <p className="text-sm font-medium">₹{trip.paid_amount.toLocaleString('en-IN')}</p>
+                      </div>
+                    )}
                     
-                    <div className="flex justify-end space-x-2 mt-4">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => setEditingTrip(trip)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="text-red-500 border-red-200 hover:bg-red-50"
-                        onClick={() => handleDeleteTrip(trip.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Delete
-                      </Button>
+                    {trip.pending_amount !== undefined && (
+                      <div className="space-y-1">
+                      <div className="flex items-center text-sm text-neutral-500">
+                        <IndianRupee className="h-4 w-4 mr-2" />
+                        <span>Pending:</span>
+                      </div>
+                      <p className="text-sm font-medium">₹{trip.pending_amount.toLocaleString('en-IN')}</p>
+                      </div>
+                    )}
                     </div>
+                  </div>
+                  
+                  {/* Additional Details */}
+                  <div className="mb-4">
+                    {trip.share_text && (
+                    <div className="space-y-1 mb-4">
+                      <div className="flex items-center text-sm text-neutral-500">
+                      <FileText className="h-4 w-4 mr-2" />
+                      <span>Notes:</span>
+                      </div>
+                      <p className="text-sm bg-neutral-50 p-2 rounded">{trip.share_text}</p>
+                    </div>
+                    )}
+                    
+                    <div className="flex items-center mb-4">
+                    <div className="flex items-center text-sm text-neutral-500 mr-2">
+                      <Activity className="h-4 w-4 mr-1" />
+                      <span>Status:</span>
+                    </div>
+                    <div className="flex">
+                      <span className={`text-sm font-medium px-2 py-0.5 rounded ${
+                      trip.is_active 
+                        ? "bg-green-100 text-green-800"
+                        : "bg-neutral-100 text-neutral-800"
+                      }`}>
+                      {trip.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-2 mt-4">
+                    <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setEditingTrip(trip)}
+                    >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                    </Button>
+                    {/* Removed Delete Button */}
+                  </div>
                   </CardContent>
                 )}
-              </Card>
+                </Card>
             ))}
           </div>
         ) : (
@@ -741,7 +727,7 @@ const DriverTripsPage = () => {
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <FormField
                     control={form.control}
-                    name="namingSeries"
+                    name="naming_series"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Trip ID</FormLabel>
@@ -785,7 +771,7 @@ const DriverTripsPage = () => {
                 <div className="grid grid-cols-1 gap-4 mb-4">
                   <FormField
                     control={form.control}
-                    name="vehicleType"
+                    name="vehicle_type"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Vehicle Type</FormLabel>
@@ -849,7 +835,7 @@ const DriverTripsPage = () => {
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <FormField
                     control={form.control}
-                    name="startedOn"
+                    name="started_on"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Started On</FormLabel>
@@ -863,7 +849,7 @@ const DriverTripsPage = () => {
 
                   <FormField
                     control={form.control}
-                    name="endedOn"
+                    name="ended_on"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Ended On</FormLabel>
@@ -893,7 +879,7 @@ const DriverTripsPage = () => {
 
                   <FormField
                     control={form.control}
-                    name="etaStr"
+                    name="eta_str"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>ETA String</FormLabel>
@@ -913,7 +899,7 @@ const DriverTripsPage = () => {
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <FormField
                     control={form.control}
-                    name="driverName"
+                    name="driver_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Driver Name</FormLabel>
@@ -927,7 +913,7 @@ const DriverTripsPage = () => {
 
                   <FormField
                     control={form.control}
-                    name="driverPhoneNumber"
+                    name="driver_phone_number"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Driver Phone</FormLabel>
@@ -943,7 +929,7 @@ const DriverTripsPage = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="transporterName"
+                    name="transporter_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Transporter Name</FormLabel>
@@ -957,7 +943,7 @@ const DriverTripsPage = () => {
                   
                   <FormField
                     control={form.control}
-                    name="startedBy"
+                    name="started_by"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Started By</FormLabel>
@@ -988,7 +974,7 @@ const DriverTripsPage = () => {
                 <div className="grid grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
-                    name="tripCost"
+                    name="trip_cost"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Trip Cost (₹)</FormLabel>
@@ -1002,7 +988,7 @@ const DriverTripsPage = () => {
                   
                   <FormField
                     control={form.control}
-                    name="paidAmount"
+                    name="paid_amount"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Paid Amount (₹)</FormLabel>
@@ -1016,7 +1002,7 @@ const DriverTripsPage = () => {
                   
                   <FormField
                     control={form.control}
-                    name="pendingAmount"
+                    name="pending_amount"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Pending Amount (₹)</FormLabel>
@@ -1030,43 +1016,12 @@ const DriverTripsPage = () => {
                 </div>
               </div>
               
-              {/* Trip Metrics */}
               <div className="border-b pb-4">
-                <h4 className="text-sm font-semibold mb-3">Trip Metrics</h4>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <FormField
-                    control={form.control}
-                    name="distance"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Distance (km)</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" step="0.1" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="duration"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Duration (hours)</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" step="0.1" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
+                <h4 className="text-sm font-semibold mb-3">Additional Trip Details</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="odoStart"
+                    name="odo_start"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Odometer Start</FormLabel>
@@ -1080,7 +1035,7 @@ const DriverTripsPage = () => {
                   
                   <FormField
                     control={form.control}
-                    name="odoEnd"
+                    name="odo_end"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Odometer End</FormLabel>
@@ -1101,7 +1056,7 @@ const DriverTripsPage = () => {
                 <div className="mb-4">
                   <FormField
                     control={form.control}
-                    name="shareText"
+                    name="share_text"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Share Text</FormLabel>
@@ -1117,25 +1072,21 @@ const DriverTripsPage = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="rating"
+                    name="is_active"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Rating</FormLabel>
+                        <FormLabel>Status</FormLabel>
                         <FormControl>
                           <Select 
-                            onValueChange={(value) => field.onChange(value === "null" ? null : value ? parseFloat(value) : null)} 
-                            defaultValue={field.value?.toString() || "null"}
+                            onValueChange={(value) => field.onChange(value === "true")}
+                            defaultValue={field.value ? "true" : "false"}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Trip rating" />
+                              <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="null">No rating</SelectItem>
-                              <SelectItem value="1">1 - Poor</SelectItem>
-                              <SelectItem value="2">2 - Fair</SelectItem>
-                              <SelectItem value="3">3 - Good</SelectItem>
-                              <SelectItem value="4">4 - Very Good</SelectItem>
-                              <SelectItem value="5">5 - Excellent</SelectItem>
+                              <SelectItem value="true">Active</SelectItem>
+                              <SelectItem value="false">Inactive</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>
@@ -1146,16 +1097,24 @@ const DriverTripsPage = () => {
                   
                   <FormField
                     control={form.control}
-                    name="isActive"
+                    name="started_by"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-end space-x-2 space-y-0 mt-8">
+                      <FormItem>
+                        <FormLabel>Started By</FormLabel>
                         <FormControl>
-                          <Checkbox 
-                            checked={field.value} 
-                            onCheckedChange={field.onChange}
-                          />
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value || "Driver"}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Who started this trip" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Driver">Driver</SelectItem>
+                              <SelectItem value="Transporter">Transporter</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </FormControl>
-                        <FormLabel className="font-normal">Trip is active</FormLabel>
                         <FormMessage />
                       </FormItem>
                     )}

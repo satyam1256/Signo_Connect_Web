@@ -1,44 +1,31 @@
 export interface Trip {
-    id: number;
-    namingSeriesId?: number; // naming_series (Select)
-    namingSeries?: string; // TR-#####
-    vehicleId?: number; // vehicle (Link to Vehicles)
-    vehicleTypeId?: number; // vehicle_type (Link to Vehicle Types)
-    driverId: number; // driver (Link to Drivers)
-    driverName?: string; // driver_name (Data)
-    driverPhoneNumber?: string; // driver_phone_number (Data)
-    origin: string; // origin (Data)
-    destination: string; // destination (Data)
-    tripCost?: number; // trip_cost (Float)
-    pendingAmount?: number; // pending_amount (Float)
-    paidAmount?: number; // paid_amount (Float)
-    handoverChecklist?: any; // handover_checklist (Table)
-    status: string; // 'upcoming' | 'waiting' | 'completed' | 'in-progress' | 'cancelled'
-    createdOn?: string; // created_on (Datetime)
-    startedOn?: string; // started_on (Datetime)
-    endedOn?: string; // ended_on (Datetime)
-    eta?: string; // eta (Datetime)
-    etaStr?: string; // eta_str (Data)
-    transporterId?: number; // transporter (Link to Transporters)
-    transporterName?: string; // transporter_name (Data)
-    odoStart?: string; // odo_start (Data)
-    odoStartPic?: string; // odo_start_pic (Attach Image)
-    odoEnd?: string; // odo_end (Data)
-    odoEndPic?: string; // odo_end_pic (Attach Image)
-    tripPic?: string; // trip_pic (Attach Image)
-    documents?: any; // documents (Table)
-    shareText?: string; // share_text (Small Text)
-    startedBy?: string; // started_by (Select: Driver/Transporter)
-    isActive?: boolean; // is_active (Check)
-    
-    // Additional fields to maintain backward compatibility
-    startDate?: string; // alias for startedOn
-    endDate?: string; // alias for endedOn
-    distance?: number; // in kilometers (calculated or derived)
-    duration?: number; // in hours (calculated or derived)
-    vehicleType?: string; // from vehicleTypeId
-    earnings?: number; // alias for tripCost
-    rating?: number | null; // optional rating out of 5
-    createdAt?: string; // alias for createdOn
-    updatedAt?: string;
+    naming_series: string; // e.g., "TR-#####"
+    vehicle: string; // Link to Vehicles
+    vehicle_type: string; // Link to Vehicle Type
+    driver: string; // Link to Drivers
+    driver_name: string; // Driver's name
+    driver_phone_number: string; // Driver's phone number
+    origin: string; // Origin location
+    destination: string; // Destination location
+    trip_cost: number; // Total trip cost
+    pending_amount: number; // Pending payment amount
+    paid_amount: number; // Paid amount
+    handover_checklist: string; // Link to Vehicle Checklist Table
+    status: "upcoming" | "waiting" | "completed" | "in-progress" | "cancelled"; // Trip status
+    created_on: string; // Datetime when the trip was created
+    started_on: string; // Datetime when the trip started
+    ended_on: string; // Datetime when the trip ended
+    eta: string; // Estimated time of arrival
+    eta_str: string; // ETA as a string
+    transporter: string; // Link to Transporters
+    transporter_name: string; // Transporter's name
+    odo_start: string; // Odometer reading at the start
+    odo_start_pic: string; // Image of odometer at the start
+    odo_end: string; // Odometer reading at the end
+    odo_end_pic: string; // Image of odometer at the end
+    trip_pic: string; // Image related to the trip
+    documents: string; // Link to Documents Table
+    share_text: string; // Text for sharing trip details
+    started_by: "Driver" | "Transporter"; // Who started the trip
+    is_active: boolean; // Whether the trip is active
   }
