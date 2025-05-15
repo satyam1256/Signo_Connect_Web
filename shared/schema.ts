@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -119,15 +119,106 @@ export const userRegistrationSchema = userInsertSchema.extend({
   email: z.string().email().optional(),
 });
 
+// Driver trips
+export const trips = pgTable("trips", {
+  id: serial("id").primaryKey(),
+  namingSeriesId: integer("naming_series_id"),
+  namingSeries: text("naming_series"), // TR-#####
+  vehicleId: integer("vehicle_id"), // Link to Vehicles
+  vehicleTypeId: integer("vehicle_type_id"), // Link to Vehicle Types
+  driverId: integer("driver_id").notNull(), // Link to Drivers
+  driverName: text("driver_name"), // Data
+  driverPhoneNumber: text("driver_phone_number"), // Data
+  origin: text("origin").notNull(), // Data
+  destination: text("destination").notNull(), // Data
+  tripCost: doublePrecision("trip_cost"), // Float
+  pendingAmount: doublePrecision("pending_amount"), // Float
+  paidAmount: doublePrecision("paid_amount"), // Float
+  handoverChecklist: jsonb("handover_checklist"), // Table as JSON
+  status: text("status", { enum: ["upcoming", "waiting", "completed", "in-progress", "cancelled"] }).notNull(),
+  createdOn: timestamp("created_on").defaultNow(), // Datetime
+  startedOn: timestamp("started_on"), // Datetime
+  endedOn: timestamp("ended_on"), // Datetime
+  eta: timestamp("eta"), // Datetime
+  etaStr: text("eta_str"), // Data
+  transporterId: integer("transporter_id"), // Link to Transporters
+  transporterName: text("transporter_name"), // Data
+  odoStart: text("odo_start"), // Data
+  odoStartPic: text("odo_start_pic"), // Attach Image (stored as path/URL)
+  odoEnd: text("odo_end"), // Data
+  odoEndPic: text("odo_end_pic"), // Attach Image (stored as path/URL)
+  tripPic: text("trip_pic"), // Attach Image (stored as path/URL)
+  documents: jsonb("documents"), // Table as JSON
+  shareText: text("share_text"), // Small Text
+  startedBy: text("started_by", { enum: ["Driver", "Transporter"] }), // Select
+  isActive: boolean("is_active").default(true), // Check
+  
+  // Additional fields to maintain backward compatibility
+  startDate: timestamp("start_date"), // alias for startedOn
+  endDate: timestamp("end_date"), // alias for endedOn
+  distance: doublePrecision("distance"), // in kilometers (calculated or derived)
+  duration: doublePrecision("duration"), // in hours (calculated or derived)
+  vehicleType: text("vehicle_type"), // from vehicleTypeId
+  earnings: doublePrecision("earnings"), // alias for tripCost
+  rating: doublePrecision("rating"), // optional rating out of 5
+  createdAt: timestamp("created_at").defaultNow(), // alias for createdOn
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+
+export const tripInsertSchema = createInsertSchema(trips).pick({
+  namingSeriesId: true,
+  namingSeries: true,
+  vehicleId: true, 
+  vehicleTypeId: true,
+  driverId: true,
+  driverName: true,
+  driverPhoneNumber: true,
+  origin: true,
+  destination: true,
+  tripCost: true,
+  pendingAmount: true,
+  paidAmount: true,
+  handoverChecklist: true,
+  status: true,
+  createdOn: true,
+  startedOn: true,
+  endedOn: true,
+  eta: true,
+  etaStr: true,
+  transporterId: true,
+  transporterName: true,
+  odoStart: true,
+  odoStartPic: true,
+  odoEnd: true,
+  odoEndPic: true,
+  tripPic: true,
+  documents: true,
+  shareText: true,
+  startedBy: true,
+  isActive: true,
+  
+  // Keeping these for backward compatibility
+  startDate: true,
+  endDate: true,
+  distance: true,
+  duration: true,
+  vehicleType: true,
+  earnings: true,
+  rating: true,
+});
+
 // Types for TypeScript
 export type InsertUser = z.infer<typeof userInsertSchema>;
 export type InsertDriver = z.infer<typeof driverInsertSchema>;
 export type InsertFleetOwner = z.infer<typeof fleetOwnerInsertSchema>;
 export type InsertJob = z.infer<typeof jobInsertSchema>;
 export type InsertOtpVerification = z.infer<typeof otpVerificationSchema>;
+export type InsertTrip = z.infer<typeof tripInsertSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Driver = typeof drivers.$inferSelect;
 export type FleetOwner = typeof fleetOwners.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type OtpVerification = typeof otpVerifications.$inferSelect;
+export type Trip = typeof trips.$inferSelect;

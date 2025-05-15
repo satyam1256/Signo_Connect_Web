@@ -10,6 +10,7 @@ import DriverDashboard from "@/pages/driver/dashboard";
 import DriverJobs from "@/pages/driver/jobs";
 import DriverAlerts from "@/pages/driver/alerts";
 import DriverProfile from "@/pages/driver/profile";
+import DriverTrips from "@/pages/driver/trips";
 import TransporterRegistration from "@/pages/transporter/registration";
 import TransporterDashboard from "@/pages/transporter/dashboard";
 import TransporterJobsPage from "@/pages/transporter/jobs";
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/driver/jobs" component={DriverJobs} />
       <Route path="/driver/alerts" component={DriverAlerts} />
       <Route path="/driver/profile" component={DriverProfile} />
+      <Route path="/driver/trips" component={DriverTrips} />      
       {/* <Route path='/driver/pf2' component={DBP2}/> */}
       {/* Fleet Owner Routes */}
       <Route path="/transporter/register" component={TransporterRegistration} />
