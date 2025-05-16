@@ -108,7 +108,7 @@ interface AppliedJobResponse {
 }
 
 export const postJobApplication = async (jobId: string, feedId: string, driverId: string) => {
-  const response = await fetch('https://internal.signodrive.com/api/method/signo_connect.api.proxy/Job Applications', {
+  const response = await fetch('http://localhost:8000/api/method/signo_connect.api.proxy/Job Applications', {
     method: 'POST',
     headers: {
       'Authorization': `token ${frappe_token}`,
@@ -168,7 +168,7 @@ const transformApiJobToJob = (apiJob: ApiJob): Job => {
 
 const fetchJobs = async (): Promise<Job[]> => {
   try {
-    const response = await fetch(`https://internal.signodrive.com/api/method/signo_connect.api.proxy/Job?fields=["*"]&limit_page_length=100`, {
+    const response = await fetch(`http://localhost:8000/api/method/signo_connect.api.proxy/Job?fields=["*"]&limit_page_length=100`, {
       headers: {
         'Authorization': `token ${frappe_token}`,
         'x-key': x_key,
@@ -194,7 +194,7 @@ const fetchJobs = async (): Promise<Job[]> => {
 
 const fetchAppliedJobs = async (driverId: string): Promise<AppliedJob[]> => {
   const response = await fetch(
-    `https://internal.signodrive.com/api/method/signo_connect.apis.driver.get_applied_jobs?driver_id=${driverId}`,
+    `http://localhost:8000/api/method/signo_connect.apis.driver.get_applied_jobs?driver_id=${driverId}`,
     {
       headers: {
         'Authorization': `token ${frappe_token}`,
@@ -256,6 +256,10 @@ const DriverJobsPage = () => {
     }
   };
 
+
+  const [hideAppliedJobs, setHideAppliedJobs] = useState(false);
+
+
   const filteredJobs = (fetchedJobs || []).filter(job => {
     const matchesSearch =
       searchQuery === "" ||
@@ -265,7 +269,12 @@ const DriverJobsPage = () => {
   
     const locationFilters = activeFilters.filter(filter => locations.includes(filter));
     const jobTypeFilters = activeFilters.filter(filter => jobTypes.includes(filter));
-    const otherFilters = activeFilters.filter(filter => !locations.includes(filter) && !jobTypes.includes(filter));
+    const salaryFilters = activeFilters.filter(filter => salaryRanges.some(range => range.value === filter));
+    const otherFilters = activeFilters.filter(filter => 
+      !locations.includes(filter) && 
+      !jobTypes.includes(filter) && 
+      !salaryRanges.some(range => range.value === filter)
+    );
   
     const matchesLocation = locationFilters.length === 0 || 
       locationFilters.some(filter => job.location === filter);
@@ -273,20 +282,22 @@ const DriverJobsPage = () => {
     const matchesJobType = jobTypeFilters.length === 0 || 
       jobTypeFilters.some(filter => job.jobType === filter);
   
-    const matchesOtherFilters = otherFilters.length === 0 ||
-      otherFilters.every(filter => {
-        if (filter.includes("-")) {
-          const [min, max] = filter.split("-").map(Number);
-          const jobSalary = parseInt(job.salary.replace(/[^0-9]/g, ""));
-          if (max) {
-            return jobSalary >= min && jobSalary <= max;
-          }
-          return jobSalary >= min;
+    const matchesSalary = salaryFilters.length === 0 || 
+      salaryFilters.some(filter => {
+        const [min, max] = filter.split("-").map(Number);
+        const jobSalary = parseInt(job.salary.replace(/[^0-9]/g, ""), 10);
+        if (max) {
+          return jobSalary >= min && jobSalary <= max;
         }
-        return job.tags.includes(filter);
+        return jobSalary >= min;
       });
   
-    return matchesSearch && matchesLocation && matchesJobType && matchesOtherFilters;
+    const matchesOtherFilters = otherFilters.length === 0 ||
+      otherFilters.every(filter => job.tags.includes(filter));
+  
+    const matchesAppliedFilter = !hideAppliedJobs || !appliedJobs.some(aj => aj.jobId === job.id);
+  
+    return matchesSearch && matchesLocation && matchesJobType && matchesSalary && matchesOtherFilters && matchesAppliedFilter;
   });
 
   useEffect(() => {
@@ -445,7 +456,11 @@ const DriverJobsPage = () => {
           </div>
           <div className="flex items-center justify-between">
             <Label htmlFor="applied-jobs">Hide jobs I've applied to</Label>
-            <Switch id="applied-jobs" />
+            <Switch
+              id="applied-jobs"
+              checked={hideAppliedJobs}
+              onCheckedChange={(checked) => setHideAppliedJobs(checked)}
+            />
           </div>
         </div>
       </div>
@@ -695,7 +710,7 @@ const DriverJobsPage = () => {
                 )}
               </TabsContent>
 
-              // Replace the existing saved TabsContent
+              {/* Replace the existing saved TabsContent */}
               <TabsContent value="saved" className="space-y-4 mt-0">
                 {savedJobs.length === 0 ? (
                   <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
@@ -776,7 +791,7 @@ const DriverJobsPage = () => {
                 )}
               </TabsContent>
 
-              // Replace the existing Applied jobs tab content
+              {/* Replace the existing Applied jobs tab content */}
               <TabsContent value="applied" className="space-y-4 mt-0">
                 {isLoadingAppliedJobs ? (
                   <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg border border-neutral-200">

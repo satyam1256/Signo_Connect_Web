@@ -52,6 +52,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast as hotToast } from "react-hot-toast"; 
+import Cookies from "js-cookie";
 
 const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
 const x_key = import.meta.env.VITE_X_KEY
@@ -185,11 +186,11 @@ const DriverProfilePage = () =>  {
   
   const getFullImageUrl = (url: string | null | undefined): string | undefined => {
     if (!url) return undefined;
-    
+  
     if (url.startsWith('/files')) {
       return `http://localhost:8000${url}`;
     }
-    
+  
     return url;
   };
 
@@ -198,41 +199,50 @@ const DriverProfilePage = () =>  {
   const uploadFile = async (file: File, type: string): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file, file.name);
+    formData.append("doctype", "Drivers"); // Add doctype
+    formData.append("docname", Cookies.get("userId") || ""); // Add docname
+    formData.append("fieldname", type); // Add fieldname
+  
     const myHeaders = new Headers();
-    myHeaders.append("Authorization" ,`token ${frappe_token}`);
-
+    myHeaders.append("Authorization", `token ${frappe_token}`);
+    myHeaders.append("x-key", x_key);
+  
     const requestOptions = {
       method: "POST",
       headers: myHeaders,
       body: formData,
-      redirect: "follow" as RequestRedirect
+      redirect: "follow" as RequestRedirect,
     };
-
-    const response = await fetch(`https://internal.signodrive.com/api/method/signo_connect.api.upload_image`, requestOptions);
+  
+    const response = await fetch(
+      `http://localhost:8000/api/method/signo_connect.api.upload_image`,
+      requestOptions
+    );
+  
     if (!response.ok) {
       const errorData = await response.text();
       console.error("Upload Error:", errorData);
       throw new Error("Failed to upload file");
     }
-
+  
     const data = await response.json();
-
+  
     let fileUrl = data.file_url || data.message?.file_url || (data.status && data.file_url) || "";
-    
-    if (data.status === true && typeof data.file_url === 'string') {
-      if (data.file_url.startsWith('/files')) {
+  
+    if (data.status === true && typeof data.file_url === "string") {
+      if (data.file_url.startsWith("/files")) {
         fileUrl = `http://localhost:8000${data.file_url}`;
         console.log("Constructed complete file URL:", fileUrl);
       } else {
         fileUrl = data.file_url;
       }
     }
-    
+  
     if (!fileUrl) {
       console.error("File URL structure in response:", JSON.stringify(data));
       throw new Error("File URL not found in response");
     }
-    
+  
     return fileUrl;
   };
 
@@ -242,30 +252,32 @@ const DriverProfilePage = () =>  {
       console.log("loadProfile called without user, returning.");
       return;
     }
-
+  
     try {
-      const userId = localStorage.getItem("userId") || user.id;
-      const phoneNumber = localStorage.getItem("phone_number") || user.phoneNumber;
-
-      
-      const res = await fetch(`https://internal.signodrive.com/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${phoneNumber}`, {
-        method: "GET",
-        headers: {
-          "Authorization": `token ${frappe_token}`
-        },
-      });
-      
+      const userId = Cookies.get("userId") || user.id;
+      const phoneNumber = Cookies.get("phoneNumber") || user.phoneNumber;
+  
+      const res = await fetch(
+        `http://localhost:8000/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${phoneNumber}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `token ${frappe_token}`,
+          },
+        }
+      );
+  
       if (!res.ok) {
         throw new Error(`Failed to load profile: ${res.statusText}`);
       }
-      
+  
       const json = await res.json();
       console.log("API Response:", json);
-      
-      
+  
       const profileData = json.doc || {};
-      console.log("profileData--->",profileData);
-
+      console.log("profileData--->", profileData);
+  
+      // Map image URLs correctly
       if (profileData.profile_pic) {
         profileData.profile_pic = getFullImageUrl(profileData.profile_pic);
       }
@@ -281,19 +293,11 @@ const DriverProfilePage = () =>  {
       if (profileData.aadhar_back_pic) {
         profileData.aadhar_back_pic = getFullImageUrl(profileData.aadhar_back_pic);
       }
-      
-
-      if (!profileData.name && profileData.name1) {
-        profileData.name = profileData.name1;
-      } else if (!profileData.name) {
-        profileData.name = ""; 
-      }
-      
+  
       setData(profileData);
-      
+  
       console.log("Loaded profile data:", profileData);
-      
-
+  
       setProfile({
         name1: profileData.name1 || "",
         email: profileData.email || "",
@@ -305,23 +309,23 @@ const DriverProfilePage = () =>  {
         dl_number: profileData.dl_number || "",
         dl_front_pic: profileData.dl_front_pic || null,
         dl_back_pic: profileData.dl_back_pic || null,
-        aadhaar_front: profileData.aadhar_front_pic || null, 
-        aadhaar_back: profileData.aadhar_back_pic || null,
+        aadhaar_front: profileData.aadhar_front_pic || null, // Correct field mapping
+        aadhaar_back: profileData.aadhar_back_pic || null,   // Correct field mapping
         aadhar_number: profileData.aadhar_number || "",
         dob: profileData.dob || "",
         profile_pic: profileData.profile_pic || null,
-        driver_id: userId
+        driver_id: userId,
       });
-      
+  
       console.log("Profile loaded successfully");
     } catch (error) {
-      console.error('Error loading profile:', error);
+      console.error("Error loading profile:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to load profile data"
+        description: "Failed to load profile data",
       });
-      
+  
       // Initialize data with empty object to prevent null reference errors
       setData({
         name1: "",
@@ -338,13 +342,12 @@ const DriverProfilePage = () =>  {
         aadhar_front_pic: null,
         aadhar_back_pic: null,
         dob: "",
-        profile_pic: null
+        profile_pic: null,
       });
     } finally {
       setIsProfileLoading(false);
     }
   }, [user, toast]);
-
   useEffect(() => {
     if (!user) {
       navigate("/");
@@ -358,179 +361,138 @@ const DriverProfilePage = () =>  {
   // Handle profile update
   const handleProfileUpdate = async (formData: Partial<UserProfile>) => {
     if (!user) return;
-
+  
     setIsUpdatingProfile(true);
     try {
-      
-      try {
-
-        const fileUploads = [];
-        
-        // Profile Picture
-        if (profile_pic) {
-          fileUploads.push(
-            uploadFile(profile_pic, 'profile_pic')
-              .then(url => ({ field: 'profile_pic', url }))
-          );
-        }
-
-        // Driving License Files
-        if (dlFront) {
-          fileUploads.push(
-            uploadFile(dlFront, 'dl_front_pic')
-              .then(url => ({ field: 'dl_front_pic', url }))
-          );
-        }
-        if (dlBack) {
-          fileUploads.push(
-            uploadFile(dlBack, 'dl_back_pic')
-              .then(url => ({ field: 'dl_back_pic', url }))
-          );
-        }
-
-        // Aadhar Files
-        if (aadhaar_front) {
-          fileUploads.push(
-            uploadFile(aadhaar_front, 'aadhar_front_pic')
-              .then(url => ({ field: 'aadhar_front_pic', url }))
-          );
-        }
-        if (aadhaar_back) {
-          fileUploads.push(
-            uploadFile(aadhaar_back, 'aadhar_back_pic')
-              .then(url => ({ field: 'aadhar_back_pic', url }))
-          );
-        }
-
-
-        const uploadedFiles = await Promise.all(fileUploads);
-        const uploads = uploadedFiles.reduce((acc, { field, url }) => {
-          acc[field] = url;
-          return acc;
-        }, {} as Record<string, string>);
-
-        // Check directly from the DOM if available
-        if (aadharInputRef.current) {
-          const aadharInputValue = aadharInputRef.current.value;
-          console.log("Aadhar value from input ref:", aadharInputValue);
-          // Force set the aadhar_number from the actual DOM input
-          editedProfile.aadhar_number = aadharInputValue;
-        }
-
-        const userId = localStorage.getItem("userId") || user.id;
-
-        const aadharValue = aadharInputRef.current?.value || editedProfile.aadhar_number || (data?.aadhar_number || "")
-        
-        // Create a complete update object with all fields explicitly defined
-        const updatePayload = {
-          driver_id: userId,
-          name1: editedProfile.name1 ?? (data?.name1 || ""),
-          email: editedProfile.email ?? (data?.email || ""),
-          phone_number: editedProfile.phone_number ?? (data?.phone_number || ""),
-          emergency_contact_number: editedProfile.emergency_contact_number ?? (data?.emergency_contact_number || ""),
-          address: editedProfile.address ?? (data?.address || ""),
-          experience: editedProfile.experience ?? (data?.experience || ""),
-          catagory: editedProfile.catagory ?? (data?.catagory || ""),
-          dl_number: editedProfile.dl_number ?? (data?.dl_number || ""),
-          aadhar_number: editedProfile.aadhar_number || (data?.aadhar_number || ""),
-          dob: editedProfile.dob ?? (data?.dob || ""),
-          ...uploads // Include uploaded file URLs
-        };
-        
-        // Remove any properties with undefined values
-        Object.keys(updatePayload).forEach(key => {
-          if (updatePayload[key as keyof typeof updatePayload] === undefined) {
-            delete updatePayload[key as keyof typeof updatePayload];
-          }
-        });
-        
-
-        const res1 = await fetch(`https://internal.signodrive.com/api/method/signo_connect.api.proxy/Drivers/${userId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `token ${frappe_token}`,
-            "x-key":x_key
-          },
-          body: JSON.stringify(updatePayload),
-        });
-        
-        let responseData;
-        try {
-          // Parse the response JSON
-          responseData = await res1.json();
-          console.log("Update Response:", responseData);
-          
-        } catch (jsonError) {
-          console.error("Error parsing response JSON:", jsonError);
-          throw new Error("Failed to parse server response");
-        }
-
-        if (!res1.ok) {
-          console.error("Update Error Response:", responseData);
-          throw new Error(responseData?.message || "Failed to update profile");
-        }
-        
-        
-        if (user) {
-          const userUpdate: Partial<User> = {};
-          
-          if (editedProfile.name1) {
-            userUpdate.fullName = editedProfile.name1;
-          }
-          
-          if (editedProfile.email) {
-            userUpdate.email = editedProfile.email;
-          }
-          
-          // Update the user context if we have changes
-          if (Object.keys(userUpdate).length > 0) {
-            updateUser(userUpdate);
-          }
-        }
-
-        // queryClient.invalidateQueries({ queryKey: [`/api/method/signo_connect.apis.driver.upload_image`] });
-        queryClient.invalidateQueries({ queryKey: [`/api/method/signo_connect.apis.driver.get_driver_profile?driver_id=${user.id}`] });
-        
-        
-        toast({ title: "Success", description: "Profile updated successfully" });
-        await loadProfile();
-        setIsEditingProfile(false);
+      const fileUploads = [];
   
-        // Reset file states
-        setprofile_pic(null);
-        setDlFront(null);
-        setDlBack(null);
-        setaadhaar_front(null);
-        setaadhaar_back(null);
-        
-        // Reload profile data and close the dialog
-        await loadProfile();
-        setIsEditingProfile(false);
+      // Profile Picture
+      if (profile_pic) {
+        fileUploads.push(
+          uploadFile(profile_pic, "profile_pic")
+            .then((url) => ({ field: "profile_pic", url }))
+            .catch((error) => {
+              console.error("Failed to upload profile_pic:", error);
+              return null;
+            })
+        );
       }
-      catch (error) {
-        const err = error as Error;
-        console.error("Error updating profile:", err);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: err.message || "Failed to update profile"
-        });
+  
+      // Driving License Files
+      if (dlFront) {
+        fileUploads.push(
+          uploadFile(dlFront, "dl_front_pic")
+            .then((url) => ({ field: "dl_front_pic", url }))
+            .catch((error) => {
+              console.error("Failed to upload dl_front_pic:", error);
+              return null;
+            })
+        );
       }
-      finally {
-        setIsUpdatingProfile(false);
+      if (dlBack) {
+        fileUploads.push(
+          uploadFile(dlBack, "dl_back_pic")
+            .then((url) => ({ field: "dl_back_pic", url }))
+            .catch((error) => {
+              console.error("Failed to upload dl_back_pic:", error);
+              return null;
+            })
+        );
       }
-    } catch (error: any) {
-      console.error("Error in profile update outer try block:", error);
+  
+      // Aadhar Files
+      if (aadhaar_front) {
+        fileUploads.push(
+          uploadFile(aadhaar_front, "aadhar_front_pic")
+            .then((url) => ({ field: "aadhar_front_pic", url }))
+            .catch((error) => {
+              console.error("Failed to upload aadhar_front_pic:", error);
+              return null;
+            })
+        );
+      }
+      if (aadhaar_back) {
+        fileUploads.push(
+          uploadFile(aadhaar_back, "aadhar_back_pic")
+            .then((url) => ({ field: "aadhar_back_pic", url }))
+            .catch((error) => {
+              console.error("Failed to upload aadhar_back_pic:", error);
+              return null;
+            })
+        );
+      }
+  
+      const uploadedFiles = await Promise.all(fileUploads);
+  
+      // Filter out failed uploads
+      const successfulUploads = uploadedFiles.filter((upload) => upload !== null);
+  
+      const uploads = successfulUploads.reduce((acc, { field, url }) => {
+        acc[field] = url;
+        return acc;
+      }, {} as Record<string, string>);
+  
+      const userId = Cookies.get("userId") || user.id;
+  
+      const updatePayload = {
+        driver_id: userId,
+        name1: editedProfile.name1 ?? (data?.name1 || ""),
+        email: editedProfile.email ?? (data?.email || ""),
+        phone_number: editedProfile.phone_number ?? (data?.phone_number || ""),
+        emergency_contact_number: editedProfile.emergency_contact_number ?? (data?.emergency_contact_number || ""),
+        address: editedProfile.address ?? (data?.address || ""),
+        experience: editedProfile.experience ?? (data?.experience || ""),
+        catagory: editedProfile.catagory ?? (data?.catagory || ""),
+        dl_number: editedProfile.dl_number ?? (data?.dl_number || ""),
+        aadhar_number: editedProfile.aadhar_number ?? (data?.aadhar_number || ""),
+        dob: editedProfile.dob ?? (data?.dob || ""),
+        ...uploads, // Include uploaded file URLs
+      };
+  
+      // Remove undefined fields
+      Object.keys(updatePayload).forEach((key) => {
+        if (updatePayload[key as keyof typeof updatePayload] === undefined) {
+          delete updatePayload[key as keyof typeof updatePayload];
+        }
+      });
+  
+      const res = await fetch(`http://localhost:8000/api/method/signo_connect.api.proxy/Drivers/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `token ${frappe_token}`,
+          "x-key": x_key,
+        },
+        body: JSON.stringify(updatePayload),
+      });
+  
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("Failed to update profile:", errorData);
+        throw new Error(errorData.message || "Failed to update profile");
+      }
+  
+      toast({ title: "Success", description: "Profile updated successfully" });
+      await loadProfile();
+      setIsEditingProfile(false);
+  
+      // Reset file states
+      setprofile_pic(null);
+      setDlFront(null);
+      setDlBack(null);
+      setaadhaar_front(null);
+      setaadhaar_back(null);
+    } catch (error) {
+      console.error("Error updating profile:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to update profile"
+        description: error instanceof Error ? error.message : "Failed to update profile",
       });
+    } finally {
       setIsUpdatingProfile(false);
     }
   };
-
   if (!user) {
     return null;
   }
@@ -758,84 +720,84 @@ const DriverProfilePage = () =>  {
               </TabsContent>
 
               <TabsContent value="documents" className="mt-0 space-y-4">
-                <Card>
+              <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg">Driving License</CardTitle>
-                     {/* Consider adding button to edit documents directly */}
-                     <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)}>
-                        <Edit className="h-4 w-4"/>
-                    </Button>
                   </CardHeader>
                   <CardContent>
                     <div className="mb-4">
-                       <h4 className="font-medium text-sm text-neutral-500 mb-1">License Number</h4>
-                       <p className="text-neutral-800">{data?.dl_number || "Not added"}</p>
+                      <h4 className="font-medium text-sm text-neutral-500 mb-1">License Number</h4>
+                      <p className="text-neutral-800">{data?.dl_number || "Not added"}</p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
+                        {data?.dl_front_pic ? (
+                          <img
+                            src={data.dl_front_pic}
+                            alt="DL Front"
+                            className="max-h-24 object-contain mb-2"
+                          />
+                        ) : (
+                          <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
+                        )}
+                        <p className="text-neutral-600 text-sm">Front Side</p>
+                      </div>
+                      <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
+                        {data?.dl_back_pic ? (
+                          <img
+                            src={data.dl_back_pic}
+                            alt="DL Back"
+                            className="max-h-24 object-contain mb-2"
+                          />
+                        ) : (
+                          <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
+                        )}
+                        <p className="text-neutral-600 text-sm">Back Side</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <TabsContent value="documents" className="mt-0 space-y-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle className="text-lg">Aadhar Card</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="mb-4">
+                        <h4 className="font-medium text-sm text-neutral-500 mb-1">Aadhar Number</h4>
+                        <p className="text-neutral-800">{data?.aadhar_number || "Not added"}</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
-                           {data?.dl_front_pic ? (
-                               <img 
-                               src={`${getFullImageUrl(data.dl_front_pic)}?ts=${Date.now()}`}
-                               alt="DL Front"
-                               className="max-h-24 object-contain mb-2"
-                             />
-                           ) : (
-                                <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
-                           )}
-                           <p className="text-neutral-600 text-sm">Front Side</p>
+                          {data?.aadhaar_front ? (
+                            <img
+                              src={data.aadhaar_front}
+                              alt="Aadhar Front"
+                              className="max-h-24 object-contain mb-2"
+                            />
+                          ) : (
+                            <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
+                          )}
+                          <p className="text-neutral-600 text-sm">Front Side</p>
                         </div>
-                         <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
-                           {data?.dl_back_pic ? (
-                               <img src={`${getFullImageUrl(data.dl_back_pic)}?ts=${Date.now()}`} alt="DL Back" className="max-h-24 object-contain mb-2"/>
-                           ) : (
-                                <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
-                           )}
-                           <p className="text-neutral-600 text-sm">Back Side</p>
+                        <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
+                          {data?.aadhaar_back ? (
+                            <img
+                              src={data.aadhaar_back}
+                              alt="Aadhar Back"
+                              className="max-h-24 object-contain mb-2"
+                            />
+                          ) : (
+                            <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
+                          )}
+                          <p className="text-neutral-600 text-sm">Back Side</p>
                         </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                 <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg">Aadhar Card</CardTitle>
-                    {/* Consider adding button to edit documents directly */}
-                    <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)}>
-                        <Edit className="h-4 w-4"/>
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                     <div className="mb-4">
-                       <h4 className="font-medium text-sm text-neutral-500 mb-1">Aadhar Number</h4>
-                       <p className="text-neutral-800">
-                         {data?.aadhar_number || "Not added"}
-                         {!data?.aadhar_number && (
-                           <span className="text-xs text-red-500 block mt-1">
-                           </span>
-                         )}
-                       </p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
-                           {data?.aadhar_front_pic ? (
-                               <img src={`${getFullImageUrl(data.aadhar_front_pic)}?ts=${Date.now()}`} alt="Aadhar Front" className="max-h-24 object-contain mb-2"/>
-                           ) : (
-                                <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
-                           )}
-                           <p className="text-neutral-600 text-sm">Front Side</p>
-                        </div>
-                         <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
-                           {data?.aadhar_back_pic ? (
-                               <img src={`${getFullImageUrl(data.aadhar_back_pic)}?ts=${Date.now()}`} alt="Aadhar Back" className="max-h-24 object-contain mb-2"/>
-                           ) : (
-                                <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
-                           )}
-                           <p className="text-neutral-600 text-sm">Back Side</p>
-                        </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
               </TabsContent>
 
               {/* Placeholder - Preferences Tab Content Needs State Management */}
@@ -1259,7 +1221,14 @@ const DriverProfilePage = () =>  {
               onClick={() => handleProfileUpdate(editedProfile)}
               disabled={
                 isUpdatingProfile ||
-                !Object.keys(editedProfile).some(key => editedProfile[key as keyof UserProfile] !== profile[key as keyof UserProfile])
+                (!Object.keys(editedProfile).some(
+                  (key) => editedProfile[key as keyof UserProfile] !== profile[key as keyof UserProfile]
+                ) &&
+                  !profile_pic &&
+                  !dlFront &&
+                  !dlBack &&
+                  !aadhaar_front &&
+                  !aadhaar_back)
               }
             >
               {isUpdatingProfile ? (

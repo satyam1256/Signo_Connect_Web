@@ -48,7 +48,7 @@ const TransporterDashboard = () => {
     queryFn: async () => {
       try {
         const response = await fetch(
-          `https://internal.signodrive.com/api/method/signo_connect.api.proxy/Drivers?filters=[["is_active", "in", [0, 1]]]&limit_page_length=100&limit_start=0`,{
+          `http://localhost:8000/api/method/signo_connect.api.proxy/Drivers?filters=[["is_active", "in", [0, 1]]]&limit_page_length=100&limit_start=0`,{
           method: "GET",
           headers: { 
             "Authorization": `token ${frappe_token}`,

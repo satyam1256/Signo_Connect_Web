@@ -204,7 +204,7 @@ const LoginPage = () => {
         // First try to get driver profile
         try {
           const driverResponse = await fetch(
-            `https://internal.signodrive.com/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${phoneNumber}`,
+            `http://localhost:8000/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${phoneNumber}`,
             {
               method: "GET",
               headers: {
@@ -236,7 +236,7 @@ const LoginPage = () => {
         // If driver profile not found, try transporter profile
         try {
           const transporterResponse = await fetch(
-            `https://internal.signodrive.com/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${phoneNumber}`,
+            `http://localhost:8000/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${phoneNumber}`,
             {
               method: "GET",
               headers: {
@@ -300,9 +300,13 @@ const LoginPage = () => {
     };
   
     Cookies.remove('phoneNumber');
+    Cookies.remove('userId');
+    Cookies.remove('userType');
   
     // Set new cookies
     Cookies.set('phoneNumber', userData.phoneNumber, cookieOptions);
+    Cookies.set('userId', userData.id, cookieOptions);
+    Cookies.set('userType', userData.userType, cookieOptions);
   
     // Login first and wait for it to complete
     await login(userData);

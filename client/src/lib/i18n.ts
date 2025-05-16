@@ -77,6 +77,7 @@ type TranslationKey =
   | "find_drivers"
   | "search"
   | "manage_jobs"
+  | "manage_trips" // Added here
   | "manage"
   | "recommended_drivers"
   | "view_all_drivers"
@@ -167,7 +168,8 @@ const translations: Translations = {
     drivers: "Drivers",
     support_chat: "Support Chat",
     how_can_i_help: "Hi there! How can I help you with SIGNO Connect today?",
-    type_message: "Type your message..."
+    type_message: "Type your message...",
+    manage_trips: "Manage Trips", // English translation
   },
   hi: {
     welcome: "SIGNO Connect में आपका स्वागत है",
@@ -241,7 +243,8 @@ const translations: Translations = {
     drivers: "ड्राइवर",
     support_chat: "सहायता चैट",
     how_can_i_help: "नमस्ते! मैं SIGNO Connect के साथ आपकी कैसे मदद कर सकता हूं?",
-    type_message: "अपना संदेश टाइप करें..."
+    type_message: "अपना संदेश टाइप करें...",
+    manage_trips: "यात्राओं का प्रबंधन करें", // Hindi translation
   },
   ml: {
     welcome: "SIGNO Connect-ലേക്ക് സ്വാഗതം",
@@ -315,7 +318,8 @@ const translations: Translations = {
     drivers: "ഡ്രൈവർമാർ",
     support_chat: "സപ്പോർട്ട് ചാറ്റ്",
     how_can_i_help: "ഹായ്! SIGNO Connect-മായി ബന്ധപ്പെട്ട് എങ്ങനെ സഹായിക്കാൻ കഴിയും?",
-    type_message: "നിങ്ങളുടെ സന്ദേശം ടൈപ്പ് ചെയ്യുക..."
+    type_message: "നിങ്ങളുടെ സന്ദേശം ടൈപ്പ് ചെയ്യുക...",
+    manage_trips: "യാത്രകൾ കൈകാര്യം ചെയ്യുക", // Malayalam translation
   },
   ta: {
     welcome: "SIGNO Connect-க்கு வரவேற்கிறோம்",
@@ -389,7 +393,8 @@ const translations: Translations = {
     drivers: "டிரைவர்கள்",
     support_chat: "ஆதரவு அரட்டை",
     how_can_i_help: "வணக்கம்! SIGNO Connect பற்றி உங்களுக்கு எவ்வாறு உதவ முடியும்?",
-    type_message: "உங்கள் செய்தியை தட்டச்சு செய்யவும்..."
+    type_message: "உங்கள் செய்தியை தட்டச்சு செய்யவும்...",
+    manage_trips: "பயணங்களை நிர்வகிக்கவும்", // Tamil translation
   }
 };
 

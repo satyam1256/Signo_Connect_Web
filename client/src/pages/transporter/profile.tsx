@@ -51,8 +51,14 @@ import { useLanguageStore } from "@/lib/i18n";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Cookies from "js-cookie";
+
+
 const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
 const x_key = import.meta.env.VITE_X_KEY;
+
+
+
 interface TransporterProfile {
   name1: string;
   phone_number: string;
@@ -136,11 +142,13 @@ const TransporterProfile = () => {
     if (!user) return;
 
     try {
-      const transporterId = localStorage.getItem("userId") || user.id;
-      const phoneNumber = localStorage.getItem("phone_number") || user.phoneNumber;
+      const transporterId = Cookies.get("userId") || user.id;
+      const phoneNumber = Cookies.get("phoneNumber") || user.phoneNumber;
+
+
       
       const response = await fetch(
-        `https://internal.signodrive.com/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${phoneNumber}`,{
+        `http://localhost:8000/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${phoneNumber}`,{
         method: "GET",
         headers: { 
           "Authorization": `token ${frappe_token}`
@@ -168,7 +176,7 @@ const TransporterProfile = () => {
 
     setIsUpdatingProfile(true);
     try {
-      const transporterId = localStorage.getItem("userId") || user.id;
+      const transporterId = Cookies.get("userId") || user.id;
 
       const updatePayload = {
         transporter_id: transporterId,
@@ -185,7 +193,7 @@ const TransporterProfile = () => {
 
       
       const response = await fetch(
-        `https://internal.signodrive.com/api/method/signo_connect.api.proxy/Transporters/${transporterId}`,
+        `http://localhost:8000/api/method/signo_connect.api.proxy/Transporters/${transporterId}`,
         {
           method: "PUT",
           headers: {
