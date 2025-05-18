@@ -65,43 +65,25 @@ const locationOptions = [
   { value: "ahmedabad", label: "Ahmedabad" },
 ];
 
-interface DriverDoc {
-  name: string;
-  name1: string;
-  phone_number: string;
-  email: string | null;
-  emergency_contact_number: string | null;
-  address: string | null;
-  last_location: string | null;
-  experience: string | null;
-  remarks: string | null;
-  catagory: string;
-  fcm_token: string | null;
-  lat_long: string | null;
-  reference_number: string | null;
-  profile_pic: string | null;
-  bank_pic: string | null;
-  dl_front_pic: string | null;
-  dl_back_pic: string | null;
-  aadhar_front_pic: string | null;
-  aadhar_back_pic: string | null;
-  pf_pic: string | null;
-  bank_ac_number: string | null;
-  bank_ifsc: string | null;
-  bank_holder_name: string | null;
-  upi_id: string | null;
-  dl_number: string | null;
-  dob: string | null;
-  aadhar_number: string | null;
-  is_bank_verified: number;
-  is_kyc_verfied: number;
-  is_dl_verified: number;
-  is_aadhar_verified: number;
-}
-
 interface DriverRegistrationResponse {
+  message?: {
+    driver_id: string;
+    name: string;
+    phone_number: string;
+    data?: {
+      // sid: string;
+      driver_id: string;
+    }
+  };
+  data?: {
+    driver_id: string;
+    name: string;
+    phone_number: string;
+  };
   status: boolean;
-  doc: DriverDoc;
+  doc?: {
+    name: string;
+  };
 }
 
 const DriverRegistration = () => {
@@ -163,7 +145,7 @@ const DriverRegistration = () => {
         },
         body: JSON.stringify({
           name1: data.fullName,
-          phone_number: data.countryCode.slice(1) + data.phoneNumber,
+          phone_number: data.countryCode + data.phoneNumber,
           user_type: "driver",
         }),
         credentials: "include",
@@ -191,39 +173,54 @@ const DriverRegistration = () => {
 
       try {
         const responseData: DriverRegistrationResponse = JSON.parse(responseText);
-        
-        if (responseData.doc) {
-          const { name: driverId, phone_number: phoneNumber, name1: fullName } = responseData.doc;
-          
-          // Store in localStorage
-          localStorage.setItem("userId", driverId);
-          localStorage.setItem("phoneNumber", phoneNumber);
-          localStorage.setItem("userType", "driver");
-          
-          return responseData;
+
+        const driverIdFromDoc = responseData.doc?.name;
+
+        if (driverIdFromDoc) {
+          localStorage.setItem("userId", driverIdFromDoc);
         } else {
-          throw new Error("Registration succeeded but response is missing driver data");
+          const driverIdFromData = responseData.data?.driver_id;
+          const driverIdFromMessage = responseData.message?.driver_id;
+          if (driverIdFromData) {
+            localStorage.setItem("userId", driverIdFromData);
+          } else if (driverIdFromMessage) {
+            localStorage.setItem("userId", driverIdFromMessage);
+          } else {
+            console.warn("Driver ID not found in any expected location.");
+          }
         }
+
+        const finalDriverId = driverIdFromDoc || responseData.data?.driver_id || responseData.message?.driver_id;
+        if (!finalDriverId) {
+          throw new Error("Registration succeeded but response format is missing driver_id.");
+        }
+
+        return responseData;
       } catch (e) {
         console.error("Failed to parse JSON response:", e);
         throw new Error("Invalid JSON response from server: " + responseText);
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       console.log("Mutation onSuccess triggered. Data:", data);
-    
-      const { name: driverId, phone_number: phoneNumber, name1: fullName } = data.doc;
-    
+      console.log("Mutation variables (submitted data):", variables);
+
+      const driverId = data.doc?.name || data.message?.data?.driver_id || data.data?.driver_id || data.message?.driver_id;
+      const phoneNumberFromResponse = data.message?.phone_number || data.data?.phone_number;
+
       if (driverId) {
-        console.log("Successfully registered driver:", driverId);
+        console.log("Successfully found driver_id:", driverId);
         
         setUserId(driverId);
-        setUserPhoneNumber(phoneNumber);
-        setUserFullName(fullName);
+        const submittedPhone = variables.countryCode + variables.phoneNumber;
+        setUserPhoneNumber(phoneNumberFromResponse || submittedPhone || "");
+        setUserFullName(variables.fullName || "");
+
+        Cookies.set("phoneNumber", submittedPhone, { expires: 7 });
+        Cookies.set("userId", driverId, { expires: 7 });
+        Cookies.set("userType", "driver" , { expires: 7});
     
-        // Set cookies
-        Cookies.set("phoneNumber", phoneNumber, { expires: 7 });
-    
+
         setPendingRegistrationData(null);
         setRegistrationComplete(true);
         toast.success("Registration successful!");

@@ -55,28 +55,28 @@ const companySchema = z.object({
 });
 
 // --- API Response Type (Unchanged) ---
-interface TransporterDoc {
-  name: string;
-  name1: string;
-  email: string | null;
-  company_name: string | null;
-  fleet_size: string | null;
-  phone_number: string;
-  emergency_contact_number: string | null;
-  address: string | null;
-  last_location: string | null;
-  remarks: string | null;
-  catagory: string | null;
-  lat_long: string | null;
-  fcm_token: string | null;
-  logo_pic: string | null;
-  gst: string | null;
-  pan: string | null;
-}
-
 interface TransporterRegistrationResponse {
-  status: boolean;
-  doc: TransporterDoc;
+    message?: {
+        transporter_id?: string;
+        name?: string;
+        phone_number?: string;
+        company_name?: string;
+        data?: { 
+            // sid?: string;
+            transporter_id?: string;
+        }
+    };
+    data?: {
+        transporter_id?: string;
+        name?: string;
+        phone_number?: string;
+        company_name?: string;
+    };
+    status?: boolean;
+    _server_messages?: string;
+    doc?: {
+        name: string;
+    }
 }
 
 const TransporterRegistration = () => {
@@ -141,7 +141,7 @@ const TransporterRegistration = () => {
             },
             body: JSON.stringify({
                 name1: data.fullName, 
-                phone_number: data.countryCode.slice(1) + data.phoneNumber,
+                phone_number: data.countryCode + data.phoneNumber,
                 company_name: data.companyName,
                 email: data.email || "", 
                 gst: data.gstNumber || "",
@@ -173,45 +173,61 @@ const TransporterRegistration = () => {
 
       try {
         const responseData: TransporterRegistrationResponse = JSON.parse(responseText);
-        
-        if (responseData.doc) {
-          const { name: transporterId, phone_number: phoneNumber, name1: fullName } = responseData.doc;
-          
-          // Store in localStorage
-          localStorage.setItem("userId", transporterId);
-          localStorage.setItem("phoneNumber", phoneNumber);
-          localStorage.setItem("userType", "transporter");
-          
-          return responseData;
+
+        const transporterIdFromDoc = responseData.doc?.name;
+
+       if (transporterIdFromDoc) {
+            localStorage.setItem("userId", transporterIdFromDoc);
         } else {
-          throw new Error("Registration succeeded but response is missing transporter data");
+            const transporterIdFromData = responseData.data?.transporter_id;
+            const transporterIdFromMessage = responseData.message?.transporter_id;
+            if (transporterIdFromData) {
+                localStorage.setItem("userId", transporterIdFromData);
+            } else if (transporterIdFromMessage) {
+                localStorage.setItem("userId", transporterIdFromMessage);
+            } else {
+                console.warn("Transporter ID not found in any expected location.");
+            }
         }
+
+        const finalTransporterId = transporterIdFromDoc || responseData.data?.transporter_id || responseData.message?.transporter_id;
+        if (!finalTransporterId) {
+            throw new Error("Registration succeeded but response format is missing transporter_id.");
+        }
+        
+        return responseData;
+
       } catch (e) {
         console.error("Failed to parse JSON response:", e);
         throw new Error("Invalid JSON response from server: " + responseText);
       }
     },
    
-    onSuccess: (data) => {
-      console.log("Mutation onSuccess triggered. Data:", data);
-      
-      const { name: transporterId, phone_number: phoneNumber, name1: fullName } = data.doc;
-      
+    onSuccess: (data, variables) => {
+
+      // const userData = data.message?.data || data.data || data.message; 
+      const transporterId = data.doc?.name || data.message?.data?.transporter_id || data.data?.transporter_id || data.message?.transporter_id;
+      const phoneNumberFromResponse = data.message?.phone_number || data.data?.phone_number;
+
       if (transporterId) {
-        console.log("Successfully registered transporter:", transporterId);
+        console.log("Successfully found transporter_id:", transporterId);
         
-        setUserId(transporterId);
-        setUserPhoneNumber(phoneNumber);
-        setUserFullName(fullName);
-        
-        // Set cookies
-        Cookies.set("phoneNumber", phoneNumber, { expires: 7 });
-        
-        setPendingRegistrationData(null);
-        setRegistrationComplete(true);
+        setUserId(transporterId); 
+        const submittedPhone = variables.countryCode + variables.phoneNumber;
+        setUserPhoneNumber(phoneNumberFromResponse || submittedPhone || ""); 
+        setUserFullName(variables.fullName || ""); 
+
+        Cookies.set("phoneNumber", submittedPhone, { expires: 7 });
+        Cookies.set("userId", transporterId, { expires: 7 });
+        Cookies.set("userType", "transporter" , { expires: 7});
+    
+
+        setPendingRegistrationData(null); 
+        setRegistrationComplete(true); 
         toast.success("Registration successful!");
         
         stepper.nextStep();
+
       } else {
         console.error("Registration response successful, but transporter_id is missing:", data);
         toast.error("Registration response format invalid. Cannot proceed.");

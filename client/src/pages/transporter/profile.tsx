@@ -137,10 +137,9 @@ const TransporterProfile = () => {
 
     try {
       const transporterId = localStorage.getItem("userId") || user.id;
-      const phoneNumber = localStorage.getItem("phone_number") || user.phoneNumber;
       
       const response = await fetch(
-        `http://localhost:8000/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${phoneNumber}`,{
+        `http://localhost:8000/api/method/signo_connect.apis.transporter.get_transporter_profile?transporter_id=${transporterId}`,{
         method: "GET",
         headers: { 
           "Authorization": `token ${frappe_token}`
@@ -152,8 +151,7 @@ const TransporterProfile = () => {
       const data = await response.json();
       console.log(data);
       
-      const profileData = data.doc;
-      console.log("TransporterProfile--->",profileData);
+      const profileData = data.message.data;
       setProfile(profileData);
       
     } catch (error) {

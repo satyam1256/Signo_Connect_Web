@@ -245,10 +245,10 @@ const DriverProfilePage = () =>  {
 
     try {
       const userId = localStorage.getItem("userId") || user.id;
-      const phoneNumber = localStorage.getItem("phone_number") || user.phoneNumber;
+
 
       
-      const res = await fetch(`http://localhost:8000/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${phoneNumber}`, {
+      const res = await fetch(`http://localhost:8000/api/method/signo_connect.apis.driver.get_driver_profile?driver_id=${userId}`, {
         method: "GET",
         headers: {
           "Authorization": `token ${frappe_token}`
@@ -263,8 +263,8 @@ const DriverProfilePage = () =>  {
       console.log("API Response:", json);
       
       
-      const profileData = json.doc || {};
-      console.log("profileData--->",profileData);
+      const profileData = json.message?.data || {};
+      
 
       if (profileData.profile_pic) {
         profileData.profile_pic = getFullImageUrl(profileData.profile_pic);
@@ -812,6 +812,7 @@ const DriverProfilePage = () =>  {
                          {data?.aadhar_number || "Not added"}
                          {!data?.aadhar_number && (
                            <span className="text-xs text-red-500 block mt-1">
+                             (Debug: Check console for available keys)
                            </span>
                          )}
                        </p>
