@@ -16,7 +16,6 @@ import TransporterDashboard from "@/pages/transporter/dashboard";
 import TransporterJobsPage from "@/pages/transporter/jobs";
 import TransporterProfile from "@/pages/transporter/profile";
 import TransporterDrivers from "@/pages/transporter/drivers";
-import DriverAnalytics from "@/pages/transporter/driver-analytics";
 import { AuthProvider } from "@/contexts/auth-context";
 
 
@@ -42,7 +41,6 @@ function Router() {
       <Route path="/transporter/jobs" component={TransporterJobsPage} />
       <Route path="/transporter/profile" component={TransporterProfile} />
       <Route path="/transporter/drivers" component={TransporterDrivers} />
-      <Route path="/transporter/driver/:phoneNumber/analytics" component={DriverAnalytics} />
 
       {/* Fallback */}
       <Route component={NotFound} />

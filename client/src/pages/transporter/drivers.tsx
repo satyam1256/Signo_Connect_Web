@@ -9,7 +9,6 @@ import {
   Filter,
   MessageSquare,
   Mail,
-  BarChart,
   Phone
 } from "lucide-react";
 import { Header } from "@/components/layout/header";
@@ -367,26 +366,16 @@ const TransporterDrivers = () => {
                               </svg>
                             </Button>
                           )}
+                          
                           {driver.email && (
-                            <>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="text-[#FF6D00] border-[#FF6D00] hover:bg-orange-50"
-                                onClick={() => window.open(`mailto:${driver.email}`, '_blank')}
-                              >
-                                <Mail className="h-4 w-4" />
-                              </Button>
-                                <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="text-[#FF6D00] border-[#FF6D00]"
-                                onClick={() => navigate(`/transporter/driver/${driver.phone_number}/analytics`)}
-                                >
-                                <BarChart className="h-4 w-4 mr-2" />
-                                Analytics
-                                </Button>
-                            </>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="text-[#FF6D00] border-[#FF6D00] hover:bg-orange-50"
+                              onClick={() => window.open(`mailto:${driver.email}`, '_blank')}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </div>
