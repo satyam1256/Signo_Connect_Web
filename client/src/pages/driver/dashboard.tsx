@@ -9,7 +9,6 @@ import {
   Utensils,
   Wrench,
   Heart,
-  Route,
   Info,
   Phone,
   Clock,
@@ -255,14 +254,6 @@ const DriverDashboard = () => {
               >
                 <MapPin className="h-4 w-4 mr-2" />
                 {t("find_jobs")}
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full border-primary text-primary hover:bg-primary/5"
-                onClick={() => navigate("/driver/trips")}
-              >
-                <Route className="h-4 w-4 mr-2" />
-                Manage Your Trips
               </Button>
             </div>
           </CardContent>

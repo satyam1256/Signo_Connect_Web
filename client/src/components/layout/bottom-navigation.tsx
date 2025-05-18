@@ -1,5 +1,5 @@
-import { useLocation, Link, Route } from "wouter";
-import { Home, Search, Bell, User, Users, FileText,  } from "lucide-react";
+import { useLocation, Link } from "wouter";
+import { Home, Search, Bell, User, Users, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguageStore } from "@/lib/i18n";
 
@@ -92,13 +92,6 @@ export const BottomNavigation = ({ userType }: BottomNavigationProps) => {
             color={activeColor}
           />
         )}
-          <NavItem
-            to={`${baseRoute}/trips`}
-            icon={<FileText {...getIconSize} />}
-            label={"Trips"}
-            isActive={location === `${baseRoute}/trips`}
-            color={activeColor}
-          />
 
         <NavItem
           to={`${baseRoute}/profile`}
