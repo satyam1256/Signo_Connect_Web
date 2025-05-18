@@ -67,7 +67,7 @@ const getProfileCompletionData = (data: Record<string, any> | null) => {
   }
 
   const fieldWeights: { field: string; label: string; weight: number }[] = [
-    { field: "name1", label: "Name", weight: 10 },
+    { field: "name", label: "Name", weight: 10 },
     { field: "phone_number", label: "Phone Number", weight: 10 },
     { field: "email", label: "Email", weight: 10 },
     { field: "address", label: "Address", weight: 10 },
@@ -353,7 +353,7 @@ const DriverProfilePage = () =>  {
       
       // Initialize data with empty object to prevent null reference errors
       setData({
-        // name: "",
+        name: "",
         name1: "",
         email: "",
         phone_number: "",
@@ -715,15 +715,15 @@ const DriverProfilePage = () =>  {
                 <div className="px-6 pb-6 relative">
                   <div className="absolute -top-12 left-6">
                     <Avatar className="w-24 h-24 border-4 border-white">
-                      <AvatarImage src={getFullImageUrl(data.profile_pic)} alt={data?.name1 || ""} />
+                      <AvatarImage src={getFullImageUrl(data.profile_pic)} alt={data?.name || ""} />
                       <AvatarFallback className="text-2xl bg-primary text-white">
-                        {getInitials(data?.name1)}
+                        {getInitials(data?.name || data?.name1)}
                       </AvatarFallback>
                     </Avatar>
                   </div>
 
                   <div className="pt-16">
-                    <h2 className="text-2xl font-bold mb-1">{(data?.name1 || "Driver Name").toUpperCase()}</h2>
+                    <h2 className="text-2xl font-bold mb-1">{(data?.name || data?.name1 || "Driver Name").toUpperCase()}</h2>
                     <div className="flex flex-col sm:flex-row sm:items-center text-neutral-600 gap-1 sm:gap-4 mb-4 flex-wrap">
                       <div className="flex items-center">
                         <Truck className="h-4 w-4 mr-2 text-neutral-500" />
@@ -1066,7 +1066,7 @@ const DriverProfilePage = () =>  {
             <div className="flex flex-col items-center space-y-4">
                <Label>Profile Picture</Label>
               <Avatar className="w-24 h-24">
-                <AvatarFallback>{(editedProfile.name1 || data?.name1)?.slice(0, 2).toUpperCase() || <UserIcon />}</AvatarFallback>
+                <AvatarFallback>{(editedProfile.name1 || data?.name)?.slice(0, 2).toUpperCase() || <UserIcon />}</AvatarFallback>
               </Avatar>
                <Input
                  id="profile_picFile"
@@ -1086,7 +1086,7 @@ const DriverProfilePage = () =>  {
                   <Label htmlFor="name1">Full Name *</Label>
                   <Input
                     id="name1"
-                    value={editedProfile.name1 ?? (data?.name1 || "")} 
+                    value={editedProfile.name1 ?? (data?.name || "")} 
                     onChange={(e) => setEditedProfile({...editedProfile, name1: e.target.value})}
                     required
                   />
