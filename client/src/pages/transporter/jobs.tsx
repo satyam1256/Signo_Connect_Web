@@ -779,6 +779,8 @@ const TransporterJobsPage = () => {
                           <SelectContent>
                             <SelectItem value="Full-time">Full-time</SelectItem>
                             <SelectItem value="Part-time">Part-time</SelectItem>
+                            <SelectItem value="Contract">Contract</SelectItem>
+                            <SelectItem value="Temporary">Temporary</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -917,6 +919,8 @@ const TransporterJobsPage = () => {
                           <SelectContent>
                             <SelectItem value="Full-time">Full-time</SelectItem>
                             <SelectItem value="Part-time">Part-time</SelectItem>
+                            <SelectItem value="Contract">Contract</SelectItem>
+                            <SelectItem value="Temporary">Temporary</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1578,6 +1582,8 @@ const TransporterJobsPage = () => {
                             <SelectContent>
                     <SelectItem value="Full-time">Full-time</SelectItem>
                     <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="Contract">Contract</SelectItem>
+                    <SelectItem value="Temporary">Temporary</SelectItem>
                             </SelectContent>
                           </Select>
               </div>

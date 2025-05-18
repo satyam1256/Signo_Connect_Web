@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  MapPin,
+import { useQuery } from "@tanstack/react-query";
+import { 
+  MapPin, 
   Filter,
   Search,
   Calendar,
@@ -11,12 +11,7 @@ import {
   Tag,
   ChevronRight,
   Building,
-  X,
-  Loader2,
-  AlertTriangle,
-  Users,
-  UserCheck,
-  BookmarkIcon,
+  X
 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Input } from "@/components/ui/input";
@@ -34,15 +29,10 @@ import { Chatbot } from "@/components/features/chatbot";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguageStore } from "@/lib/i18n";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { toast } from "sonner";
 
-const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
-const x_key = import.meta.env.VITE_X_KEY
-
+// Sample job type (would normally be from shared schema)
 interface Job {
-  id: string;
-  name: string;
-  feed: string;
+  id: number;
   title: string;
   company: string;
   location: string;
@@ -53,169 +43,75 @@ interface Job {
   description: string;
   requirements: string[];
   tags: string[];
-  numberOfOpenings?: string;
 }
 
-interface ApiJob {
-  status: string;
-  description: string;
-  transporter: string;
-  title: string;
-  salary: string;
-  type_of_job: string;
-  no_of_openings: string;
-  name: string;
-  city: string;
-  transporter_name: string;
-  feed: string;
-  creation?: string;
-}
-
-interface ApiResponse {
-  status: boolean;
-  data: ApiJob[];
-}
-
-interface AppliedJob {
-  jobId: string;
-  status: string;
-  appliedOn: string;
-}
-
-interface ApplicationResponse {
-  status: boolean;
-  doc: {
-    name: string;
-    job: string;
-    feed: string;
-    driver: string;
-    driver_name: string;
-    driver_mobile: string;
-    driver_status: string;
-    transporter_status: string;
-    applied_on: string;
-  };
-}
-interface AppliedJobResponse {
-  status: boolean;
-  data: {
-    name: string;
-    job: string;
-    feed: string;
-    driver_status: string;
-    applied_on: string;
-  }[];
-}
-
-export const postJobApplication = async (jobId: string, feedId: string, driverId: string) => {
-  const response = await fetch('https://internal.signodrive.com/api/method/signo_connect.api.proxy/Job Applications', {
-    method: 'POST',
-    headers: {
-      'Authorization': `token ${frappe_token}`,
-      'x-key': x_key,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      job: jobId,
-      feed: feedId,
-      driver: driverId
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to submit application');
+const mockJobs: Job[] = [
+  {
+    id: 1,
+    title: "Long-haul Truck Driver",
+    company: "ABC Logistics",
+    location: "Delhi to Mumbai",
+    salary: "₹35,000/month",
+    postedDate: "2 days ago",
+    jobType: "Full-time",
+    distance: "1,400 km",
+    description: "We are looking for experienced truck drivers for our Delhi-Mumbai route. Regular trips with competitive pay and benefits.",
+    requirements: ["5+ years experience", "Valid heavy vehicle license", "Clean driving record"],
+    tags: ["Long Distance", "Heavy Vehicle", "Regular Routes"]
+  },
+  {
+    id: 2,
+    title: "City Delivery Driver",
+    company: "FastExpress",
+    location: "Delhi NCR",
+    salary: "₹22,000/month",
+    postedDate: "1 day ago",
+    jobType: "Full-time",
+    distance: "Local",
+    description: "Delivering packages within Delhi NCR. Daily routes with company-provided vehicle.",
+    requirements: ["2+ years experience", "Valid driving license", "Knowledge of Delhi roads"],
+    tags: ["Local", "Light Vehicle", "Daily Routes"]
+  },
+  {
+    id: 3,
+    title: "Part-time Delivery Driver",
+    company: "QuickServe",
+    location: "Gurgaon",
+    salary: "₹15,000/month",
+    postedDate: "Just now",
+    jobType: "Part-time",
+    distance: "< 50 km",
+    description: "Weekend and evening shifts available for food and grocery delivery in Gurgaon area.",
+    requirements: ["Any experience level", "Two-wheeler or car", "Smartphone"],
+    tags: ["Part-time", "Flexible Hours", "Two-wheeler"]
+  },
+  {
+    id: 4,
+    title: "Regional Truck Driver",
+    company: "RegionalMove",
+    location: "North India",
+    salary: "₹30,000/month",
+    postedDate: "3 days ago",
+    jobType: "Contract",
+    distance: "< 500 km",
+    description: "Regional routes within North India. 3-5 day trips with competitive pay and allowances.",
+    requirements: ["3+ years experience", "Valid medium/heavy vehicle license", "Willing to travel"],
+    tags: ["Regional", "Medium Vehicle", "Contract"]
+  },
+  {
+    id: 5,
+    title: "Construction Vehicle Operator",
+    company: "BuildTech Construction",
+    location: "Noida",
+    salary: "₹25,000/month",
+    postedDate: "1 week ago",
+    jobType: "Full-time",
+    distance: "Project Site",
+    description: "Operate construction vehicles at our project sites in Noida. Experience with dump trucks and cement mixers preferred.",
+    requirements: ["3+ years in construction", "Heavy vehicle license", "Construction site experience"],
+    tags: ["Construction", "Heavy Vehicle", "Site-based"]
   }
-
-  return response.json();
-};
-
-
-// Function to transform API job data to our Job interface
-const transformApiJobToJob = (apiJob: ApiJob): Job => {
-  // Basic date formatting (can be improved with a library like date-fns if creation is a full timestamp)
-  let postedDate = "Recently";
-  if (apiJob.creation) {
-    try {
-      const date = new Date(apiJob.creation);
-      const today = new Date();
-      const diffTime = Math.abs(today.getTime() - date.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays === 0) postedDate = "Just now";
-      else if (diffDays === 1) postedDate = "1 day ago";
-      else postedDate = `${diffDays} days ago`;
-    } catch (e) {
-      // Keep "Recently" if date parsing fails
-    }
-  }
-
-  return {
-    id: apiJob.feed || apiJob.name, // Use 'feed' as primary ID, fallback to 'name'
-    title: apiJob.title,
-    company: apiJob.transporter_name,
-    location: apiJob.city,
-    salary: `₹${parseInt(apiJob.salary, 10).toLocaleString('en-IN')}/month`, // Format salary
-    postedDate: postedDate,
-    jobType: apiJob.type_of_job,
-    distance: "Details in description", // Placeholder as API doesn't provide it
-    description: apiJob.description,
-    requirements: [], // Default to empty as API doesn't provide it
-    tags: [apiJob.type_of_job, apiJob.city].filter(Boolean) as string[], // Add job type and city as tags
-    numberOfOpenings: apiJob.no_of_openings,
-    name: apiJob.name, // Add this
-    feed: apiJob.feed, // Add this
-  };
-};
-
-const fetchJobs = async (): Promise<Job[]> => {
-  try {
-    const response = await fetch(`https://internal.signodrive.com/api/method/signo_connect.api.proxy/Job?fields=["*"]&limit_page_length=100`, {
-      headers: {
-        'Authorization': `token ${frappe_token}`,
-        'x-key': x_key,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Network response was not ok: ${response.statusText}`);
-    }
-    
-    const result: ApiResponse = await response.json();
-    if (!result.status || !Array.isArray(result.data)) {
-      throw new Error("Failed to fetch jobs or data is not in expected format");
-    }
-    
-    return result.data.map(transformApiJobToJob);
-  } catch (error) {
-    console.error('Error fetching jobs:', error);
-    throw error;
-  }
-};
-
-const fetchAppliedJobs = async (driverId: string): Promise<AppliedJob[]> => {
-  const response = await fetch(
-    `https://internal.signodrive.com/api/method/signo_connect.apis.driver.get_applied_jobs?driver_id=${driverId}`,
-    {
-      headers: {
-        'Authorization': `token ${frappe_token}`,
-        'x-key': x_key,
-        'Content-Type': 'application/json'
-      }
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch applied jobs');
-  }
-
-  const result: AppliedJobResponse = await response.json();
-  
-  return result.data.map(item => ({
-    jobId: item.job,
-    status: item.driver_status,
-    appliedOn: item.applied_on
-  }));
-};
+];
 
 const DriverJobsPage = () => {
   const { user } = useAuth();
@@ -225,28 +121,11 @@ const DriverJobsPage = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [savedJobs, setSavedJobs] = useState<string[]>([]);
 
-
-  const {
-    data: fetchedJobs = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery<Job[], Error>({
-    queryKey: ['driverJobs'],
-    queryFn: fetchJobs,
-    enabled: !!user,
-  });
-
-  const jobTypes = ["Full-time", "Part-time"];
-  const salaryRanges = [
-    { value: "0-15000", label: "₹0 - ₹15,000" },
-    { value: "15000-30000", label: "₹15,000 - ₹30,000" },
-    { value: "30000-50000", label: "₹30,000 - ₹50,000" },
-    { value: "50000-100000", label: "₹50,000+" }
-  ];
-  const locations = Array.from(new Set(fetchedJobs?.map(job => job.location) || [])).sort();
+  const jobTypes = ["Full-time", "Part-time", "Contract", "Temporary"];
+  const vehicleTypes = ["Heavy Vehicle", "Medium Vehicle", "Light Vehicle", "Two-wheeler"];
+  const distances = ["Local (< 50 km)", "Regional (< 500 km)", "Long Distance (500+ km)"];
+  const experiences = ["Entry Level", "1-3 years", "3-5 years", "5+ years"];
 
   const toggleFilter = (filter: string) => {
     if (activeFilters.includes(filter)) {
@@ -256,39 +135,24 @@ const DriverJobsPage = () => {
     }
   };
 
-  const filteredJobs = (fetchedJobs || []).filter(job => {
-    const matchesSearch =
-      searchQuery === "" ||
+  // Local query client filter for mockJobs
+  const filteredJobs = mockJobs.filter(job => {
+    // Search query filter
+    const matchesSearch = 
+      searchQuery === "" || 
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
       job.location.toLowerCase().includes(searchQuery.toLowerCase());
-  
-    const locationFilters = activeFilters.filter(filter => locations.includes(filter));
-    const jobTypeFilters = activeFilters.filter(filter => jobTypes.includes(filter));
-    const otherFilters = activeFilters.filter(filter => !locations.includes(filter) && !jobTypes.includes(filter));
-  
-    const matchesLocation = locationFilters.length === 0 || 
-      locationFilters.some(filter => job.location === filter);
-  
-    const matchesJobType = jobTypeFilters.length === 0 || 
-      jobTypeFilters.some(filter => job.jobType === filter);
-  
-    const matchesOtherFilters = otherFilters.length === 0 ||
-      otherFilters.every(filter => {
-        if (filter.includes("-")) {
-          const [min, max] = filter.split("-").map(Number);
-          const jobSalary = parseInt(job.salary.replace(/[^0-9]/g, ""));
-          if (max) {
-            return jobSalary >= min && jobSalary <= max;
-          }
-          return jobSalary >= min;
-        }
-        return job.tags.includes(filter);
-      });
-  
-    return matchesSearch && matchesLocation && matchesJobType && matchesOtherFilters;
+
+    // Active filters
+    const matchesFilters = activeFilters.length === 0 || 
+      job.tags.some(tag => activeFilters.includes(tag)) ||
+      activeFilters.includes(job.jobType);
+
+    return matchesSearch && matchesFilters;
   });
 
+  // If no user is logged in, redirect to welcome page
   useEffect(() => {
     if (!user) {
       navigate("/");
@@ -299,86 +163,7 @@ const DriverJobsPage = () => {
     return null;
   }
 
-
-  const queryClient = useQueryClient();
-
-  const {
-    data: appliedJobs = [],
-    isLoading: isLoadingAppliedJobs,
-  } = useQuery<AppliedJob[], Error>({
-    queryKey: ['appliedJobs', user?.id],
-    queryFn: () => {
-      if (!user?.id) throw new Error("User not authenticated");
-      return fetchAppliedJobs(user.id);
-    },
-    enabled: !!user?.id,
-    retry: 2,
-    staleTime: 30000,
-  });
-
-
-  const applyMutation = useMutation({
-    mutationFn: async ({ jobId, feedId }: { jobId: string; feedId: string }) => {
-      if (!user?.id) throw new Error("User not authenticated");
-      return postJobApplication(jobId, feedId, user.id);
-    },
-    onSuccess: (data: ApplicationResponse, variables) => {
-      if (data.status) {
-        // Show success message
-        toast.success("Successfully applied to job!");
-        
-        // Invalidate queries to refresh data
-        queryClient.invalidateQueries({ queryKey: ['appliedJobs', user?.id] });
-        queryClient.invalidateQueries({ queryKey: ['driverJobs'] });
-      } else {
-        throw new Error("Failed to apply for job");
-      }
-    },
-    onError: (error) => {
-      if (error instanceof Error) {
-        if (error.message.includes("Could not find Job")) {
-          toast.error("Invalid job reference. Please try again later.");
-        } else {
-          toast.error(error.message);
-        }
-      } else {
-        toast.error("Failed to apply for job");
-      }
-    }
-  });
-
-  const handleApplyJob = (job: Job) => {
-    if (!user) {
-      toast.error("Please login to apply for jobs");
-      return;
-    }
-
-    if (appliedJobs.some(aj => aj.jobId === job.id)) {
-      toast.info("You have already applied to this job");
-      return;
-    }
-
-    applyMutation.mutate({
-      jobId: job.name, // Use the actual job ID/name from the API
-      feedId: job.feed, // Use the feed ID from the API
-    });
-  };
-
-  const handleSaveJob = (jobId: string) => {
-    if (savedJobs.includes(jobId)) {
-      // Remove job from saved list if already saved
-      setSavedJobs(prev => prev.filter(id => id !== jobId));
-      toast.success("Job removed from saved list");
-    } else {
-      // Add job to saved list
-      setSavedJobs(prev => [...prev, jobId]);
-      toast.success("Job saved successfully");
-    }
-  };
-
-
-  // Display all fetched jobs if no search/filter, otherwise display filtered
-  const displayJobs = searchQuery || activeFilters.length > 0 ? filteredJobs : fetchedJobs;
+  const displayJobs = searchQuery || activeFilters.length > 0 ? filteredJobs : mockJobs;
 
   const FilterSidebar = (
     <div className="space-y-6 px-4 py-6">
@@ -387,8 +172,8 @@ const DriverJobsPage = () => {
         <div className="space-y-3">
           {jobTypes.map(type => (
             <div key={type} className="flex items-center space-x-2">
-              <Checkbox
-                id={`job-type-${type}`}
+              <Checkbox 
+                id={`job-type-${type}`} 
                 checked={activeFilters.includes(type)}
                 onCheckedChange={() => toggleFilter(type)}
               />
@@ -400,41 +185,59 @@ const DriverJobsPage = () => {
 
       <Separator />
 
-    <div>
-      <h3 className="text-lg font-medium mb-4">Salary Range</h3>
-      <div className="space-y-3">
-        {salaryRanges.map(range => (
-          <div key={range.value} className="flex items-center space-x-2">
-            <Checkbox
-              id={`salary-${range.value}`}
-              checked={activeFilters.includes(range.value)}
-              onCheckedChange={() => toggleFilter(range.value)}
-            />
-            <Label htmlFor={`salary-${range.value}`}>{range.label}</Label>
-          </div>
-        ))}
+      <div>
+        <h3 className="text-lg font-medium mb-4">Vehicle Type</h3>
+        <div className="space-y-3">
+          {vehicleTypes.map(type => (
+            <div key={type} className="flex items-center space-x-2">
+              <Checkbox 
+                id={`vehicle-type-${type}`} 
+                checked={activeFilters.includes(type)}
+                onCheckedChange={() => toggleFilter(type)}
+              />
+              <Label htmlFor={`vehicle-type-${type}`}>{type}</Label>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
 
-    <Separator />
+      <Separator />
 
-    <div>
-      <h3 className="text-lg font-medium mb-4">Location</h3>
-      <div className="space-y-3 max-h-48 overflow-y-auto">
-        {locations.map(location => (
-          <div key={location} className="flex items-center space-x-2">
-            <Checkbox
-              id={`location-${location}`}
-              checked={activeFilters.includes(location)}
-              onCheckedChange={() => toggleFilter(location)}
-            />
-            <Label htmlFor={`location-${location}`}>{location}</Label>
-          </div>
-        ))}
+      <div>
+        <h3 className="text-lg font-medium mb-4">Route Distance</h3>
+        <div className="space-y-3">
+          {distances.map(distance => (
+            <div key={distance} className="flex items-center space-x-2">
+              <Checkbox 
+                id={`distance-${distance}`} 
+                checked={activeFilters.includes(distance)}
+                onCheckedChange={() => toggleFilter(distance)}
+              />
+              <Label htmlFor={`distance-${distance}`}>{distance}</Label>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
 
-    <Separator />
+      <Separator />
+
+      <div>
+        <h3 className="text-lg font-medium mb-4">Experience</h3>
+        <div className="space-y-3">
+          {experiences.map(exp => (
+            <div key={exp} className="flex items-center space-x-2">
+              <Checkbox 
+                id={`exp-${exp}`} 
+                checked={activeFilters.includes(exp)}
+                onCheckedChange={() => toggleFilter(exp)}
+              />
+              <Label htmlFor={`exp-${exp}`}>{exp}</Label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
 
       <div>
         <h3 className="text-lg font-medium mb-4">Other Options</h3>
@@ -456,9 +259,9 @@ const DriverJobsPage = () => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-neutral-500">Active Filters:</span>
-              <Button
-                variant="ghost"
-                size="sm"
+              <Button 
+                variant="ghost" 
+                size="sm" 
                 className="h-auto p-0 text-sm text-primary"
                 onClick={() => setActiveFilters([])}
               >
@@ -467,8 +270,8 @@ const DriverJobsPage = () => {
             </div>
             <div className="flex flex-wrap gap-2">
               {activeFilters.map(filter => (
-                <Badge
-                  key={filter}
+                <Badge 
+                  key={filter} 
                   variant="outline"
                   className="flex items-center gap-1 py-1"
                 >
@@ -518,19 +321,9 @@ const DriverJobsPage = () => {
               </SheetContent>
             </Sheet>
           ) : (
-             <Sheet>
-               <SheetTrigger asChild>
-                 <Button variant="outline" size="icon" className="flex-shrink-0">
-                   <Filter className="h-4 w-4" />
-                 </Button>
-               </SheetTrigger>
-               <SheetContent side="left" className="w-[300px] sm:w-[400px] overflow-y-auto">
-                 <SheetHeader className="mb-2">
-                   <SheetTitle>Filter Jobs</SheetTitle>
-                 </SheetHeader>
-                 {FilterSidebar}
-               </SheetContent>
-             </Sheet>
+            <Button variant="outline" size="icon" className="flex-shrink-0">
+              <Filter className="h-4 w-4" />
+            </Button>
           )}
         </div>
 
@@ -546,36 +339,16 @@ const DriverJobsPage = () => {
           <div className="flex-grow">
             <Tabs defaultValue="all">
               <div className="bg-white rounded-t-lg border border-neutral-200 p-1 mb-4">
-                <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3">
+                <TabsList className="w-full grid grid-cols-4">
                   <TabsTrigger value="all">All Jobs</TabsTrigger>
                   <TabsTrigger value="saved">Saved</TabsTrigger>
                   <TabsTrigger value="applied">Applied</TabsTrigger>
+                  <TabsTrigger value="matching">Best Match</TabsTrigger>
                 </TabsList>
               </div>
 
               <TabsContent value="all" className="space-y-4 mt-0">
-                {isLoading && (
-                  <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg border border-neutral-200">
-                    <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                    <h3 className="text-lg font-medium text-neutral-700">Loading Jobs...</h3>
-                    <p className="text-neutral-500">Please wait while we fetch available jobs.</p>
-                  </div>
-                )}
-
-                {isError && !isLoading && (
-                  <div className="text-center py-12 bg-white rounded-lg border border-red-200">
-                    <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100">
-                      <AlertTriangle className="h-6 w-6 text-red-500" />
-                    </div>
-                    <h3 className="text-lg font-medium mb-2 text-red-700">Error Fetching Jobs</h3>
-                    <p className="text-neutral-500 max-w-md mx-auto">
-                      We couldn't load the jobs. Please try again later.
-                    </p>
-                    {error && <p className="text-xs text-red-400 mt-2">Details: {error.message}</p>}
-                  </div>
-                )}
-
-                {!isLoading && !isError && displayJobs.length === 0 && (
+                {displayJobs.length === 0 ? (
                   <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
                     <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
                       <Search className="h-6 w-6 text-neutral-400" />
@@ -585,16 +358,14 @@ const DriverJobsPage = () => {
                       We couldn't find any jobs matching your search criteria. Try adjusting your filters or search term.
                     </p>
                   </div>
-                )}
-
-                {!isLoading && !isError && displayJobs.length > 0 && (
+                ) : (
                   displayJobs.map(job => (
-                    <Card key={job.id} className="overflow-hidden hover:border-primary transition-colors duration-200 bg-white">
+                    <Card key={job.id} className="overflow-hidden hover:border-primary transition-colors duration-200">
                       <CardContent className="p-0">
                         <div className="p-4 sm:p-6">
                           <div className="flex items-start justify-between mb-2">
                             <h3 className="text-xl font-semibold text-neutral-900">{job.title}</h3>
-                            <Badge variant={job.postedDate.includes("Just now") || job.postedDate.includes("1 day ago") ? "default" : "outline"} className={job.postedDate.includes("Just now") ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
+                            <Badge variant={job.postedDate.includes("Just now") ? "default" : "outline"} className={job.postedDate.includes("Just now") ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
                               {job.postedDate}
                             </Badge>
                           </div>
@@ -621,64 +392,21 @@ const DriverJobsPage = () => {
                               <Truck className="h-4 w-4 text-neutral-400 mr-2" />
                               <span className="text-neutral-600 text-sm">{job.distance}</span>
                             </div>
-                             {job.numberOfOpenings && (
-                                <div className="flex items-center">
-                                    <Users className="h-4 w-4 text-neutral-400 mr-2" /> {/* Assuming you have Users icon */}
-                                    <span className="text-neutral-600 text-sm">{job.numberOfOpenings} openings</span>
-                                </div>
-                            )}
                           </div>
 
-                          <p className="text-neutral-600 mb-4 text-sm">{job.description}</p>
+                          <p className="text-neutral-600 mb-4">{job.description}</p>
 
-                          {job.tags && job.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              {job.tags.map((tag, index) => (
-                                <Badge key={`${tag}-${index}`} variant="secondary" className="bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-800">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {job.tags.map((tag, index) => (
+                              <Badge key={index} variant="secondary" className="bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-800">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
 
                           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-end mt-2">
-                            <Button 
-                              variant="outline" 
-                              className="sm:w-auto w-full"
-                              onClick={() => handleSaveJob(job.id)}
-                            >
-                              {savedJobs.includes(job.id) ? (
-                                <>
-                                  <BookmarkIcon className="h-4 w-4 mr-2 fill-current" />
-                                  Saved
-                                </>
-                              ) : (
-                                <>
-                                  <BookmarkIcon className="h-4 w-4 mr-2" />
-                                  Save Job
-                                </>
-                              )}
-                            </Button>
-                            <Button 
-                              className="sm:w-auto w-full"
-                              onClick={() => handleApplyJob(job)}
-                              disabled={applyMutation.isPending || appliedJobs.some(aj => aj.jobId === job.name)}
-                              variant={appliedJobs.some(aj => aj.jobId === job.name) ? "secondary" : "default"}
-                            >
-                              {appliedJobs.some(aj => aj.jobId === job.name) ? (
-                                <>
-                                  <UserCheck className="h-4 w-4 mr-2" />
-                                  Applied
-                                </>
-                              ) : applyMutation.isPending ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Applying...
-                                </>
-                              ) : (
-                                "Apply Now"
-                              )}
-                            </Button>
+                            <Button variant="outline" className="sm:w-auto w-full">Save Job</Button>
+                            <Button className="sm:w-auto w-full">Apply Now</Button>
                           </div>
                         </div>
                       </CardContent>
@@ -686,154 +414,50 @@ const DriverJobsPage = () => {
                   ))
                 )}
 
-                {!isLoading && !isError && displayJobs.length > 0 && ( // Assuming you'll implement pagination later
+                {displayJobs.length > 0 && (
                   <div className="flex justify-center mt-6">
-                    <Button variant="outline" className="min-w-[150px]" disabled> {/* Disabled for now as no pagination logic */}
+                    <Button variant="outline" className="min-w-[150px]">
                       Load More <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   </div>
                 )}
               </TabsContent>
 
-              // Replace the existing saved TabsContent
-              <TabsContent value="saved" className="space-y-4 mt-0">
-                {savedJobs.length === 0 ? (
-                  <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
-                    <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
-                      <BookmarkIcon className="h-6 w-6 text-neutral-400" />
-                    </div>
-                    <h3 className="text-lg font-medium mb-2">No saved jobs yet</h3>
-                    <p className="text-neutral-500 max-w-md mx-auto">
-                      Jobs you save will appear here for easy access. Start browsing jobs and save the ones you're interested in.
-                    </p>
+              <TabsContent value="saved">
+                <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
+                  <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
+                    <Truck className="h-6 w-6 text-neutral-400" />
                   </div>
-                ) : (
-                  <>
-                    {fetchedJobs
-                      .filter(job => savedJobs.includes(job.id))
-                      .map(job => (
-                        <Card key={job.id} className="overflow-hidden hover:border-primary transition-colors duration-200 bg-white">
-                          <CardContent className="p-0">
-                            <div className="p-4 sm:p-6">
-                              <div className="flex items-start justify-between mb-2">
-                                <h3 className="text-xl font-semibold text-neutral-900">{job.title}</h3>
-                                <Badge variant="outline">
-                                  {job.postedDate}
-                                </Badge>
-                              </div>
-
-                              <div className="flex items-center mb-3">
-                                <Building className="h-4 w-4 text-neutral-500 mr-2" />
-                                <span className="text-neutral-700 font-medium">{job.company}</span>
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mb-4">
-                                <div className="flex items-center">
-                                  <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
-                                  <span className="text-neutral-600 text-sm">{job.location}</span>
-                                </div>
-                                <div className="flex items-center">
-                                  <Tag className="h-4 w-4 text-neutral-400 mr-2" />
-                                  <span className="text-neutral-600 text-sm">{job.salary}</span>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-end mt-2">
-                                <Button 
-                                  variant="outline" 
-                                  className="sm:w-auto w-full"
-                                  onClick={() => handleSaveJob(job.id)}
-                                >
-                                  <BookmarkIcon className="h-4 w-4 mr-2 fill-current" />
-                                  Remove
-                                </Button>
-                                <Button 
-                                  className="sm:w-auto w-full"
-                                  onClick={() => handleApplyJob(job)}
-                                  disabled={applyMutation.isPending || appliedJobs.some(aj => aj.jobId === job.name)}
-                                  variant={appliedJobs.some(aj => aj.jobId === job.name) ? "secondary" : "default"}
-                                >
-                                  {appliedJobs.some(aj => aj.jobId === job.name) ? (
-                                    <>
-                                      <UserCheck className="h-4 w-4 mr-2" />
-                                      Applied
-                                    </>
-                                  ) : applyMutation.isPending ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                      Applying...
-                                    </>
-                                  ) : (
-                                    "Apply Now"
-                                  )}
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                  </>
-                )}
+                  <h3 className="text-lg font-medium mb-2">No saved jobs yet</h3>
+                  <p className="text-neutral-500 max-w-md mx-auto">
+                    Jobs you save will appear here for easy access. Start browsing jobs and save the ones you're interested in.
+                  </p>
+                </div>
               </TabsContent>
 
-              // Replace the existing Applied jobs tab content
-              <TabsContent value="applied" className="space-y-4 mt-0">
-                {isLoadingAppliedJobs ? (
-                  <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg border border-neutral-200">
-                    <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                    <h3 className="text-lg font-medium text-neutral-700">Loading Applications...</h3>
+              <TabsContent value="applied">
+                <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
+                  <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
+                    <Calendar className="h-6 w-6 text-neutral-400" />
                   </div>
-                ) : appliedJobs.length === 0 ? (
-                  <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
-                    <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
-                      <Calendar className="h-6 w-6 text-neutral-400" />
-                    </div>
-                    <h3 className="text-lg font-medium mb-2">No applications yet</h3>
-                    <p className="text-neutral-500 max-w-md mx-auto">
-                      Start applying to jobs to track your application status here.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {appliedJobs.map(application => {
-                      const job = fetchedJobs.find(j => j.name === application.jobId);
-                      if (!job) return null;
+                  <h3 className="text-lg font-medium mb-2">No applications yet</h3>
+                  <p className="text-neutral-500 max-w-md mx-auto">
+                    Your job applications will be shown here. Start applying to jobs to track your application status.
+                  </p>
+                </div>
+              </TabsContent>
 
-                      return (
-                        <Card key={application.jobId} className="overflow-hidden bg-white">
-                          <CardContent className="p-4 sm:p-6">
-                            <div className="flex items-start justify-between mb-2">
-                              <h3 className="text-xl font-semibold text-neutral-900">{job.title}</h3>
-                              <Badge variant="outline">
-                                Applied on {new Date(application.appliedOn).toLocaleDateString()}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center mb-3">
-                              <Building className="h-4 w-4 text-neutral-500 mr-2" />
-                              <span className="text-neutral-700 font-medium">{job.company}</span>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mb-4">
-                              <div className="flex items-center">
-                                <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
-                                <span className="text-neutral-600 text-sm">{job.location}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <Tag className="h-4 w-4 text-neutral-400 mr-2" />
-                                <span className="text-neutral-600 text-sm">{job.salary}</span>
-                              </div>
-                            </div>
-                            <Badge 
-                              variant={application.status === "Applied" ? "secondary" : "default"}
-                              className="mt-2"
-                            >
-                              Status: {application.status}
-                            </Badge>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </>
-                )}
+              <TabsContent value="matching">
+                <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
+                  <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
+                    <Truck className="h-6 w-6 text-neutral-400" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">Complete your profile first</h3>
+                  <p className="text-neutral-500 max-w-md mx-auto">
+                    To get personalized job matches, please complete your profile with your skills, experience, and preferences.
+                  </p>
+                  <Button className="mt-4">Complete Profile</Button>
+                </div>
               </TabsContent>
             </Tabs>
           </div>

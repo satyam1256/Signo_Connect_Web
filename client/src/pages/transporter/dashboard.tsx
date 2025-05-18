@@ -19,64 +19,24 @@ import { BottomNavigation } from "@/components/layout/bottom-navigation";
 import { Chatbot } from "@/components/features/chatbot";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguageStore } from "@/lib/i18n";
-const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
-const x_key = import.meta.env.VITE_X_KEY;
 
 interface Driver {
-  id: string;
+  id: number;
   name: string;
-  name1: string;
   experience: string;
-  address: string;
-  catagory: string;
   location: string;
   rating: number;
   tags: string[];
 }
-
 
 const TransporterDashboard = () => {
   const { user, logout } = useAuth();
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
 
-  const frappe_token = "your_frappe_token"; // Replace with your actual token
-  const x_key = "your_x_key"; // Replace with your actual x-key
 
-  const { data: driversResponse, isLoading: driversLoading } = useQuery<{ status: boolean; data: Driver[] }>({
-    queryKey: ['drivers'],
-    queryFn: async () => {
-      try {
-        const response = await fetch(
-          `https://internal.signodrive.com/api/method/signo_connect.api.proxy/Drivers?filters=[["is_active", "in", [0, 1]]]&limit_page_length=100&limit_start=0`,{
-          method: "GET",
-          headers: { 
-            "Authorization": `token ${frappe_token}`,
-            "x-key": x_key,
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const responseData = await response.json();
-        console.log("Total drivers fetched:", responseData?.data?.length || 0);
-        console.log("Full API Response:", responseData);
-
-        // Check if we have the expected data structure
-        if (!responseData.data || !Array.isArray(responseData.data)) {
-          console.error("Unexpected data structure:", responseData);
-          return { status: false, data: [] };
-        }
-
-        return responseData; 
-      } catch (error) {
-        console.error("Error fetching drivers:", error);
-        throw error;
-      }
-    },
+  const { data: recommendedDrivers, isLoading: driversLoading } = useQuery<Driver[]>({
+    queryKey: ['/api/drivers'],
     enabled: !!user
   });
 
@@ -89,19 +49,6 @@ const TransporterDashboard = () => {
   if (!user) {
     return null;
   }
-
-  const recommendedDrivers = driversResponse?.data
-    ?.filter(driver => driver.experience) // Ensure drivers have experience
-    ?.map(driver => ({
-      id: driver.name,
-      name: driver.name1 || "Unknown",
-      experience: driver.experience || "0",
-      location: driver.address || "Unknown",
-      rating: 0, // Rating is not provided in the API, default to 0
-      tags: [driver.catagory || "General"],
-    }))
-    ?.sort((a, b) => Number(b.experience) - Number(a.experience)) // Sort by experience
-    ?.slice(0, 2); // Take the top 2 drivers
 
 
   return (
@@ -226,46 +173,60 @@ const TransporterDashboard = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {recommendedDrivers?.map(driver => (
-                  <div
-                    key={driver.id}
-                    className="border border-neutral-200 rounded-md p-4 hover:border-[#FF6D00] cursor-pointer transition duration-200"
-                  >
-                    <div className="flex items-start">
-                      <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mr-4">
-                        <User className="text-neutral-400 h-6 w-6" />
+                {/* Sample driver cards - in a real app, these would be populated from API data */}
+                <div className="border border-neutral-200 rounded-md p-4 hover:border-[#FF6D00] cursor-pointer transition duration-200">
+                  <div className="flex items-start">
+                    <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mr-4">
+                      <User className="text-neutral-400 h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-1">
+                        <h4 className="font-medium text-neutral-800">Rajesh Singh</h4>
+                        <div className="flex items-center">
+                          <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                          <span>4.8</span>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between mb-1">
-                          <h4 className="font-medium text-neutral-800">{driver.name}</h4>
-                          <div className="flex items-center">
-                            {/* <Star className="h-4 w-4 text-yellow-400 mr-1" /> */}
-                            <span>{driver.experience} {t("years_experience")}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center mb-3">
-                          <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
-                          <span className="text-neutral-500 text-sm">{driver.location}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {driver.tags.map((tag, index) => (
-                            <span
-                              key={index}
-                              className="bg-neutral-100 text-neutral-600 text-xs py-1 px-2 rounded-full"
-                            >
-                              {tag.charAt(0).toUpperCase() + tag.slice(1)}
-                            </span>
-                          ))}
-                        </div>
+                      <p className="text-neutral-500 text-sm mb-2">5 {t("years_experience")}</p>
+                      <div className="flex items-center mb-3">
+                        <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
+                        <span className="text-neutral-500 text-sm">Delhi NCR</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="bg-neutral-100 text-neutral-600 text-xs py-1 px-2 rounded-full">Heavy Vehicle License</span>
+                        <span className="bg-neutral-100 text-neutral-600 text-xs py-1 px-2 rounded-full">Long Routes</span>
                       </div>
                     </div>
                   </div>
-                ))}
+                </div>
+
+                <div className="border border-neutral-200 rounded-md p-4 hover:border-[#FF6D00] cursor-pointer transition duration-200">
+                  <div className="flex items-start">
+                    <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mr-4">
+                      <User className="text-neutral-400 h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-1">
+                        <h4 className="font-medium text-neutral-800">Amit Kumar</h4>
+                        <div className="flex items-center">
+                          <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                          <span>4.5</span>
+                        </div>
+                      </div>
+                      <p className="text-neutral-500 text-sm mb-2">3 {t("years_experience")}</p>
+                      <div className="flex items-center mb-3">
+                        <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
+                        <span className="text-neutral-500 text-sm">Delhi NCR</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="bg-neutral-100 text-neutral-600 text-xs py-1 px-2 rounded-full">Medium Vehicle License</span>
+                        <span className="bg-neutral-100 text-neutral-600 text-xs py-1 px-2 rounded-full">Local Routes</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
             )}
-
-
 
             <div className="text-center mt-4">
               <Button 
@@ -275,7 +236,7 @@ const TransporterDashboard = () => {
               >
                 {t("view_all_drivers")} <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
-            </div>  
+            </div>
           </CardContent>
         </Card>
       </div>
