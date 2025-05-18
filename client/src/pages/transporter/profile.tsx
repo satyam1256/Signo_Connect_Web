@@ -52,7 +52,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
-const x_key = import.meta.env.VITE_X_KEY;
+
 interface TransporterProfile {
   name1: string;
   phone_number: string;
@@ -136,7 +136,9 @@ const TransporterProfile = () => {
     if (!user) return;
 
     try {
+      const SID = localStorage.getItem("SID");
       const transporterId = localStorage.getItem("userId") || user.id;
+      console.log("Transp[orter frappe_token : " , frappe_token)
       
       const response = await fetch(
         `http://localhost:8000/api/method/signo_connect.apis.transporter.get_transporter_profile?transporter_id=${transporterId}`,{
@@ -166,6 +168,8 @@ const TransporterProfile = () => {
 
     setIsUpdatingProfile(true);
     try {
+      // const SID = localStorage.getItem("SID");
+      // console.log("Update Transporter Profile SID" , SID);
       const transporterId = localStorage.getItem("userId") || user.id;
 
       const updatePayload = {
@@ -183,13 +187,12 @@ const TransporterProfile = () => {
 
       
       const response = await fetch(
-        `http://localhost:8000/api/method/signo_connect.api.proxy/Transporters/${transporterId}`,
+        "http://localhost:8000/api/method/signo_connect.apis.transporter.update_transporter_profile",
         {
-          method: "PUT",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `token ${frappe_token}`,
-            "x-key":x_key
+            "Authorization": `token ${frappe_token}`
           },
           body: JSON.stringify(updatePayload)
         }

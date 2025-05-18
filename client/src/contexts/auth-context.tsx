@@ -6,7 +6,7 @@ export interface User {
   id: string;
   fullName: string;
   phoneNumber: string;
-  userType: "driver" | "transporter";
+  userType: "driver" | "fleet_owner" | "transporter";
   email?: string;
   profileCompleted: boolean;
   token?: string;
