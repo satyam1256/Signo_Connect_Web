@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { Shield, Check } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Select, 
   SelectContent, 
@@ -38,7 +39,7 @@ const basicInfoSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
   countryCode: z.string().default("+91"),
-  preferredLocations: z.array(z.string()).optional(),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
 });
 
 // Step 2: OTP Verification
@@ -46,11 +47,21 @@ const otpSchema = z.object({
   otp: z.string().length(6, "OTP must be 6 digits"),
 });
 
-// Step 3: Documents (optional for basic sign-up)
-const documentsSchema = z.object({
-  drivingLicense: z.instanceof(File).optional().nullable(),
-  identityProof: z.instanceof(File).optional().nullable(),
+// Step 3: Company Details
+const companySchema = z.object({
+  companyName: z.string().min(1, "Company name is required"),
+  fleetSize: z.string().optional(),
+  preferredLocations: z.array(z.string()).optional(),
+  companyRegistration: z.instanceof(File).optional().nullable(),
 });
+
+// Fleet size options
+const fleetSizeOptions = [
+  { value: "1-5", label: "1-5 vehicles" },
+  { value: "6-20", label: "6-20 vehicles" },
+  { value: "21-50", label: "21-50 vehicles" },
+  { value: "50+", label: "50+ vehicles" },
+];
 
 // Location options
 const locationOptions = [
@@ -64,7 +75,7 @@ const locationOptions = [
   { value: "ahmedabad", label: "Ahmedabad" },
 ];
 
-const DriverRegistration = () => {
+const FleetOwnerRegistration = () => {
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
   const { login } = useAuth();
@@ -77,7 +88,7 @@ const DriverRegistration = () => {
   const steps = [
     { title: t("basic_info") },
     { title: t("verification") },
-    { title: t("documents") },
+    { title: t("company") },
     { title: t("success") },
   ];
 
@@ -90,7 +101,7 @@ const DriverRegistration = () => {
       fullName: "",
       phoneNumber: "",
       countryCode: "+91",
-      preferredLocations: [],
+      email: "",
     },
   });
 
@@ -101,11 +112,13 @@ const DriverRegistration = () => {
     },
   });
 
-  const documentsForm = useForm<z.infer<typeof documentsSchema>>({
-    resolver: zodResolver(documentsSchema),
+  const companyForm = useForm<z.infer<typeof companySchema>>({
+    resolver: zodResolver(companySchema),
     defaultValues: {
-      drivingLicense: null,
-      identityProof: null,
+      companyName: "",
+      fleetSize: "",
+      preferredLocations: [],
+      companyRegistration: null,
     },
   });
 
@@ -116,7 +129,8 @@ const DriverRegistration = () => {
         const response = await apiRequest("POST", "/api/register", {
           fullName: data.fullName,
           phoneNumber: data.countryCode + data.phoneNumber,
-          userType: "driver"
+          email: data.email || undefined,
+          userType: UserType.FLEET_OWNER,
         });
         
         if (!response.ok) {
@@ -133,9 +147,7 @@ const DriverRegistration = () => {
     onSuccess: (data) => {
       if (data.userId) {
         setUserId(data.userId);
-        setPhoneNumber(
-          basicInfoForm.getValues().countryCode + basicInfoForm.getValues().phoneNumber
-        );
+        setPhoneNumber(basicInfoForm.getValues().countryCode + basicInfoForm.getValues().phoneNumber);
         stepper.nextStep();
       }
     },
@@ -179,11 +191,12 @@ const DriverRegistration = () => {
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
       try {
-        const response = await apiRequest("POST", "/api/driver-profile", {
+        const response = await apiRequest("POST", "/api/fleet-owner-profile", {
           userId,
-          preferredLocations: basicInfoForm.getValues().preferredLocations,
-          drivingLicense: data.drivingLicense ? data.drivingLicense.name : null,
-          identityProof: data.identityProof ? data.identityProof.name : null,
+          companyName: data.companyName,
+          fleetSize: data.fleetSize,
+          preferredLocations: data.preferredLocations,
+          registrationDoc: data.companyRegistration ? data.companyRegistration.name : null,
         });
         
         if (!response.ok) {
@@ -215,11 +228,11 @@ const DriverRegistration = () => {
     verifyOtpMutation.mutate(data);
   };
 
-  const onDocumentsSubmit = (data: z.infer<typeof documentsSchema>) => {
+  const onCompanySubmit = (data: z.infer<typeof companySchema>) => {
     updateProfileMutation.mutate(data);
   };
 
-  const handleSkipDocuments = () => {
+  const handleSkipCompanyDetails = () => {
     setRegistrationComplete(true);
     stepper.nextStep();
   };
@@ -232,10 +245,11 @@ const DriverRegistration = () => {
         id: userId,
         fullName: basicInfoForm.getValues().fullName,
         phoneNumber: phoneNumber,
-        userType: 'driver',
-        profileCompleted: false
+        userType: 'fleet_owner',
+        profileCompleted: false,
+        email: basicInfoForm.getValues().email
       });
-      navigate("/driver/dashboard");
+      navigate("/fleet-owner/dashboard");
     }
   };
 
@@ -246,7 +260,7 @@ const DriverRegistration = () => {
       <div className="flex-grow container mx-auto px-4 py-6 max-w-md">
         <Card className="mb-6">
           <CardContent className="p-6">
-            <h2 className="text-2xl font-bold mb-2 text-neutral-800">{t("driver_registration")}</h2>
+            <h2 className="text-2xl font-bold mb-2 text-neutral-800">{t("fleet_owner_registration")}</h2>
             <p className="text-neutral-500 mb-6">{t("create_account_steps")}</p>
 
             <ProgressSteps 
@@ -326,62 +340,22 @@ const DriverRegistration = () => {
 
                   <FormField
                     control={basicInfoForm.control}
-                    name="preferredLocations"
+                    name="email"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          {t("preferred_job_locations")}{" "}
+                          {t("email_address")}{" "}
                           <span className="text-neutral-500 text-xs">
                             ({t("optional")})
                           </span>
                         </FormLabel>
                         <FormControl>
-                          <Select
-                            onValueChange={(value) => field.onChange([...field.value || [], value])}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select locations" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {locationOptions.map((location) => (
-                                <SelectItem 
-                                  key={location.value} 
-                                  value={location.value}
-                                >
-                                  {location.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Input 
+                            placeholder="Enter your email"
+                            type="email"
+                            {...field} 
+                          />
                         </FormControl>
-                        {field.value && field.value.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {field.value.map((location) => {
-                              const locationLabel = locationOptions.find(
-                                (option) => option.value === location
-                              )?.label;
-                              return (
-                                <div
-                                  key={location}
-                                  className="bg-neutral-100 text-neutral-700 rounded-md px-2 py-1 text-sm flex items-center"
-                                >
-                                  {locationLabel}
-                                  <button
-                                    type="button"
-                                    className="ml-1 text-neutral-500 hover:text-neutral-700"
-                                    onClick={() => {
-                                      field.onChange(
-                                        field.value?.filter((l) => l !== location)
-                                      );
-                                    }}
-                                  >
-                                    &times;
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -390,7 +364,7 @@ const DriverRegistration = () => {
                   <div className="pt-4">
                     <Button 
                       type="submit" 
-                      className="w-full" 
+                      className="w-full bg-[#FF6D00] hover:bg-[#E65100]"
                       disabled={registerMutation.isPending}
                     >
                       {registerMutation.isPending ? "Processing..." : t("continue")}
@@ -405,8 +379,8 @@ const DriverRegistration = () => {
               <Form {...otpForm}>
                 <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-6">
                   <div className="text-center mb-6">
-                    <div className="inline-block p-3 bg-primary-100 rounded-full mb-2">
-                      <Shield className="h-6 w-6 text-primary" />
+                    <div className="inline-block p-3 bg-[#FFF3E0] rounded-full mb-2">
+                      <Shield className="h-6 w-6 text-[#FF6D00]" />
                     </div>
                     <h3 className="text-xl font-medium text-neutral-800">
                       {t("verify_number")}
@@ -442,7 +416,7 @@ const DriverRegistration = () => {
                       {t("didnt_receive_otp")}{" "}
                       <Button
                         variant="link"
-                        className="p-0 h-auto"
+                        className="p-0 h-auto text-[#FF6D00]"
                         onClick={() => registerMutation.mutate(basicInfoForm.getValues())}
                       >
                         {t("resend")}
@@ -461,7 +435,7 @@ const DriverRegistration = () => {
                     </Button>
                     <Button 
                       type="submit" 
-                      className="flex-1" 
+                      className="flex-1 bg-[#FF6D00] hover:bg-[#E65100]"
                       disabled={verifyOtpMutation.isPending}
                     >
                       {verifyOtpMutation.isPending ? "Verifying..." : t("verify")}
@@ -471,25 +445,23 @@ const DriverRegistration = () => {
               </Form>
             )}
 
-            {/* Step 3: Documents */}
+            {/* Step 3: Company Details */}
             {stepper.currentStep === 3 && (
-              <Form {...documentsForm}>
-                <form onSubmit={documentsForm.handleSubmit(onDocumentsSubmit)} className="space-y-6">
-                  <p className="text-neutral-500 mb-6">
-                    {t("upload_docs_optional")}
-                  </p>
-
+              <Form {...companyForm}>
+                <form onSubmit={companyForm.handleSubmit(onCompanySubmit)} className="space-y-6">
                   <FormField
-                    control={documentsForm.control}
-                    name="drivingLicense"
+                    control={companyForm.control}
+                    name="companyName"
                     render={({ field }) => (
                       <FormItem>
+                        <FormLabel>
+                          {t("company_name")}
+                          <span className="text-red-500">*</span>
+                        </FormLabel>
                         <FormControl>
-                          <FileUpload
-                            title={t("driving_license")}
-                            buttonText={t("upload_license")}
-                            onChange={field.onChange}
-                            value={field.value}
+                          <Input 
+                            placeholder="Enter company name" 
+                            {...field} 
                           />
                         </FormControl>
                         <FormMessage />
@@ -498,17 +470,96 @@ const DriverRegistration = () => {
                   />
 
                   <FormField
-                    control={documentsForm.control}
-                    name="identityProof"
+                    control={companyForm.control}
+                    name="fleetSize"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t("fleet_size")}{" "}
+                          <span className="text-neutral-500 text-xs">
+                            ({t("optional")})
+                          </span>
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select fleet size" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {fleetSizeOptions.map((option) => (
+                              <SelectItem 
+                                key={option.value} 
+                                value={option.value}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={companyForm.control}
+                    name="preferredLocations"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t("preferred_job_locations")}{" "}
+                          <span className="text-neutral-500 text-xs">
+                            ({t("optional")})
+                          </span>
+                        </FormLabel>
+                        <div className="space-y-2">
+                          {locationOptions.map((location) => (
+                            <div key={location.value} className="flex items-center">
+                              <Checkbox
+                                id={`loc-${location.value}`}
+                                checked={field.value?.includes(location.value)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    field.onChange([...field.value || [], location.value]);
+                                  } else {
+                                    field.onChange(
+                                      field.value?.filter((value) => value !== location.value)
+                                    );
+                                  }
+                                }}
+                                className="text-[#FF6D00] focus:ring-[#FF6D00]"
+                              />
+                              <label
+                                htmlFor={`loc-${location.value}`}
+                                className="ml-2 text-sm text-neutral-800"
+                              >
+                                {location.label}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={companyForm.control}
+                    name="companyRegistration"
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
                           <FileUpload
-                            title={t("identity_proof")}
-                            buttonText={t("upload_id_proof")}
+                            title={t("company_registration")}
+                            description="Drag & drop or click to upload"
+                            buttonText={t("upload_document")}
                             onChange={field.onChange}
                             value={field.value}
-                            helpText={t("accepted_formats")}
+                            helpText={t("gst_business_registration")}
                           />
                         </FormControl>
                         <FormMessage />
@@ -527,7 +578,7 @@ const DriverRegistration = () => {
                     </Button>
                     <Button 
                       type="submit" 
-                      className="flex-1"
+                      className="flex-1 bg-[#FF6D00] hover:bg-[#E65100]"
                       disabled={updateProfileMutation.isPending}
                     >
                       {updateProfileMutation.isPending ? "Processing..." : t("continue")}
@@ -538,7 +589,8 @@ const DriverRegistration = () => {
                     <Button 
                       type="button" 
                       variant="link"
-                      onClick={handleSkipDocuments}
+                      className="text-[#FF6D00]"
+                      onClick={handleSkipCompanyDetails}
                     >
                       {t("skip_for_now")}
                     </Button>
@@ -572,21 +624,21 @@ const DriverRegistration = () => {
                   <ul className="space-y-2">
                     <li className="flex items-start">
                       <Check className="h-4 w-4 text-accent mt-1 mr-2" />
-                      <span>Browse available jobs in your area</span>
+                      <span>Post your first job opening</span>
                     </li>
                     <li className="flex items-start">
                       <Check className="h-4 w-4 text-accent mt-1 mr-2" />
-                      <span>Complete your profile to increase visibility</span>
+                      <span>Search for qualified drivers in your area</span>
                     </li>
                     <li className="flex items-start">
                       <Check className="h-4 w-4 text-accent mt-1 mr-2" />
-                      <span>Set your preferences for notifications</span>
+                      <span>Complete your company profile</span>
                     </li>
                   </ul>
                 </div>
 
                 <Button 
-                  className="w-full" 
+                  className="w-full bg-[#FF6D00] hover:bg-[#E65100]"
                   onClick={goToDashboard}
                 >
                   {t("go_to_dashboard")}
@@ -600,4 +652,4 @@ const DriverRegistration = () => {
   );
 };
 
-export default DriverRegistration;
+export default FleetOwnerRegistration;

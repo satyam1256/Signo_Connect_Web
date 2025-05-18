@@ -3,13 +3,12 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 export interface User {
-  id: string;
+  id: number;
   fullName: string;
   phoneNumber: string;
-  userType: "driver" | "fleet_owner" | "transporter";
+  userType: "driver" | "fleet_owner";
   email?: string;
   profileCompleted: boolean;
-  token?: string;
 }
 
 interface AuthContextType {
@@ -63,17 +62,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Redirect based on user type and profile completion
     if (userData.userType === "driver") {
-      if (userData.profileCompleted) {
-        navigate("/driver/dashboard");
-      } else {
-        navigate("/driver/profile");
-      }
-    } else if (userData.userType === "transporter") {
-      if (userData.profileCompleted) {
-        navigate("/transporter/dashboard");
-      } else {
-        navigate("/transporter/profile");
-      }
+      navigate("/driver/dashboard");
+    } else if (userData.userType === "fleet_owner") {
+      navigate("/fleet-owner/dashboard");
     }
 
     toast({

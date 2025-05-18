@@ -30,7 +30,7 @@ interface Driver {
   tags: string[];
 }
 
-const TransporterDashboard = () => {
+const FleetOwnerDashboard = () => {
   const { user, logout } = useAuth();
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
@@ -97,14 +97,14 @@ const TransporterDashboard = () => {
               <Button 
                 variant="secondary" 
                 className="bg-white text-[#FF6D00] hover:bg-neutral-100"
-                onClick={() => navigate("/transporter/profile")}
+                onClick={() => navigate("/fleet-owner/profile")}
               >
                 {t("complete_profile")}
               </Button>
               <Button 
                 variant="destructive" 
                 className="bg-[#E65100] text-white hover:bg-[#E65100]/90"
-                onClick={() => navigate("/transporter/jobs")}
+                onClick={() => navigate("/fleet-owner/jobs")}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 {t("post_job")}
@@ -124,7 +124,7 @@ const TransporterDashboard = () => {
               <p className="text-neutral-500 text-sm mb-3">Search qualified drivers in your area</p>
               <Button 
                 className="w-full"
-                onClick={() => navigate("/transporter/drivers")}
+                onClick={() => navigate("/fleet-owner/drivers")}
               >
                 {t("search")}
               </Button>
@@ -140,7 +140,7 @@ const TransporterDashboard = () => {
               <p className="text-neutral-500 text-sm mb-3">View and manage your job postings</p>
               <Button 
                 className="w-full bg-[#FF6D00] hover:bg-[#E65100]"
-                onClick={() => navigate("/transporter/jobs")}
+                onClick={() => navigate("/fleet-owner/jobs")}
               >
                 {t("manage")}
               </Button>
@@ -235,7 +235,7 @@ const TransporterDashboard = () => {
               <Button 
                 variant="link" 
                 className="text-[#FF6D00] font-medium"
-                onClick={() => navigate("/transporter/drivers")}
+                onClick={() => navigate("/fleet-owner/drivers")}
               >
                 {t("view_all_drivers")} <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
@@ -244,10 +244,10 @@ const TransporterDashboard = () => {
         </Card>
       </div>
 
-      <BottomNavigation userType="transporter" />
+      <BottomNavigation userType="fleet_owner" />
       <Chatbot />
     </div>
   );
 };
 
-export default TransporterDashboard;
+export default FleetOwnerDashboard;

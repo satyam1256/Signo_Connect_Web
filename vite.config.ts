@@ -8,7 +8,6 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
@@ -30,13 +29,9 @@ export default defineConfig({
       "@assets": path.resolve(__dirname, "attached_assets"),
     },
   },
-  // IMPORTANT: Vite's root is set to the 'client' directory
   root: path.resolve(__dirname, "client"),
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
   },
-  // The problematic 'define' section has been removed.
-  // Vite will now automatically load VITE_* variables from the .env file
-  // located in the `root` directory (`client` in this case).
 });

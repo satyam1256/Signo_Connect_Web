@@ -67,7 +67,7 @@ const WelcomePage = () => {
                 </Button>
               </Link>
 
-              <Link to="/transporter/register">
+              <Link to="/fleet-owner/register">
                 <Button 
                   className="w-full justify-between bg-[#FF6D00] text-white hover:bg-[#E65100] h-14"
                   size="lg"

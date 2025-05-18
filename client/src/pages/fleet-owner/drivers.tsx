@@ -28,7 +28,7 @@ interface Driver {
   tags: string[];
 }
 
-const TransporterDrivers = () => {
+const FleetOwnerDrivers = () => {
   const { user } = useAuth();
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
@@ -130,7 +130,7 @@ const TransporterDrivers = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 pb-16">
-      <Header showBack backTo="/transporter/dashboard">
+      <Header showBack backTo="/fleet-owner/dashboard">
         <h1 className="text-xl font-bold text-neutral-800 ml-2">
           {t("find_drivers")}
         </h1>
@@ -271,10 +271,10 @@ const TransporterDrivers = () => {
         </div>
       </div>
 
-      <BottomNavigation userType="transporter" />
+      <BottomNavigation userType="fleet_owner" />
       <Chatbot />
     </div>
   );
 };
 
-export default TransporterDrivers;
+export default FleetOwnerDrivers;

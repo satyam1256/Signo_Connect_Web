@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react"; // Added useRef
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
-  User as UserIcon,
+  User,
   MapPin,
   Mail,
   Phone,
@@ -31,7 +31,7 @@ import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
+import { 
   Dialog,
   DialogContent,
   DialogDescription,
@@ -42,136 +42,149 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
 import { FileUpload } from "@/components/ui/file-upload";
 import { BottomNavigation } from "@/components/layout/bottom-navigation";
 import { Chatbot } from "@/components/features/chatbot";
-import { useAuth, User } from "@/contexts/auth-context";
+import { useAuth } from "@/contexts/auth-context";
 import { useLanguageStore } from "@/lib/i18n";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast as hotToast } from "react-hot-toast"; 
 
-const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
-
-const getProfileCompletionData = (data: Record<string, any> | null) => {
-  // Return default values if data is null or undefined
-  if (!data) {
-    return {
-      completionPercentage: 0,
-      missingItems: ["Name", "Phone Number", "Email", "Address", "Experience", "Category", "Driving License Number", 
-                     "Driving License Front Image", "Aadhar Number", "Aadhar Front Image"],
-      isProfileComplete: false
-    };
-  }
-
-  const fieldWeights: { field: string; label: string; weight: number }[] = [
-    { field: "name", label: "Name", weight: 10 },
-    { field: "phone_number", label: "Phone Number", weight: 10 },
-    { field: "email", label: "Email", weight: 10 },
-    { field: "address", label: "Address", weight: 10 },
-    { field: "experience", label: "Experience", weight: 10 },
-    { field: "catagory", label: "Category", weight: 10 },
-    { field: "dl_number", label: "Driving License Number", weight: 10 },
-    { field: "dl_front_pic", label: "Driving License Front Image", weight: 10 },
-    { field: "aadhar_number", label: "Aadhar Number", weight: 10 },
-    { field: "aadhar_front_pic", label: "Aadhar Front Image", weight: 10 }
+// Calculate profile completion percentage
+const calculateProfileCompletion = (profile: any): number => {
+  if (!profile) return 0;
+  
+  // Field weights add up to 100 points
+  const fieldWeights = [
+    { field: 'fullName', weight: 10 },
+    { field: 'phoneNumber', weight: 10 },
+    { field: 'email', weight: 10 },
+    { field: 'location', weight: 10 },
+    { field: 'about', weight: 10 },
+    { field: 'experience', weight: 10 },
+    { field: 'preferredLocations', weight: 10 },
+    { field: 'vehicleTypes', weight: 10 },
+    { field: 'drivingLicense', weight: 10 },
+    { field: 'identityProof', weight: 10 }
   ];
-
+  
   let totalPoints = 0;
-  let earnedPoints = 0;
-  const missingItems: string[] = [];
-
-  fieldWeights.forEach(({ field, label, weight }) => {
-    totalPoints += weight;
-    const value = data[field];
-
-    const isFilled = typeof value === "string"
-      ? value.trim() !== ""
-      : typeof value === "object" && value !== null
-      ? true
-      : typeof value === "number"
-      ? true
-      : false;
-
-    if (isFilled) {
-      earnedPoints += weight;
-    } else {
-      missingItems.push(label);
+  const totalPossiblePoints = fieldWeights.reduce((sum, item) => sum + item.weight, 0);
+  
+  fieldWeights.forEach(({ field, weight }) => {
+    const value = profile[field];
+    
+    if (value) {
+      if (Array.isArray(value)) {
+        // For array fields like vehicleTypes, skills, preferredLocations
+        if (value.length > 0) {
+          totalPoints += weight;
+        }
+      } else if (typeof value === 'string') {
+        // For string fields, ensure they're not empty strings
+        if (value.trim() !== '') {
+          totalPoints += weight;
+        }
+      } else {
+        // For other types
+        totalPoints += weight;
+      }
     }
   });
-
-  const completionPercentage = Math.round((earnedPoints / totalPoints) * 100);
-
-  return {
-    completionPercentage,
-    missingItems,
-    isProfileComplete: missingItems.length === 0
-  };
+  
+  return Math.round((totalPoints / totalPossiblePoints) * 100);
 };
 
-
 interface UserProfile {
-  name1: string;
+  fullName: string;
+  phoneNumber: string;
   email: string;
-  phone_number: string;
-  emergency_contact_number: string;
-  address: string;
+  language: string;
+  location: string;
+  about: string;
+  profileImage?: string;
+  // Driver specific
   experience: string;
-  catagory: string;
-  dl_number: string;
-  dl_front_pic: string | null;
-  dl_back_pic: string | null;
-  aadhar_number: string;
-  aadhaar_front: string | null;
-  aadhaar_back: string | null;
-  dob: string;
-  profile_pic: string | null;
-  driver_id:string | null ;
+  preferredLocations: string[];
+  vehicleTypes: string[];
+  drivingLicense: string | null;
+  identityProof: string | null;
+  availability: 'full-time' | 'part-time' | 'weekends';
+  skills: string[];
+  joinedDate: string;
+  completionPercentage: number;
 }
 
-
-
-
-const DriverProfilePage = () =>  {
+const DriverProfilePage = () => {
   const { user, logout, updateUser } = useAuth();
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
-  const { toast } = useToast(); // Use the hook here
 
-  // Add a ref for the Aadhar input field
-  const aadharInputRef = useRef<HTMLInputElement>(null);
-
-  // State declarations
-  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  // Initialize with empty profile, will be filled from API
   const [profile, setProfile] = useState<UserProfile>({
-    name1: "",
+    fullName: "",
+    phoneNumber: "",
     email: "",
-    phone_number: "",
-    emergency_contact_number: "",
-    address: "",
+    language: "English", // Default language
+    location: "",
+    about: "",
     experience: "",
-    catagory: "",
-    dl_number: "",
-    dl_front_pic: null,
-    dl_back_pic: null,
-    aadhar_number: "",
-    aadhaar_front: null,
-    aadhaar_back: null,
-    dob: "",
-    profile_pic: null,
-    driver_id:null
+    preferredLocations: [],
+    vehicleTypes: [],
+    drivingLicense: null,
+    identityProof: null,
+    availability: "full-time", // Default availability
+    skills: [],
+    joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }), // Current date formatted
+    completionPercentage: 0
   });
+
+  // Remove unused query - using direct fetch in useEffect instead
+  
+  // Handle profile data when it's fetched
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user) return;
+      try {
+        const response = await fetch(`/api/resource/Drivers/${user.id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile data');
+        }
+        const data = await response.json();
+        
+        const profileData: UserProfile = {
+          fullName: data.fullName || user?.fullName || "",
+          phoneNumber: data.phoneNumber || user?.phoneNumber || "",
+          email: data.email || user?.email || "",
+          language: data.language || "English",
+          location: data.location || "",
+          about: data.about || "",
+          experience: data.experience || "",
+          preferredLocations: data.preferredLocations || [],
+          vehicleTypes: data.vehicleTypes || [],
+          drivingLicense: data.drivingLicense || null,
+          identityProof: data.identityProof || null,
+          availability: data.availability || "full-time",
+          skills: data.skills || [],
+          joinedDate: data.joinedDate || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+          completionPercentage: calculateProfileCompletion(data)
+        };
+        
+        setProfile(profileData);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      }
+    };
+    
+    fetchProfileData();
+  }, [user]);
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
-  const [profile_pic, setprofile_pic] = useState<File | null>(null);
-  const [dlFront, setDlFront] = useState<File | null>(null);
-  const [dlBack, setDlBack] = useState<File | null>(null);
-  const [aadhaar_front, setaadhaar_front] = useState<File | null>(null);
-  const [aadhaar_back, setaadhaar_back] = useState<File | null>(null);
-  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [licenseFile, setLicenseFile] = useState<File | null>(null);
+  const [identityFile, setIdentityFile] = useState<File | null>(null);
 
   // Dialog states
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
@@ -179,463 +192,116 @@ const DriverProfilePage = () =>  {
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
   const [languageSettingsOpen, setLanguageSettingsOpen] = useState(false);
 
-
-  const [data,setData]= useState<any>(null);
-
-  // Helper function to ensure image URLs are properly formed
-  const getFullImageUrl = (url: string | null | undefined): string | undefined => {
-    if (!url) return undefined;
-    
-    // Handle relative paths from backend
-    if (url.startsWith('/files')) {
-      return `http://localhost:8000${url}`;
-    }
-    
-    return url;
-  };
-
-  // Debug effect to monitor editedProfile changes
-  useEffect(() => {
-    console.log("editedProfile changed:", editedProfile);
-    if (editedProfile.aadhar_number !== undefined) {
-      console.log("Current aadhar_number in form:", editedProfile.aadhar_number);
-    }
-  }, [editedProfile]);
-
+  // Toast notifications
+  const { toast } = useToast();
   
+  // State to track profile update request
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  
+  // Handle profile update
+  const handleProfileUpdate = async () => {
+    if (Object.keys(editedProfile).length > 0 && user) {
+      setIsUpdatingProfile(true);
+      try {
+        // First get the combined profile data that will be sent
+        const updatedProfileData = {
+          ...editedProfile,
+          userId: user.id,
+          fullName: editedProfile.fullName || profile.fullName,
+          phoneNumber: editedProfile.phoneNumber || profile.phoneNumber,
+        };
+        
+        // Send data to the API
+        const response = await fetch(`/api/resource/Drivers/${user.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedProfileData),
+        });
 
-  // Add uploadFile function
-  const uploadFile = async (file: File, type: string): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file, file.name);
+        if (!response.ok) {
+          throw new Error('Failed to update profile');
+        }
+        
+        // Get the response data
+        const responseData = await response.json();
+        
+        // Re-fetch complete profile to get updated data
+        const refreshResponse = await fetch(`/api/resource/Drivers/${user.id}`);
+        if (!refreshResponse.ok) {
+          throw new Error('Failed to refresh profile data');
+        }
+        
+        const refreshedData = await refreshResponse.json();
+        
+        // Calculate the new completion percentage with the full updated data
+        const newCompletionPercentage = calculateProfileCompletion(refreshedData);
+        
+        // Update local state with all the new data including completion percentage
+        const completeUpdatedProfile = { 
+          ...profile, 
+          ...editedProfile,
+          completionPercentage: newCompletionPercentage
+        };
+        
+        // Update the profile state with the refreshed data
+        setProfile(completeUpdatedProfile);
 
-    // const SID = localStorage.getItem("SID");
-    const myHeaders = new Headers();
-    myHeaders.append("Authorization" ,`token ${frappe_token}`);
+        // Update user context if name or profile completion status changed
+        if (editedProfile.fullName || completeUpdatedProfile.completionPercentage !== profile.completionPercentage) {
+          updateUser({ 
+            fullName: editedProfile.fullName || profile.fullName,
+            profileCompleted: completeUpdatedProfile.completionPercentage >= 80 // Mark as completed if >= 80%
+          });
+        }
 
-    const requestOptions = {
-      method: "POST",
-      headers: myHeaders,
-      body: formData,
-      redirect: "follow" as RequestRedirect
-    };
+        // Show success notification
+        toast({
+          title: "Profile updated",
+          description: "Your profile information has been updated successfully.",
+        });
 
-    const response = await fetch(`http://localhost:8000/api/method/signo_connect.api.upload_image`, requestOptions);
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error("Upload Error:", errorData);
-      throw new Error("Failed to upload file");
-    }
-
-    const data = await response.json();
-    console.log("File upload response:", data);
-    
-    // Check different possible locations of file_url in the response
-    let fileUrl = data.file_url || data.message?.file_url || (data.status && data.file_url) || "";
-    
-    // If we have a status: true and file URL that starts with /files, we need to form the complete URL
-    if (data.status === true && typeof data.file_url === 'string') {
-      if (data.file_url.startsWith('/files')) {
-        fileUrl = `http://localhost:8000${data.file_url}`;
-        console.log("Constructed complete file URL:", fileUrl);
-      } else {
-        fileUrl = data.file_url;
+        // Clear the edited profile and close edit mode
+        setEditedProfile({});
+        setIsEditingProfile(false);
+      } catch (error) {
+        console.error("Error updating profile:", error);
+        toast({
+          variant: "destructive",
+          title: "Update failed",
+          description: "We couldn't update your profile. Please try again.",
+        });
+      } finally {
+        setIsUpdatingProfile(false);
       }
+    } else {
+      // No changes or no user
+      setIsEditingProfile(false);
     }
-    
-    if (!fileUrl) {
-      console.error("File URL structure in response:", JSON.stringify(data));
-      throw new Error("File URL not found in response");
-    }
-    
-    return fileUrl;
   };
 
-  // Profile loading function wrapped in useCallback
-  const loadProfile = useCallback(async () => {
-    if (!user) {
-      console.log("loadProfile called without user, returning.");
-      return; // Should ideally be handled by useEffect check
-    }
-
-    try {
-      const userId = localStorage.getItem("userId") || user.id;
-      console.log("Token from env:", import.meta.env.VITE_FRAPPE_API_TOKEN);
-      console.log("Token:", frappe_token);
-      console.log("ENV:", import.meta.env);
-
-      
-      const res = await fetch(`http://localhost:8000/api/method/signo_connect.apis.driver.get_driver_profile?driver_id=${userId}`, {
-        method: "GET",
-        headers: {
-          // "Cookie": `sid= ${SID}`,
-          "Authorization": `token ${frappe_token}`
-          // Add cache control headers
-        },
-      });
-      
-      if (!res.ok) {
-        throw new Error(`Failed to load profile: ${res.statusText}`);
-      }
-      
-      const json = await res.json();
-      console.log("API Response:", json);
-      
-      // Enhanced debugging for the API response
-      if (json.message && json.message.data) {
-        console.log("API Response KEYS:", Object.keys(json.message.data));
-        console.log("API Response Raw Data:", JSON.stringify(json.message.data, null, 2));
-        console.log("Aadhar Number Present:", "aadhar_number" in json.message.data);
-        console.log("All Aadhar related fields:", Object.keys(json.message.data).filter(key => key.includes('aadhar')));
-      }
-      
-      // Set the profile data
-      const profileData = json.message?.data || {}; // Add a fallback empty object
-      
-      // Process image URLs to ensure they're properly formatted
-      if (profileData.profile_pic) {
-        profileData.profile_pic = getFullImageUrl(profileData.profile_pic);
-      }
-      if (profileData.dl_front_pic) {
-        profileData.dl_front_pic = getFullImageUrl(profileData.dl_front_pic);
-      }
-      if (profileData.dl_back_pic) {
-        profileData.dl_back_pic = getFullImageUrl(profileData.dl_back_pic);
-      }
-      if (profileData.aadhar_front_pic) {
-        profileData.aadhar_front_pic = getFullImageUrl(profileData.aadhar_front_pic);
-      }
-      if (profileData.aadhar_back_pic) {
-        profileData.aadhar_back_pic = getFullImageUrl(profileData.aadhar_back_pic);
-      }
-      
-      // Ensure name property exists for the AvatarFallback component
-      if (!profileData.name && profileData.name1) {
-        profileData.name = profileData.name1;
-      } else if (!profileData.name) {
-        profileData.name = ""; // Default to empty string if no name data available
-      }
-      
-      setData(profileData);
-      
-      // Log specifically to check if aadhar_number is loaded correctly
-      console.log("Loaded profile data:", profileData);
-      console.log("Aadhar number in loaded data:", profileData.aadhar_number);
-      
-      // Also update the profile state with the latest data
-      setProfile({
-        name1: profileData.name1 || "",
-        email: profileData.email || "",
-        phone_number: profileData.phone_number || "",
-        emergency_contact_number: profileData.emergency_contact_number || "",
-        address: profileData.address || "",
-        experience: profileData.experience || "",
-        catagory: profileData.catagory || "",
-        dl_number: profileData.dl_number || "",
-        dl_front_pic: profileData.dl_front_pic || null,
-        dl_back_pic: profileData.dl_back_pic || null,
-        aadhaar_front: profileData.aadhar_front_pic || null, // Match backend response fields
-        aadhaar_back: profileData.aadhar_back_pic || null,
-        aadhar_number: profileData.aadhar_number || "",
-        dob: profileData.dob || "",
-        profile_pic: profileData.profile_pic || null,
-        driver_id: userId
-      });
-      
-      console.log("Profile loaded successfully");
-    } catch (error) {
-      console.error('Error loading profile:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load profile data"
-      });
-      
-      // Initialize data with empty object to prevent null reference errors
-      setData({
-        name: "",
-        name1: "",
-        email: "",
-        phone_number: "",
-        emergency_contact_number: "",
-        address: "",
-        experience: "",
-        catagory: "",
-        dl_number: "",
-        dl_front_pic: null,
-        dl_back_pic: null,
-        aadhar_number: "",
-        aadhar_front_pic: null,
-        aadhar_back_pic: null,
-        dob: "",
-        profile_pic: null
-      });
-    } finally {
-      setIsProfileLoading(false); // Update loading state
-    }
-  }, [user, toast]);
-
-  // Load profile on mount and when user changes
+  // If no user is logged in, redirect to welcome page
   useEffect(() => {
     if (!user) {
       navigate("/");
-      return;
     }
+  }, [user, navigate]);
 
-    setIsProfileLoading(true); // Set loading before calling
-    loadProfile(); // Call the memoized function
-    // Dependencies: user, navigate, and the stable loadProfile function
-  }, [user, navigate, loadProfile]);
-
-  // Handle profile update
-  const handleProfileUpdate = async (formData: Partial<UserProfile>) => {
-    if (!user) return;
-
-    setIsUpdatingProfile(true);
-    try {
-      console.log("--------------PROFILE------------");
-      
-      try {
-
-
-        const fileUploads = [];
-        
-        // Profile Picture
-        if (profile_pic) {
-          fileUploads.push(
-            uploadFile(profile_pic, 'profile_pic')
-              .then(url => ({ field: 'profile_pic', url }))
-          );
-        }
-
-        // Driving License Files
-        if (dlFront) {
-          fileUploads.push(
-            uploadFile(dlFront, 'dl_front_pic')
-              .then(url => ({ field: 'dl_front_pic', url }))
-          );
-        }
-        if (dlBack) {
-          fileUploads.push(
-            uploadFile(dlBack, 'dl_back_pic')
-              .then(url => ({ field: 'dl_back_pic', url }))
-          );
-        }
-
-        // Aadhar Files
-        if (aadhaar_front) {
-          fileUploads.push(
-            uploadFile(aadhaar_front, 'aadhar_front_pic')
-              .then(url => ({ field: 'aadhar_front_pic', url }))
-          );
-        }
-        if (aadhaar_back) {
-          fileUploads.push(
-            uploadFile(aadhaar_back, 'aadhar_back_pic')
-              .then(url => ({ field: 'aadhar_back_pic', url }))
-          );
-        }
-
-
-        const uploadedFiles = await Promise.all(fileUploads);
-        const uploads = uploadedFiles.reduce((acc, { field, url }) => {
-          acc[field] = url;
-          return acc;
-        }, {} as Record<string, string>);
-
-        // Check directly from the DOM if available
-        if (aadharInputRef.current) {
-          const aadharInputValue = aadharInputRef.current.value;
-          console.log("Aadhar value from input ref:", aadharInputValue);
-          // Force set the aadhar_number from the actual DOM input
-          editedProfile.aadhar_number = aadharInputValue;
-        }
-
-        const userId = localStorage.getItem("userId") || user.id;
-
-        // Get the direct value from the input ref or use the state value
-        const aadharValue = aadharInputRef.current?.value || editedProfile.aadhar_number || (data?.aadhar_number || "")
-        
-        // Create a complete update object with all fields explicitly defined
-        const updatePayload = {
-          driver_id: userId,
-          name1: editedProfile.name1 ?? (data?.name1 || ""),
-          email: editedProfile.email ?? (data?.email || ""),
-          phone_number: editedProfile.phone_number ?? (data?.phone_number || ""),
-          emergency_contact_number: editedProfile.emergency_contact_number ?? (data?.emergency_contact_number || ""),
-          address: editedProfile.address ?? (data?.address || ""),
-          experience: editedProfile.experience ?? (data?.experience || ""),
-          catagory: editedProfile.catagory ?? (data?.catagory || ""),
-          dl_number: editedProfile.dl_number ?? (data?.dl_number || ""),
-          aadhar_number: editedProfile.aadhar_number || (data?.aadhar_number || ""),
-          dob: editedProfile.dob ?? (data?.dob || ""),
-          ...uploads // Include uploaded file URLs
-        };
-        
-        // Remove any properties with undefined values
-        Object.keys(updatePayload).forEach(key => {
-          if (updatePayload[key as keyof typeof updatePayload] === undefined) {
-            delete updatePayload[key as keyof typeof updatePayload];
-          }
-        });
-        
-
-        const res1 = await fetch(`http://localhost:8000/api/method/signo_connect.apis.driver.update_profile?driver_id=${userId}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `token ${frappe_token}`
-          },
-          body: JSON.stringify(updatePayload),
-        });
-        
-        let responseData;
-        try {
-          // Parse the response JSON
-          responseData = await res1.json();
-          console.log("Update Response:", responseData);
-          
-          // Enhanced debugging for update response
-          // if (responseData.message && responseData.message.data) {
-          //   console.log("Update Response KEYS:", Object.keys(responseData.message.data));
-          //   console.log("Update Response Raw Data:", JSON.stringify(responseData.message.data, null, 2));
-          //   console.log("Aadhar Number Present in response:", "aadhar_number" in responseData.message.data);
-          //   console.log("All Aadhar related fields in response:", Object.keys(responseData.message.data).filter(key => key.includes('aadhar')));
-          // }
-          
-          // Log specifically to check if aadhar_number is being returned correctly
-          // console.log("Aadhar number in request:", editedProfile.aadhar_number || (data?.aadhar_number || ""));
-          // console.log("Response data fields:", Object.keys(responseData?.message?.data || {}));
-          // if (responseData?.message?.data) {
-          //   console.log("Aadhar number in response:", responseData.message.data.aadhar_number);
-          // }
-        } catch (jsonError) {
-          console.error("Error parsing response JSON:", jsonError);
-          throw new Error("Failed to parse server response");
-        }
-        
-        // Check if response is OK after parsing
-        if (!res1.ok) {
-          console.error("Update Error Response:", responseData);
-          throw new Error(responseData?.message || "Failed to update profile");
-        }
-        
-        
-        
-        // Update the auth context user data to reflect changes across the app
-        if (user) {
-          // Extract relevant data to update in the auth context
-          const userUpdate: Partial<User> = {};
-          
-          if (editedProfile.name1) {
-            userUpdate.fullName = editedProfile.name1;
-          }
-          
-          if (editedProfile.email) {
-            userUpdate.email = editedProfile.email;
-          }
-          
-          // Update the user context if we have changes
-          if (Object.keys(userUpdate).length > 0) {
-            updateUser(userUpdate);
-          }
-        }
-        
-        // Invalidate any queries that might use profile data
-        // queryClient.invalidateQueries({ queryKey: [`/api/method/signo_connect.apis.driver.upload_image`] });
-        queryClient.invalidateQueries({ queryKey: [`/api/method/signo_connect.apis.driver.get_driver_profile?driver_id=${user.id}`] });
-        
-        
-        toast({ title: "Success", description: "Profile updated successfully" });
-        await loadProfile();
-        setIsEditingProfile(false);
+  // Loading states
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   
-        // Reset file states
-        setprofile_pic(null);
-        setDlFront(null);
-        setDlBack(null);
-        setaadhaar_front(null);
-        setaadhaar_back(null);
-        
-        // Reload profile data and close the dialog
-        await loadProfile();
-        setIsEditingProfile(false);
-      }
-      catch (error) {
-        const err = error as Error;
-        console.error("Error updating profile:", err);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: err.message || "Failed to update profile"
-        });
-      }
-      finally {
-        // Reset states after update attempt
-        setIsUpdatingProfile(false);
-        // Clear edited profile state but don't do it here to prevent form reset if there's an error
-      }
-    } catch (error: any) {
-      console.error("Error in profile update outer try block:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to update profile"
-      });
-      setIsUpdatingProfile(false);
+  // Update loading state when fetching profile data
+  useEffect(() => {
+    if (user) {
+      setIsProfileLoading(false);
     }
-  };
-
-  // Render null if user is not available (useEffect handles redirect)
+  }, [profile, user]);
+  
   if (!user) {
     return null;
   }
-
-  // Show loading state while fetching profile data
-  if (isProfileLoading) {
-    return (
-      <div className="min-h-screen flex flex-col bg-neutral-50">
-        <Header>
-          <h1 className="text-xl font-bold text-neutral-800 ml-2">
-            {t("profile")}
-          </h1>
-        </Header>
-
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-lg text-neutral-600">Loading profile...</p>
-        </div>
-
-        <BottomNavigation userType="driver" />
-      </div>
-    );
-  }
-
-  // Get profile status only if data is available
-  const profileStatus = getProfileCompletionData(data);
-
-  // Debug the data structure
-  console.log("Data structure when rendering:", {
-    hasData: !!data,
-    keys: data ? Object.keys(data) : [],
-    aadharValue: data?.aadhar_number,
-    // Check various possible field names for Aadhar
-    possibleAadharFields: data ? {
-      aadhar_number: data.aadhar_number,
-      aadharNumber: (data as any).aadharNumber,
-      aadhaar_number: (data as any).aadhaar_number,
-      aadhar: (data as any).aadhar
-    } : {}
-  });
   
-  // Render null if user is not available or data is still null
-  if (!user || !data) {
-    if (!user) {
-      navigate("/");
-    }
-    return null;
-  }
-
   // Show loading state while fetching profile data
   if (isProfileLoading) {
     return (
@@ -645,22 +311,22 @@ const DriverProfilePage = () =>  {
             {t("profile")}
           </h1>
         </Header>
-
+        
         <div className="flex-1 flex flex-col items-center justify-center p-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
           <p className="text-lg text-neutral-600">Loading profile...</p>
         </div>
-
+        
         <BottomNavigation userType="driver" />
       </div>
     );
   }
 
-  // Helper function to extract name initials safely
-  const getInitials = (name: string | undefined): string => {
-    if (!name || typeof name !== 'string') return "";
-    return name.slice(0, 2).toUpperCase();
-  };
+  const missingItems = [];
+  if (!profile.email) missingItems.push("Email");
+  if (!profile.drivingLicense) missingItems.push("Driving License");
+  if (!profile.identityProof) missingItems.push("Identity Proof");
+  if (!profile.about) missingItems.push("About Section");
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 pb-16">
@@ -678,33 +344,11 @@ const DriverProfilePage = () =>  {
               <CardContent className="p-0">
                 {/* Cover Photo */}
                 <div className="h-32 sm:h-48 bg-gradient-to-r from-primary/80 to-primary relative">
-                  <Button
-                    size="sm"
-                    variant="secondary"
+                  <Button 
+                    size="sm" 
+                    variant="secondary" 
                     className="absolute bottom-4 right-4"
-                    onClick={() => {
-                        if (!data) return;
-                        
-                        const profileToEdit = {
-                          name1: data.name1 || "",
-                          email: data.email || "",
-                          phone_number: data.phone_number || "",
-                          emergency_contact_number: data.emergency_contact_number || "",
-                          address: data.address || "",
-                          experience: parseInt(data.experience, 10).toString() || "0",
-                          catagory: data.catagory || "",
-                          dl_number: data.dl_number || "",
-                          aadhar_number: data.aadhar_number || "",
-                          dob: data.dob || "",
-                          profile_pic: data.profile_pic || null
-                        };
-                        
-                        console.log("Opening edit form with data:", profileToEdit);
-                        console.log("Aadhar number from data:", data.aadhar_number);
-                        
-                        setEditedProfile(profileToEdit);
-                        setIsEditingProfile(true);
-                    }}
+                    onClick={() => setIsEditingProfile(true)}
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Profile
@@ -715,29 +359,35 @@ const DriverProfilePage = () =>  {
                 <div className="px-6 pb-6 relative">
                   <div className="absolute -top-12 left-6">
                     <Avatar className="w-24 h-24 border-4 border-white">
-                      <AvatarImage src={getFullImageUrl(data.profile_pic)} alt={data?.name || ""} />
+                      <AvatarImage src={profile.profileImage} alt={profile.fullName} />
                       <AvatarFallback className="text-2xl bg-primary text-white">
-                        {getInitials(data?.name || data?.name1)}
+                        {profile.fullName.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </div>
 
                   <div className="pt-16">
-                    <h2 className="text-2xl font-bold mb-1">{(data?.name || data?.name1 || "Driver Name").toUpperCase()}</h2>
-                    <div className="flex flex-col sm:flex-row sm:items-center text-neutral-600 gap-1 sm:gap-4 mb-4 flex-wrap">
+                    <h2 className="text-2xl font-bold mb-1">{profile.fullName}</h2>
+                    <div className="flex flex-col sm:flex-row sm:items-center text-neutral-600 gap-1 sm:gap-4 mb-4">
                       <div className="flex items-center">
                         <Truck className="h-4 w-4 mr-2 text-neutral-500" />
-                        <span>Driver {data?.experience ? `• ${data?.experience} years exp` : ""}</span>
+                        <span>Driver • {profile.experience}</span>
                       </div>
-                      {data?.address && (
-                        <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-2 text-neutral-500" />
-                            {/* Consider showing only city/state if address is too long */}
-                            <span>{data?.address}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-2 text-neutral-500" />
+                        <span>{profile.location}</span>
+                      </div>
                     </div>
 
+                    <p className="text-neutral-600 mb-4">{profile.about}</p>
+
+                    <div className="flex flex-wrap gap-2">
+                      {profile.skills.map((skill, index) => (
+                        <Badge key={index} variant="secondary" className="bg-neutral-100">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -758,37 +408,36 @@ const DriverProfilePage = () =>  {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="flex items-start">
-                        <Phone className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
+                        <Phone className="h-5 w-5 mr-3 text-neutral-500 mt-0.5" />
                         <div>
                           <h4 className="font-medium">Phone Number</h4>
-                          <p className="text-neutral-600 break-words">{data?.phone_number || "Not added"}</p>
+                          <p className="text-neutral-600">{profile.phoneNumber}</p>
                         </div>
                       </div>
 
                       <div className="flex items-start">
-                        <Mail className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
+                        <Mail className="h-5 w-5 mr-3 text-neutral-500 mt-0.5" />
                         <div>
                           <h4 className="font-medium">Email Address</h4>
-                          <p className="text-neutral-600 break-words">{data?.email || "Not added"}</p>
+                          <p className="text-neutral-600">{profile.email || "Not added"}</p>
                         </div>
                       </div>
 
                       <div className="flex items-start">
-                        <MapPin className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
+                        <MapPin className="h-5 w-5 mr-3 text-neutral-500 mt-0.5" />
                         <div>
-                          <h4 className="font-medium">Address</h4>
-                          <p className="text-neutral-600 break-words">{data?.address || "Not added"}</p>
+                          <h4 className="font-medium">Current Location</h4>
+                          <p className="text-neutral-600">{profile.location}</p>
                         </div>
                       </div>
 
-                       <div className="flex items-start">
-                        <Phone className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
+                      <div className="flex items-start">
+                        <Languages className="h-5 w-5 mr-3 text-neutral-500 mt-0.5" />
                         <div>
-                          <h4 className="font-medium">Emergency Contact</h4>
-                          <p className="text-neutral-600 break-words">{data?.emergency_contact_number || "Not added"}</p>
+                          <h4 className="font-medium">Preferred Language</h4>
+                          <p className="text-neutral-600">{profile.language}</p>
                         </div>
                       </div>
-
                     </div>
                   </CardContent>
                 </Card>
@@ -801,15 +450,34 @@ const DriverProfilePage = () =>  {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <h4 className="font-medium">Experience</h4>
-                        <p className="text-neutral-600">{data?.experience ? `${data.experience}` : "Not added"}</p>
+                        <p className="text-neutral-600">{profile.experience}</p>
                       </div>
+
                       <div>
-                        <h4 className="font-medium">Preferred Vehicle Type</h4>
-                        <p className="text-neutral-600 capitalize">{data?.catagory || "Not specified"}</p>
+                        <h4 className="font-medium">Availability</h4>
+                        <p className="text-neutral-600 capitalize">{profile.availability.replace('-', ' ')}</p>
                       </div>
-                       <div>
-                        <h4 className="font-medium">Date of Birth</h4>
-                        <p className="text-neutral-600">{data?.dob || "Not added"}</p>
+
+                      <div className="col-span-1 sm:col-span-2">
+                        <h4 className="font-medium">Preferred Locations</h4>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {profile.preferredLocations.map((location, index) => (
+                            <Badge key={index} variant="outline">
+                              {location}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="col-span-1 sm:col-span-2">
+                        <h4 className="font-medium">Vehicle Types</h4>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {profile.vehicleTypes.map((type, index) => (
+                            <Badge key={index} variant="outline">
+                              {type}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -818,109 +486,138 @@ const DriverProfilePage = () =>  {
 
               <TabsContent value="documents" className="mt-0 space-y-4">
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
+                  <CardHeader>
                     <CardTitle className="text-lg">Driving License</CardTitle>
-                     {/* Consider adding button to edit documents directly */}
-                     <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)}>
-                        <Edit className="h-4 w-4"/>
-                    </Button>
                   </CardHeader>
                   <CardContent>
-                    <div className="mb-4">
-                       <h4 className="font-medium text-sm text-neutral-500 mb-1">License Number</h4>
-                       <p className="text-neutral-800">{data?.dl_number || "Not added"}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <Shield className="h-5 w-5 mr-3 text-neutral-500" />
+                        <div>
+                          <h4 className="font-medium">License Number</h4>
+                          <p className="text-neutral-600">{profile.drivingLicense || "Not added"}</p>
+                        </div>
+                      </div>
+
+                      <Button variant="outline" size="sm">
+                        View Document
+                      </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
-                           {data?.dl_front_pic ? (
-                               <img 
-                               src={`${getFullImageUrl(data.dl_front_pic)}?ts=${Date.now()}`}
-                               alt="DL Front"
-                               className="max-h-24 object-contain mb-2"
-                             />
-                           ) : (
-                                <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
-                           )}
-                           <p className="text-neutral-600 text-sm">Front Side</p>
-                        </div>
-                         <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
-                           {data?.dl_back_pic ? (
-                               <img src={`${getFullImageUrl(data.dl_back_pic)}?ts=${Date.now()}`} alt="DL Back" className="max-h-24 object-contain mb-2"/>
-                           ) : (
-                                <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
-                           )}
-                           <p className="text-neutral-600 text-sm">Back Side</p>
-                        </div>
+                    <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center">
+                      <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
+                      <p className="text-neutral-600 mb-2">License document uploaded</p>
+                      <Button variant="outline" size="sm">
+                        <Camera className="h-4 w-4 mr-2" />
+                        Upload New
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
-                 <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg">Aadhar Card</CardTitle>
-                    {/* Consider adding button to edit documents directly */}
-                    <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)}>
-                        <Edit className="h-4 w-4"/>
-                    </Button>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Identity Proof</CardTitle>
                   </CardHeader>
                   <CardContent>
-                     <div className="mb-4">
-                       <h4 className="font-medium text-sm text-neutral-500 mb-1">Aadhar Number</h4>
-                       <p className="text-neutral-800">
-                         {data?.aadhar_number || "Not added"}
-                         {!data?.aadhar_number && (
-                           <span className="text-xs text-red-500 block mt-1">
-                             (Debug: Check console for available keys)
-                           </span>
-                         )}
-                       </p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <Shield className="h-5 w-5 mr-3 text-neutral-500" />
+                        <div>
+                          <h4 className="font-medium">ID Number</h4>
+                          <p className="text-neutral-600">{profile.identityProof || "Not added"}</p>
+                        </div>
+                      </div>
+
+                      <Button variant="outline" size="sm">
+                        View Document
+                      </Button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
-                           {data?.aadhar_front_pic ? (
-                               <img src={`${getFullImageUrl(data.aadhar_front_pic)}?ts=${Date.now()}`} alt="Aadhar Front" className="max-h-24 object-contain mb-2"/>
-                           ) : (
-                                <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
-                           )}
-                           <p className="text-neutral-600 text-sm">Front Side</p>
-                        </div>
-                         <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
-                           {data?.aadhar_back_pic ? (
-                               <img src={`${getFullImageUrl(data.aadhar_back_pic)}?ts=${Date.now()}`} alt="Aadhar Back" className="max-h-24 object-contain mb-2"/>
-                           ) : (
-                                <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
-                           )}
-                           <p className="text-neutral-600 text-sm">Back Side</p>
-                        </div>
+
+                    <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center">
+                      <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
+                      <p className="text-neutral-600 mb-2">Identity document uploaded</p>
+                      <Button variant="outline" size="sm">
+                        <Camera className="h-4 w-4 mr-2" />
+                        Upload New
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* Placeholder - Preferences Tab Content Needs State Management */}
               <TabsContent value="preferences" className="mt-0 space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Notification Settings</CardTitle>
-                    {/* Add button to open Notification Settings Dialog */}
-                     <Button variant="ghost" size="sm" onClick={() => setNotificationSettingsOpen(true)}>
-                        <Settings className="h-4 w-4"/>
-                    </Button>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-neutral-500 text-sm">Manage your notification preferences (job alerts, app updates, etc.) in the settings.</p>
-                    {/* Optionally show current status if fetched */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="job-alerts" className="font-medium">Job Alerts</Label>
+                          <p className="text-sm text-neutral-500">Receive alerts for new job matches</p>
+                        </div>
+                        <Switch id="job-alerts" defaultChecked />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="app-updates" className="font-medium">Application Updates</Label>
+                          <p className="text-sm text-neutral-500">Updates about your job applications</p>
+                        </div>
+                        <Switch id="app-updates" defaultChecked />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="email-notifs" className="font-medium">Email Notifications</Label>
+                          <p className="text-sm text-neutral-500">Receive notifications via email</p>
+                        </div>
+                        <Switch id="email-notifs" defaultChecked />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="sms-notifs" className="font-medium">SMS Notifications</Label>
+                          <p className="text-sm text-neutral-500">Receive notifications via SMS</p>
+                        </div>
+                        <Switch id="sms-notifs" />
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Privacy Settings</CardTitle>
-                    {/* Add button to open relevant section in Account Settings? */}
                   </CardHeader>
                   <CardContent>
-                     <p className="text-neutral-500 text-sm">Manage profile visibility and data sharing options in account settings.</p>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="profile-visibility" className="font-medium">Profile Visibility</Label>
+                          <p className="text-sm text-neutral-500">Make your profile visible to all companies</p>
+                        </div>
+                        <Switch id="profile-visibility" defaultChecked />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="contact-info" className="font-medium">Contact Information</Label>
+                          <p className="text-sm text-neutral-500">Show contact info to companies you apply to</p>
+                        </div>
+                        <Switch id="contact-info" defaultChecked />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="location-sharing" className="font-medium">Location Sharing</Label>
+                          <p className="text-sm text-neutral-500">Share your approximate location</p>
+                        </div>
+                        <Switch id="location-sharing" defaultChecked />
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -929,45 +626,38 @@ const DriverProfilePage = () =>  {
 
           {/* Sidebar */}
           <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Profile Completion</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm text-neutral-600">Profile Status</span>
-                <Badge variant={profileStatus.completionPercentage >= 90 ? "default" : "secondary"}>
-                  {profileStatus.completionPercentage}% Complete
-                </Badge>
-              </div>
-
-              <Progress value={profileStatus.completionPercentage} className="h-2 mb-4" />
-
-              {profileStatus.missingItems.length > 0 && profileStatus.completionPercentage < 100 && (
-                <div className="bg-amber-50 border border-amber-100 rounded-md p-3 mb-4">
-                  <h4 className="text-amber-700 font-medium text-sm flex items-center mb-2">
-                    <Info className="h-4 w-4 mr-2" /> Complete your profile
-                  </h4>
-                  <ul className="text-amber-600 text-sm space-y-1">
-                    {profileStatus.missingItems.slice(0, 3).map((item, index) => (
-                      <li key={index} className="flex items-center">
-                        <ChevronRight className="h-3 w-3 mr-1 flex-shrink-0" />
-                        Add your {item}
-                      </li>
-                    ))}
-                  </ul>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Profile Completion</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm text-neutral-600">Profile Status</span>
+                  <Badge variant={profile.completionPercentage >= 90 ? "default" : "outline"}>
+                    {profile.completionPercentage}% Complete
+                  </Badge>
                 </div>
-              )}
+                <Progress value={profile.completionPercentage} className="h-2 mb-4" />
 
-              <Button
-                className="w-full"
-                onClick={() => setIsEditingProfile(true)}
-                disabled={profileStatus.completionPercentage === 100}
-              >
-                {profileStatus.completionPercentage === 100 ? "Profile Complete" : "Complete Profile"}
-              </Button>
-            </CardContent>
-          </Card>
+                {missingItems.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-100 rounded-md p-3 mb-4">
+                    <h4 className="text-amber-700 font-medium text-sm flex items-center mb-2">
+                      <Info className="h-4 w-4 mr-2" /> Complete your profile
+                    </h4>
+                    <ul className="text-amber-600 text-sm space-y-1">
+                      {missingItems.map((item, index) => (
+                        <li key={index} className="flex items-center">
+                          <ChevronRight className="h-3 w-3 mr-1 flex-shrink-0" />
+                          Add your {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <Button className="w-full">Complete Profile</Button>
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
@@ -975,8 +665,8 @@ const DriverProfilePage = () =>  {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="grid divide-y divide-neutral-100">
-                  <button
-                    onClick={() => setAccountSettingsOpen(true)}
+                  <button 
+                    onClick={() => setAccountSettingsOpen(true)} 
                     className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
                   >
                     <Settings className="h-5 w-5 mr-3 text-neutral-500" />
@@ -984,8 +674,8 @@ const DriverProfilePage = () =>  {
                     <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
                   </button>
 
-                  <button
-                    onClick={() => setHelpSupportOpen(true)}
+                  <button 
+                    onClick={() => setHelpSupportOpen(true)} 
                     className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
                   >
                     <HelpCircle className="h-5 w-5 mr-3 text-neutral-500" />
@@ -993,8 +683,8 @@ const DriverProfilePage = () =>  {
                     <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
                   </button>
 
-                  <button
-                    onClick={() => setNotificationSettingsOpen(true)}
+                  <button 
+                    onClick={() => setNotificationSettingsOpen(true)} 
                     className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
                   >
                     <Bell className="h-5 w-5 mr-3 text-neutral-500" />
@@ -1002,8 +692,8 @@ const DriverProfilePage = () =>  {
                     <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
                   </button>
 
-                  <button
-                    onClick={() => setLanguageSettingsOpen(true)}
+                  <button 
+                    onClick={() => setLanguageSettingsOpen(true)} 
                     className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
                   >
                     <Languages className="h-5 w-5 mr-3 text-neutral-500" />
@@ -1011,9 +701,9 @@ const DriverProfilePage = () =>  {
                     <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
                   </button>
 
-                  <button
+                  <button 
                     onClick={logout}
-                    className="flex items-center py-3 px-6 hover:bg-red-50 transition-colors duration-200 text-left w-full text-red-600"
+                    className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full text-red-600"
                   >
                     <LogOut className="h-5 w-5 mr-3" />
                     <span>Logout</span>
@@ -1029,17 +719,17 @@ const DriverProfilePage = () =>  {
               <CardContent className="p-0">
                 <div className="grid divide-y divide-neutral-100 text-sm">
                   <div className="p-4">
-                    <div className="text-neutral-500 mb-1">Account Type</div>
-                    <div className="capitalize">{user?.userType || "N/A"}</div>
-                  </div>
-                  {/* <div className="p-4">
                     <div className="text-neutral-500 mb-1">Member Since</div>
-                    <div>{user?.created_at ? new Date(user.created_at).toLocaleDateString() : "N/A"}</div>
-                  </div> */}
-                  {/* <div className="p-4">
+                    <div>{profile.joinedDate}</div>
+                  </div>
+                  <div className="p-4">
+                    <div className="text-neutral-500 mb-1">Account Type</div>
+                    <div>Driver</div>
+                  </div>
+                  <div className="p-4">
                     <div className="text-neutral-500 mb-1">Last Login</div>
-                    <div>Today, 5:42 PM</div> Placeholder
-                  </div> */}
+                    <div>Today, 5:42 PM</div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1048,255 +738,234 @@ const DriverProfilePage = () =>  {
       </div>
 
       {/* Edit Profile Dialog */}
-      <Dialog open={isEditingProfile} onOpenChange={(open) => {
-        if (!open) {
-          // When dialog is closed, reset the edited profile state
-          setEditedProfile({});
-          setIsEditingProfile(false);
-        }
-      }}>
+      <Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
             <DialogDescription>
-              Update your profile information. Ensure all details are accurate.
+              Update your profile information.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="flex flex-col items-center space-y-4">
-               <Label>Profile Picture</Label>
-              <Avatar className="w-24 h-24">
-                <AvatarFallback>{(editedProfile.name1 || data?.name)?.slice(0, 2).toUpperCase() || <UserIcon />}</AvatarFallback>
-              </Avatar>
-               <Input
-                 id="profile_picFile"
-                 type="file"
-                 accept="image/*"
-                 onChange={
-                  (e) => setprofile_pic(e.target.files?.[0] || null)
-                }
-                 className="text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
-               />
-            </div>
-            <Separator />
+
+          <div className="py-4 space-y-6">
             <div className="space-y-4">
-              <h3 className="font-medium text-lg">Personal Information</h3>
+              <h3 className="font-medium">Personal Information</h3>
+
+              <div className="flex flex-col items-center mb-6">
+                <Avatar className="w-24 h-24 border-4 border-white mb-2">
+                  <AvatarImage src={profile.profileImage} alt={profile.fullName} />
+                  <AvatarFallback className="text-2xl bg-primary text-white">
+                    {profile.fullName.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+
+                <FileUpload 
+                  title="Profile Picture"
+                  buttonText="Upload Image"
+                  accepted="image/*"
+                  onChange={setProfileImage}
+                  value={profileImage}
+                  helpText="JPEG, PNG files up to 5MB"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name1">Full Name *</Label>
-                  <Input
-                    id="name1"
-                    value={editedProfile.name1 ?? (data?.name || "")} 
-                    onChange={(e) => setEditedProfile({...editedProfile, name1: e.target.value})}
-                    required
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input 
+                    id="fullName" 
+                    defaultValue={profile.fullName}
+                    onChange={(e) => setEditedProfile({...editedProfile, fullName: e.target.value})}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input 
+                    id="email" 
                     type="email"
-                    value={editedProfile.email ?? (data?.email || "")}
+                    defaultValue={profile.email}
                     onChange={(e) => setEditedProfile({...editedProfile, email: e.target.value})}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone_number">Phone Number *</Label>
-                  <Input
-                    id="phone_number"
-                    value={data?.phone_number || ""}
-                    readOnly
-                    className="bg-neutral-100"
-                  />
-                   <p className="text-xs text-neutral-500">Contact support to update phone number.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="emergency_contact_number">Emergency Contact</Label>
-                  <Input
-                    id="emergency_contact_number"
-                    value={editedProfile.emergency_contact_number ?? (data?.emergency_contact_number || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, emergency_contact_number: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Textarea
-                    id="address"
-                    value={editedProfile.address ?? (data?.address || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, address: e.target.value})}
-                    rows={3}
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Input 
+                    id="phoneNumber" 
+                    defaultValue={profile.phoneNumber}
+                    onChange={(e) => setEditedProfile({...editedProfile, phoneNumber: e.target.value})}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="dob">Date of Birth</Label>
-                  <Input
-                    id="dob"
-                    type="date"
-                    value={editedProfile.dob ?? (data?.dob || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, dob: e.target.value})}
+                  <Label htmlFor="location">Current Location</Label>
+                  <Input 
+                    id="location" 
+                    defaultValue={profile.location}
+                    onChange={(e) => setEditedProfile({...editedProfile, location: e.target.value})}
+                    disabled={isUpdatingProfile}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="experience">Experience (Years)</Label>
+                  <select
+                    id="experience"
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    value={editedProfile.experience || profile.experience}
+                    onChange={(e) => setEditedProfile({...editedProfile, experience: e.target.value})}
+                    disabled={isUpdatingProfile}
+                  >
+                    <option value="">Select experience</option>
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map(year => (
+                      <option key={year} value={`${year} year${year > 1 ? 's' : ''}`}>
+                        {year} year{year > 1 ? 's' : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="about">About</Label>
+                <Textarea 
+                  id="about" 
+                  rows={4}
+                  defaultValue={profile.about}
+                  onChange={(e) => setEditedProfile({...editedProfile, about: e.target.value})}
+                  placeholder="Tell employers about your experience and skills"
+                  disabled={isUpdatingProfile}
+                />
+              </div>
             </div>
-             <Separator />
+
+            <Separator />
+
             <div className="space-y-4">
-              <h3 className="font-medium text-lg">Professional Information</h3>
+              <h3 className="font-medium">Professional Information</h3>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="experience">Experience (Years)</Label>
-                  <Input
-                    id="experience"
-                    type="number"
-                    min="0"
-                    value={editedProfile.experience ?? 0}
-                    onChange={(e) => setEditedProfile({...editedProfile, experience: e.target.value})}
+                  <Label htmlFor="skills">Skills</Label>
+                  <Textarea
+                    id="skills"
+                    rows={2}
+                    placeholder="Enter your skills (e.g., Long-distance driving, GPS navigation, First aid)"
+                    defaultValue={profile.skills.join(", ")}
+                    onChange={(e) => setEditedProfile({
+                      ...editedProfile, 
+                      skills: e.target.value.split(",").map(skill => skill.trim())
+                    })}
+                    disabled={isUpdatingProfile}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="catagory">Preferred Vehicle Type</Label>
-                  <Select
-                    value={editedProfile.catagory ?? (data?.catagory || "")}
-                    onValueChange={(value) => setEditedProfile({...editedProfile, catagory: value})}
+                  <Label htmlFor="availability">Availability</Label>
+                  <select
+                    id="availability"
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    defaultValue={profile.availability}
+                    onChange={(e) => setEditedProfile({
+                      ...editedProfile, 
+                      availability: e.target.value as 'full-time' | 'part-time' | 'weekends'
+                    })}
                   >
-                    <SelectTrigger id="catagory">
-                      <SelectValue placeholder="Select vehicle type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="heavy">Heavy Vehicle</SelectItem>
-                      <SelectItem value="medium">Medium Vehicle</SelectItem>
-                      <SelectItem value="light">Light Vehicle</SelectItem>
-                      <SelectItem value="Truck">Truck</SelectItem>
-                      <SelectItem value="trailer">Trailer</SelectItem>
-                      <SelectItem value="bus">Bus</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <option value="full-time">Full Time</option>
+                    <option value="part-time">Part Time</option>
+                    <option value="weekends">Weekends Only</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2 col-span-1 sm:col-span-2">
+                  <Label htmlFor="vehicleTypes">Vehicle Types</Label>
+                  <div className="border border-input rounded-md p-2 bg-background">
+                    {['Heavy Vehicle', 'Medium Vehicle', 'Light Vehicle', 'Truck', 'Bus', 'Van', 'Pickup'].map((type) => (
+                      <div key={type} className="flex items-center mb-2">
+                        <input
+                          type="checkbox"
+                          id={`vehicle-${type}`}
+                          className="mr-2 h-4 w-4"
+                          checked={editedProfile.vehicleTypes?.includes(type) || profile.vehicleTypes.includes(type)}
+                          onChange={(e) => {
+                            const updatedTypes = e.target.checked
+                              ? [...(editedProfile.vehicleTypes || profile.vehicleTypes), type]
+                              : (editedProfile.vehicleTypes || profile.vehicleTypes).filter(t => t !== type);
+                            
+                            setEditedProfile({
+                              ...editedProfile,
+                              vehicleTypes: updatedTypes
+                            });
+                          }}
+                          disabled={isUpdatingProfile}
+                        />
+                        <Label htmlFor={`vehicle-${type}`} className="text-sm cursor-pointer">
+                          {type}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-             <Separator />
+
+            <Separator />
+
             <div className="space-y-4">
-              <h3 className="font-medium text-lg">Documents</h3>
-              <div className="space-y-4 p-4 border rounded-md">
-                <h4 className="font-medium">Driving License</h4>
+              <h3 className="font-medium">Document Information</h3>
+
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dl_number">License Number *</Label>
-                  <Input
-                    id="dl_number"
-                    value={editedProfile.dl_number ?? (data?.dl_number || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, dl_number: e.target.value})}
-                    required
+                  <Label htmlFor="drivingLicense">Driving License Number</Label>
+                  <Input 
+                    id="drivingLicense" 
+                    defaultValue={profile.drivingLicense || ""}
+                    onChange={(e) => setEditedProfile({...editedProfile, drivingLicense: e.target.value})}
+                    disabled={isUpdatingProfile}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="dlFrontFile">Front Side {data?.dl_front_pic && !dlFront ? "(Uploaded)" : "*"}</Label>
-                    <Input
-                      id="dlFrontFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setDlFront(e.target.files?.[0] || null)}
-                       className="text-sm"
-                    />
-                    {data?.dl_front_pic && !dlFront && (
-                      <a href={getFullImageUrl(data?.dl_front_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {dlFront && <p className="text-xs text-green-600">New file selected: {dlFront.name}</p>}
-                  </div>
+                <FileUpload 
+                  title="Driving License"
+                  buttonText="Upload License"
+                  accepted=".pdf,.jpg,.jpeg,.png"
+                  onChange={setLicenseFile}
+                  value={licenseFile}
+                  helpText="Upload a clear photo or scan of your license"
+                  className={isUpdatingProfile ? "opacity-60 pointer-events-none" : ""}
+                />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="dlBackFile">Back Side {data?.dl_back_pic && !dlBack ? "(Uploaded)" : ""}</Label>
-                    <Input
-                      id="dlBackFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setDlBack(e.target.files?.[0] || null)}
-                      className="text-sm"
-                    />
-                     {data?.dl_back_pic && !dlBack && (
-                       <a href={getFullImageUrl(data?.dl_back_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {dlBack && <p className="text-xs text-green-600">New file selected: {dlBack.name}</p>}
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4 p-4 border rounded-md">
-                <h4 className="font-medium">Aadhar Card</h4>
                 <div className="space-y-2">
-                  <Label htmlFor="aadhar_number">Aadhar Number *</Label>
-                  <Input
-                    id="aadhar_number"
-                    ref={aadharInputRef}
-                    defaultValue={data?.aadhar_number || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      console.log("Updating aadhar_number to:", value);
-                      setEditedProfile(prev => ({...prev, aadhar_number: value}));
-                    }}
-                    required
+                  <Label htmlFor="identityProof">Identity Proof Number</Label>
+                  <Input 
+                    id="identityProof" 
+                    defaultValue={profile.identityProof || ""}
+                    onChange={(e) => setEditedProfile({...editedProfile, identityProof: e.target.value})}
+                    disabled={isUpdatingProfile}
                   />
-                  {/* Debug info */}
-                  <p className="text-xs text-neutral-500">
-                    Current value: {editedProfile.aadhar_number !== undefined ? 
-                      `"${editedProfile.aadhar_number}"` : 
-                      `Using data value: "${data?.aadhar_number || ""}"`}
-                  </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="aadhaar_frontFile">Front Side {data?.aadhar_front_pic && !aadhaar_front ? "(Uploaded)" : "*"}</Label>
-                    <Input
-                      id="aadhaar_frontFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setaadhaar_front(e.target.files?.[0] || null)}
-                      className="text-sm"
-                    />
-                     {data?.aadhar_front_pic && !aadhaar_front && (
-                       <a href={getFullImageUrl(data?.aadhar_front_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {aadhaar_front && <p className="text-xs text-green-600">New file selected: {aadhaar_front.name}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="aadhaar_backFile">Back Side {data?.aadhar_back_pic && !aadhaar_back ? "(Uploaded)" : ""}</Label>
-                    <Input
-                      id="aadhaar_backFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setaadhaar_back(e.target.files?.[0] || null)}
-                       className="text-sm"
-                    />
-                    {data?.aadhar_back_pic && !aadhaar_back && (
-                      <a href={getFullImageUrl(data?.aadhar_back_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {aadhaar_back && <p className="text-xs text-green-600">New file selected: {aadhaar_back.name}</p>}
-                  </div>
-                </div>
+                <FileUpload 
+                  title="Identity Proof"
+                  buttonText="Upload Document"
+                  accepted=".pdf,.jpg,.jpeg,.png"
+                  onChange={setIdentityFile}
+                  value={identityFile}
+                  helpText="Upload Aadhaar, PAN, or Voter ID"
+                  className={isUpdatingProfile ? "opacity-60 pointer-events-none" : ""}
+                />
               </div>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsEditingProfile(false);
-              setEditedProfile({});
-            }} disabled={isUpdatingProfile}>
+            <Button variant="outline" onClick={() => setIsEditingProfile(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={() => handleProfileUpdate(editedProfile)}
-              disabled={
-                isUpdatingProfile ||
-                !Object.keys(editedProfile).some(key => editedProfile[key as keyof UserProfile] !== profile[key as keyof UserProfile])
-              }
+            <Button 
+              onClick={handleProfileUpdate} 
+              disabled={isUpdatingProfile}
             >
               {isUpdatingProfile ? (
                 <>
@@ -1308,26 +977,65 @@ const DriverProfilePage = () =>  {
               )}
             </Button>
           </DialogFooter>
-
         </DialogContent>
       </Dialog>
 
-      {/* Account Settings Dialog (Structure Only) */}
+      {/* Account Settings Dialog */}
       <Dialog open={accountSettingsOpen} onOpenChange={setAccountSettingsOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Account Settings</DialogTitle>
             <DialogDescription>
-              Manage your account settings and preferences. (Functionality not implemented)
+              Manage your account settings and preferences
             </DialogDescription>
           </DialogHeader>
+
           <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <p className="text-center text-neutral-500">Account settings options will appear here.</p>
-             <Separator />
-             <Button variant="outline" className="w-full justify-start">Change Password (Placeholder)</Button>
-             <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-50">Deactivate Account (Placeholder)</Button>
+            <div className="space-y-3">
+              <h3 className="font-medium">Security Settings</h3>
+
+              <div className="grid gap-3">
+                <Button variant="outline" className="justify-start">
+                  <Truck className="h-4 w-4 mr-3" />
+                  Change Password
+                </Button>
+
+                <Button variant="outline" className="justify-start">
+                  <Shield className="h-4 w-4 mr-3" />
+                  Two-Factor Authentication
+                </Button>
+
+                <Button variant="outline" className="justify-start">
+                  <Phone className="h-4 w-4 mr-3" />
+                  Update Phone Number
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <h3 className="font-medium">Account Management</h3>
+
+              <div className="grid gap-3">
+                <Button variant="outline" className="justify-start">
+                  <Mail className="h-4 w-4 mr-3" />
+                  Update Email Address
+                </Button>
+
+                <Button variant="outline" className="justify-start">
+                  <FileText className="h-4 w-4 mr-3" />
+                  Export Personal Data
+                </Button>
+
+                <Button variant="outline" className="justify-start text-red-600 hover:text-red-600 hover:bg-red-50">
+                  <LogOut className="h-4 w-4 mr-3" />
+                  Deactivate Account
+                </Button>
+              </div>
+            </div>
           </div>
+
           <DialogFooter>
             <Button onClick={() => setAccountSettingsOpen(false)}>
               Close
@@ -1336,21 +1044,42 @@ const DriverProfilePage = () =>  {
         </DialogContent>
       </Dialog>
 
-      {/* Help & Support Dialog (Structure Only) */}
+      {/* Help & Support Dialog */}
       <Dialog open={helpSupportOpen} onOpenChange={setHelpSupportOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Help & Support</DialogTitle>
             <DialogDescription>
-              Get assistance and support.
+              Get assistance and support
             </DialogDescription>
           </DialogHeader>
+
           <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <Button variant="outline" className="w-full justify-start">FAQ (Placeholder)</Button>
-             <Button variant="outline" className="w-full justify-start">Contact Support (Placeholder)</Button>
-             <Separator />
-             <div className="bg-neutral-50 p-4 rounded-md border border-neutral-200">
+            <div className="space-y-3">
+              <div className="grid gap-3">
+                <Button variant="outline" className="justify-start">
+                  <HelpCircle className="h-4 w-4 mr-3" />
+                  Frequently Asked Questions
+                </Button>
+
+                <Button variant="outline" className="justify-start">
+                  <FileText className="h-4 w-4 mr-3" />
+                  User Guide
+                </Button>
+
+                <Button variant="outline" className="justify-start">
+                  <Phone className="h-4 w-4 mr-3" />
+                  Contact Support
+                </Button>
+
+                <Button variant="outline" className="justify-start">
+                  <Info className="h-4 w-4 mr-3" />
+                  Report a Problem
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-neutral-50 p-4 rounded-md border border-neutral-200">
               <h4 className="font-medium mb-2">Customer Support</h4>
               <p className="text-sm text-neutral-600 mb-2">
                 Need immediate assistance? Our team is available 24/7 to help you.
@@ -1363,6 +1092,7 @@ const DriverProfilePage = () =>  {
               </p>
             </div>
           </div>
+
           <DialogFooter>
             <Button onClick={() => setHelpSupportOpen(false)}>
               Close
@@ -1371,64 +1101,218 @@ const DriverProfilePage = () =>  {
         </DialogContent>
       </Dialog>
 
-      {/* Notification Settings Dialog (Structure Only) */}
+      {/* Notification Settings Dialog */}
       <Dialog open={notificationSettingsOpen} onOpenChange={setNotificationSettingsOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Notification Settings</DialogTitle>
             <DialogDescription>
-              Manage how you receive notifications. (Functionality not implemented)
+              Manage how you receive notifications
             </DialogDescription>
           </DialogHeader>
-           <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <div className="flex items-center justify-between p-2 border rounded">
-                <Label htmlFor="placeholder-notif">Email Notifications</Label>
-                <Switch id="placeholder-notif" disabled/>
-             </div>
-              <div className="flex items-center justify-between p-2 border rounded">
-                <Label htmlFor="placeholder-notif-2">SMS Notifications</Label>
-                <Switch id="placeholder-notif-2" disabled/>
-             </div>
-              <p className="text-center text-neutral-500 text-sm">Full settings management coming soon.</p>
+
+          <div className="py-4 space-y-4">
+            <div className="space-y-4">
+              <h3 className="font-medium">Job Notifications</h3>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="job-matches" className="font-medium">Job Matches</Label>
+                    <p className="text-sm text-neutral-500">New jobs matching your profile</p>
+                  </div>
+                  <Switch id="job-matches" defaultChecked />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="job-changes" className="font-medium">Job Changes</Label>
+                    <p className="text-sm text-neutral-500">Updates to jobs you've applied for</p>
+                  </div>
+                  <Switch id="job-changes" defaultChecked />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="job-reminders" className="font-medium">Job Reminders</Label>
+                    <p className="text-sm text-neutral-500">Reminders about application deadlines</p>
+                  </div>
+                  <Switch id="job-reminders" defaultChecked />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <h3 className="font-medium">System Notifications</h3>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="account-updates" className="font-medium">Account Updates</Label>
+                    <p className="text-sm text-neutral-500">Changes to your account details</p>
+                  </div>
+                  <Switch id="account-updates" defaultChecked />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="system-updates" className="font-medium">System Updates</Label>
+                    <p className="text-sm text-neutral-500">Updates about the platform</p>
+                  </div>
+                  <Switch id="system-updates" defaultChecked />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="marketing-updates" className="font-medium">Marketing</Label>
+                    <p className="text-sm text-neutral-500">Promotional offers and news</p>
+                  </div>
+                  <Switch id="marketing-updates" />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <h3 className="font-medium">Notification Channels</h3>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="email-channel" className="font-medium">Email</Label>
+                    <p className="text-sm text-neutral-500">Receive notifications via email</p>
+                  </div>
+                  <Switch id="email-channel" defaultChecked />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="sms-channel" className="font-medium">SMS</Label>
+                    <p className="text-sm text-neutral-500">Receive notifications via SMS</p>
+                  </div>
+                  <Switch id="sms-channel" defaultChecked />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="push-channel" className="font-medium">Push Notifications</Label>
+                    <p className="text-sm text-neutral-500">Receive notifications in app</p>
+                  </div>
+                  <Switch id="push-channel" defaultChecked />
+                </div>
+              </div>
+            </div>
           </div>
+
           <DialogFooter>
-             <Button variant="outline" onClick={() => setNotificationSettingsOpen(false)}>
+            <Button variant="outline" onClick={() => setNotificationSettingsOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setNotificationSettingsOpen(false)} disabled>
+            <Button onClick={() => setNotificationSettingsOpen(false)}>
               Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Language Settings Dialog (Structure Only) */}
+      {/* Language Settings Dialog */}
       <Dialog open={languageSettingsOpen} onOpenChange={setLanguageSettingsOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Language Settings</DialogTitle>
             <DialogDescription>
-              Choose your preferred language. (Functionality not implemented)
+              Choose your preferred language
             </DialogDescription>
           </DialogHeader>
+
           <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <div className="flex items-center space-x-2 p-2 border rounded">
-                <input type="radio" id="lang-en-ph" name="language-ph" defaultChecked disabled/>
-                <Label htmlFor="lang-en-ph">English</Label>
-             </div>
-             <div className="flex items-center space-x-2 p-2 border rounded">
-                <input type="radio" id="lang-hi-ph" name="language-ph" disabled/>
-                <Label htmlFor="lang-hi-ph">हिंदी (Hindi)</Label>
-             </div>
-             <p className="text-center text-neutral-500 text-sm">More languages and settings coming soon.</p>
+            <div className="space-y-3">
+              <div className="grid gap-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="lang-en"
+                    name="language"
+                    className="h-4 w-4 text-primary border-neutral-300 focus:ring-primary"
+                    defaultChecked
+                  />
+                  <Label htmlFor="lang-en" className="text-base cursor-pointer">English</Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="lang-hi"
+                    name="language"
+                    className="h-4 w-4 text-primary border-neutral-300 focus:ring-primary"
+                  />
+                  <Label htmlFor="lang-hi" className="text-base cursor-pointer">हिंदी (Hindi)</Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="lang-ta"
+                    name="language"
+                    className="h-4 w-4 text-primary border-neutral-300 focus:ring-primary"
+                  />
+                  <Label htmlFor="lang-ta" className="text-base cursor-pointer">தமிழ் (Tamil)</Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="lang-ml"
+                    name="language"
+                    className="h-4 w-4 text-primary border-neutral-300 focus:ring-primary"
+                  />
+                  <Label htmlFor="lang-ml" className="text-base cursor-pointer">മലയാളം (Malayalam)</Label>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <h3 className="font-medium">Regional Settings</h3>
+
+              <div className="grid gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="dateFormat">Date Format</Label>
+                  <select
+                    id="dateFormat"
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    defaultValue="dd/mm/yyyy"
+                  >
+                    <option value="dd/mm/yyyy">DD/MM/YYYY</option>
+                    <option value="mm/dd/yyyy">MM/DD/YYYY</option>
+                    <option value="yyyy/mm/dd">YYYY/MM/DD</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="timeFormat">Time Format</Label>
+                  <select
+                    id="timeFormat"
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    defaultValue="24h"
+                  >
+                    <option value="12h">12-hour (AM/PM)</option>
+                    <option value="24h">24-hour</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setLanguageSettingsOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setLanguageSettingsOpen(false)} disabled>
+            <Button onClick={() => setLanguageSettingsOpen(false)}>
               Save Changes
             </Button>
           </DialogFooter>
