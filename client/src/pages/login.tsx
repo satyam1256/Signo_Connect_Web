@@ -50,8 +50,6 @@ import { Label } from "@/components/ui/label";
 import { BottomNavigation } from "@/components/layout/bottom-navigation";
 import { UserType } from "@shared/schema";
 import Cookies from "js-cookie";
-const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
-const x_key = import.meta.env.VITE_X_KEY;
 
 // Form schemas
 const phoneSchema = z.object({
@@ -111,88 +109,6 @@ const LoginPage = () => {
 
   // Handle OTP verification
 
-  // const handleVerifyOtp = async () => {
-  //   if (otp.length !== 6) return;
-  
-  //   setIsSubmitting(true);
-  //   try {
-  //     const testOtp = "123456";
-  
-  //     if (otp === testOtp) {
-
-  //       const cookiePhoneNumber = Cookies.get("phoneNumber");
-  //       const userId = Cookies.get("userId");
-  //       const rawUserType = Cookies.get("userType");
-  
-  //       if (!cookiePhoneNumber || !userId || !rawUserType) {
-  //         throw new Error("Required user data not found in cookies.");
-  //       }
-  
-  //       const normalizeLast10 = (num: string) => num.replace(/\D/g, "").slice(-10);
-
-  //       if (normalizeLast10(cookiePhoneNumber) !== normalizeLast10(phoneNumber)) {
-  //         throw new Error("Phone number mismatch. Please try again.");
-  //       }
-  
-  //       const userType = rawUserType === "driver" || rawUserType === "transporter" ? rawUserType : "driver";
-  
-  //       const userData: User = {
-  //         id: userId,
-  //         fullName: phoneForm.getValues("fullName"),
-  //         phoneNumber: cookiePhoneNumber,
-  //         userType: userType,
-  //         profileCompleted: false,
-  //       };
-
-  //       const sevenDays = 7 * 24 * 60 * 60 * 1000;
-  //       const cookieOptions = { 
-  //         expires: new Date(Date.now() + sevenDays),
-  //         path: '/' 
-  //       };
-
-  //       Object.entries({
-  //         userId,
-  //         phoneNumber: cookiePhoneNumber,
-  //         userType
-  //       }).forEach(([key, value]) => {
-  //         if (Cookies.get(key)) {
-  //           Cookies.set(key, value, cookieOptions);
-  //         }
-  //       });
-
-  
-  //       login(userData);
-  
-  //       if (userType === "driver") {
-  //         setLocation("/driver/dashboard");
-  //       } else {
-  //         setLocation("/transporter/dashboard");
-  //       }
-  
-  //       toast({
-  //         title: "Success",
-  //         description: `Welcome to SIGNO Connect, ${userData.fullName}!`,
-  //       });
-  //     } else {
-  //       toast({
-  //         variant: "destructive",
-  //         title: "Error",
-  //         description: "Invalid verification code. Please try again.",
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.error("Error verifying OTP:", error);
-  //     toast({
-  //       variant: "destructive",
-  //       title: "Error",
-  //       description:
-  //         error instanceof Error ? error.message : "OTP verification failed.",
-  //     });
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
-
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) return;
   
@@ -201,78 +117,60 @@ const LoginPage = () => {
       const testOtp = "123456";
   
       if (otp === testOtp) {
-        // First try to get driver profile
-        try {
-          const driverResponse = await fetch(
-            `http://localhost:8000/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${phoneNumber}`,
-            {
-              method: "GET",
-              headers: {
-                "Authorization": `token ${frappe_token}`
-              },
-            }
-          );
-          
-          if (driverResponse.ok) {
-            const driverData = await driverResponse.json();
-            if (driverData.doc) {
-              // Driver profile exists
-              const userData: User = {
-                id: driverData.doc.name,
-                fullName: phoneForm.getValues("fullName"),
-                phoneNumber: phoneNumber,
-                userType: "driver" as const,
-                profileCompleted: true,
-              };
-              
-              setUserCookiesAndRedirect(userData);
-              return;
-            }
-          }
-        } catch (error) {
-          console.error("Error checking driver profile:", error);
+
+        const cookiePhoneNumber = Cookies.get("phoneNumber");
+        const userId = Cookies.get("userId");
+        const rawUserType = Cookies.get("userType");
+  
+        if (!cookiePhoneNumber || !userId || !rawUserType) {
+          throw new Error("Required user data not found in cookies.");
         }
   
-        // If driver profile not found, try transporter profile
-        try {
-          const transporterResponse = await fetch(
-            `http://localhost:8000/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${phoneNumber}`,
-            {
-              method: "GET",
-              headers: {
-                "Authorization": `token ${frappe_token}`
-              }
-            }
-          );
-  
-          if (transporterResponse.ok) {
-            const transporterData = await transporterResponse.json();
-            if (transporterData.doc) {
-              // Transporter profile exists
-              const userData: User = {
-                id: transporterData.doc.name,
-                fullName: phoneForm.getValues("fullName"),
-                phoneNumber: phoneNumber,
-                userType: "transporter" as const,
-                profileCompleted: true,
-              };
-              
-              setUserCookiesAndRedirect(userData);
-              return;
-            }
-          }
-        } catch (error) {
-          console.error("Error checking transporter profile:", error);
+        const normalizeLast10 = (num: string) => num.replace(/\D/g, "").slice(-10);
+
+        if (normalizeLast10(cookiePhoneNumber) !== normalizeLast10(phoneNumber)) {
+          throw new Error("Phone number mismatch. Please try again.");
         }
   
-        // If no profile found, redirect to welcome/registration page
-        toast({
-          title: "Notice",
-          description: "No existing profile found. Redirecting to registration...",
+        const userType = rawUserType === "driver" || rawUserType === "transporter" ? rawUserType : "driver";
+  
+        const userData: User = {
+          id: userId,
+          fullName: phoneForm.getValues("fullName"),
+          phoneNumber: cookiePhoneNumber,
+          userType: userType,
+          profileCompleted: false,
+        };
+
+        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+        const cookieOptions = { 
+          expires: new Date(Date.now() + sevenDays),
+          path: '/' 
+        };
+
+        Object.entries({
+          userId,
+          phoneNumber: cookiePhoneNumber,
+          userType
+        }).forEach(([key, value]) => {
+          if (Cookies.get(key)) {
+            Cookies.set(key, value, cookieOptions);
+          }
         });
-        setLocation("/welcome");
-        return;
+
   
+        login(userData);
+  
+        if (userType === "driver") {
+          setLocation("/driver/dashboard");
+        } else {
+          setLocation("/transporter/dashboard");
+        }
+  
+        toast({
+          title: "Success",
+          description: `Welcome to SIGNO Connect, ${userData.fullName}!`,
+        });
       } else {
         toast({
           variant: "destructive",
@@ -285,46 +183,13 @@ const LoginPage = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error instanceof Error ? error.message : "OTP verification failed.",
+        description:
+          error instanceof Error ? error.message : "OTP verification failed.",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const setUserCookiesAndRedirect = async (userData: User) => {
-    const sevenDays = 7 * 24 * 60 * 60 * 1000;
-    const cookieOptions = { 
-      expires: new Date(Date.now() + sevenDays),
-      path: '/' 
-    };
-  
-    Cookies.remove('phoneNumber');
-  
-    // Set new cookies
-    Cookies.set('phoneNumber', userData.phoneNumber, cookieOptions);
-  
-    // Login first and wait for it to complete
-    await login(userData);
-    
-    // Get the redirect path based on user type
-    const redirectPath = userData.userType === "driver" 
-      ? "/driver/dashboard" 
-      : "/transporter/dashboard";
-    
-    // Show success toast
-    toast({
-      title: "Success",
-      description: `Welcome to SIGNO Connect, ${userData.fullName}!`,
-    });
-  
-    // Redirect after a small delay to ensure state updates are complete
-    setTimeout(() => {
-      setLocation(redirectPath);
-    }, 100);
-  }
-
-
   // Reset OTP and go back to phone step
   const handleBackToPhone = () => {
     setOtp("");
