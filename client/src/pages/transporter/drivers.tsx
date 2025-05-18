@@ -35,7 +35,6 @@ const TransporterDrivers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
-
   const { data: drivers, isLoading: driversLoading } = useQuery<Driver[]>({
     queryKey: ['/api/drivers'],
     enabled: !!user
