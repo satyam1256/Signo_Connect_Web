@@ -240,7 +240,7 @@ const DriverDashboard = () => {
               </p>
             </div>
 
-            <div className="flex justify-between ">
+            <div className="flex justify-between">
               <Button 
                 variant="secondary" 
                 className="bg-white text-primary hover:bg-neutral-100"
@@ -257,11 +257,12 @@ const DriverDashboard = () => {
                 {t("find_jobs")}
               </Button>
               <Button 
-                variant="secondary" 
-                className="bg-white text-primary hover:bg-neutral-100"
+                variant="outline" 
+                className="w-full border-primary text-primary hover:bg-primary/5"
                 onClick={() => navigate("/driver/trips")}
               >
-                {t("manage_trips")}
+                <Route className="h-4 w-4 mr-2" />
+                Manage Your Trips
               </Button>
             </div>
           </CardContent>

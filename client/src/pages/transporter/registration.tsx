@@ -130,7 +130,7 @@ const TransporterRegistration = () => {
   const registerTransporterMutation = useMutation<TransporterRegistrationResponse, Error, any>({
     mutationFn: async (data) => {
       const response = await fetch(
-        "http://localhost:8000/api/method/signo_connect.api.proxy/Transporters",
+        "https://internal.signodrive.com/api/method/signo_connect.api.proxy/Transporters",
         {
             method: 'POST',
             headers: {
@@ -177,10 +177,10 @@ const TransporterRegistration = () => {
         if (responseData.doc) {
           const { name: transporterId, phone_number: phoneNumber, name1: fullName } = responseData.doc;
           
-
-          Cookies.set('userId', transporterId, { expires: 7 });
-          Cookies.set('phoneNumber', phoneNumber, { expires: 7 });
-          Cookies.set('userType', 'transporter', { expires: 7 });
+          // Store in localStorage
+          localStorage.setItem("userId", transporterId);
+          localStorage.setItem("phoneNumber", phoneNumber);
+          localStorage.setItem("userType", "transporter");
           
           return responseData;
         } else {

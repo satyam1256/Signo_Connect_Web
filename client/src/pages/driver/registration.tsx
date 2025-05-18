@@ -153,7 +153,7 @@ const DriverRegistration = () => {
   const registerMutation = useMutation<DriverRegistrationResponse, Error, z.infer<typeof basicInfoSchema>>({
     mutationFn: async (data) => {
       console.log("Registering driver with data:", data);
-      const response = await fetch("http://localhost:8000/api/method/signo_connect.api.proxy/Drivers", {
+      const response = await fetch("https://internal.signodrive.com/api/method/signo_connect.api.proxy/Drivers", {
         method: "POST",
         credentials: "include",
         headers: {
@@ -194,11 +194,11 @@ const DriverRegistration = () => {
         
         if (responseData.doc) {
           const { name: driverId, phone_number: phoneNumber, name1: fullName } = responseData.doc;
-        
-
-          Cookies.set("userId", driverId, { expires: 7 });
-          Cookies.set("userType", "driver", { expires: 7 });
-          Cookies.set("phoneNumber", phoneNumber, { expires: 7 });
+          
+          // Store in localStorage
+          localStorage.setItem("userId", driverId);
+          localStorage.setItem("phoneNumber", phoneNumber);
+          localStorage.setItem("userType", "driver");
           
           return responseData;
         } else {
