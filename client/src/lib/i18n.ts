@@ -21,12 +21,12 @@ type TranslationKey =
   | "welcome"
   | "welcome_subtitle"
   | "driver"
-  | "fleet_owner"
+  | "transporter"
   | "already_have_account"
   | "sign_in"
   | "back"
   | "driver_registration"
-  | "fleet_owner_registration"
+  | "transporter_registration"
   | "create_account_steps"
   | "basic_info"
   | "verification"
@@ -77,6 +77,7 @@ type TranslationKey =
   | "find_drivers"
   | "search"
   | "manage_jobs"
+  | "manage_your_trips"
   | "manage"
   | "recommended_drivers"
   | "view_all_drivers"
@@ -99,12 +100,12 @@ const translations: Translations = {
     welcome: "Welcome to SIGNO Connect",
     welcome_subtitle: "The logistics marketplace connecting drivers and transporters",
     driver: "Driver",
-    fleet_owner: "Fleet Owner/Transporter",
+    transporter: "Fleet Owner/Transporter",
     already_have_account: "Already have an account?",
     sign_in: "Sign in",
     back: "Back",
     driver_registration: "Driver Registration",
-    fleet_owner_registration: "Fleet Owner Registration",
+    transporter_registration: "Fleet Owner Registration",
     create_account_steps: "Create your account in a few easy steps",
     basic_info: "Basic Info",
     verification: "Verification",
@@ -143,6 +144,7 @@ const translations: Translations = {
     welcome_user: "Welcome,",
     complete_profile: "Complete Profile",
     find_jobs: "Find Jobs",
+    manage_your_trips: "Manage Trips",
     recommended_jobs: "Recommended Jobs",
     view_all_jobs: "View All Jobs",
     nearby_facilities: "Nearby Facilities",
@@ -156,6 +158,7 @@ const translations: Translations = {
     search: "Search",
     manage_jobs: "Manage Jobs",
     manage: "Manage",
+    // Removed duplicate property
     recommended_drivers: "Recommended Drivers",
     view_all_drivers: "View All Drivers",
     years_experience: "years experience",
@@ -173,12 +176,12 @@ const translations: Translations = {
     welcome: "SIGNO Connect में आपका स्वागत है",
     welcome_subtitle: "ड्राइवरों और ट्रांसपोर्टरों को जोड़ने वाला लॉजिस्टिक्स मार्केटप्लेस",
     driver: "ड्राइवर",
-    fleet_owner: "फ्लीट मालिक/ट्रांसपोर्टर",
+    transporter: "फ्लीट मालिक/ट्रांसपोर्टर",
     already_have_account: "क्या आपके पास पहले से एक खाता है?",
     sign_in: "साइन इन करें",
     back: "वापस",
     driver_registration: "ड्राइवर पंजीकरण",
-    fleet_owner_registration: "फ्लीट मालिक पंजीकरण",
+    transporter_registration: "फ्लीट मालिक पंजीकरण",
     create_account_steps: "कुछ आसान चरणों में अपना खाता बनाएं",
     basic_info: "बुनियादी जानकारी",
     verification: "सत्यापन",
@@ -217,6 +220,7 @@ const translations: Translations = {
     welcome_user: "स्वागत है,",
     complete_profile: "प्रोफ़ाइल पूरा करें",
     find_jobs: "नौकरियां खोजें",
+    manage_your_trips: "यात्राओं का प्रबंधन करें",
     recommended_jobs: "अनुशंसित नौकरियां",
     view_all_jobs: "सभी नौकरियां देखें",
     nearby_facilities: "नज़दीकी सुविधाएँ",
@@ -247,12 +251,12 @@ const translations: Translations = {
     welcome: "SIGNO Connect-ലേക്ക് സ്വാഗതം",
     welcome_subtitle: "ഡ്രൈവർമാരെയും ട്രാൻസ്പോർട്ടർമാരെയും ബന്ധിപ്പിക്കുന്ന ലോജിസ്റ്റിക്സ് മാർക്കറ്റ്പ്ലേസ്",
     driver: "ഡ്രൈവർ",
-    fleet_owner: "ഫ്ലീറ്റ് ഉടമ/ട്രാൻസ്പോർട്ടർ",
+    transporter: "ഫ്ലീറ്റ് ഉടമ/ട്രാൻസ്പോർട്ടർ",
     already_have_account: "ഇതിനകം ഒരു അക്കൗണ്ട് ഉണ്ടോ?",
     sign_in: "സൈൻ ഇൻ",
     back: "തിരികെ",
     driver_registration: "ഡ്രൈവർ രജിസ്ട്രേഷൻ",
-    fleet_owner_registration: "ഫ്ലീറ്റ് ഉടമ രജിസ്ട്രേഷൻ",
+    transporter_registration: "ഫ്ലീറ്റ് ഉടമ രജിസ്ട്രേഷൻ",
     create_account_steps: "ചുരുക്കം ചില നടപടികളിലൂടെ നിങ്ങളുടെ അക്കൗണ്ട് സൃഷ്ടിക്കുക",
     basic_info: "അടിസ്ഥാന വിവരം",
     verification: "പരിശോധന",
@@ -291,6 +295,7 @@ const translations: Translations = {
     welcome_user: "സ്വാഗതം,",
     complete_profile: "പ്രൊഫൈൽ പൂർത്തിയാക്കുക",
     find_jobs: "ജോലികൾ കണ്ടെത്തുക",
+    manage_your_trips: "നിങ്ങളുടെ യാത്രകൾ നിയന്ത്രിക്കുക",
     recommended_jobs: "ശുപാർശ ചെയ്ത ജോലികൾ",
     view_all_jobs: "എല്ലാ ജോലികളും കാണുക",
     nearby_facilities: "സമീപത്തുള്ള സൗകര്യങ്ങൾ",
@@ -321,12 +326,12 @@ const translations: Translations = {
     welcome: "SIGNO Connect-க்கு வரவேற்கிறோம்",
     welcome_subtitle: "டிரைவர்கள் மற்றும் போக்குவரத்தாளர்களை இணைக்கும் லாஜிஸ்டிக்ஸ் சந்தை",
     driver: "டிரைவர்",
-    fleet_owner: "வாகன உரிமையாளர்/போக்குவரத்தாளர்",
+    transporter: "வாகன உரிமையாளர்/போக்குவரத்தாளர்",
     already_have_account: "ஏற்கனவே கணக்கு உள்ளதா?",
     sign_in: "உள்நுழைக",
     back: "பின்செல்",
     driver_registration: "டிரைவர் பதிவு",
-    fleet_owner_registration: "வாகன உரிமையாளர் பதிவு",
+    transporter_registration: "வாகன உரிமையாளர் பதிவு",
     create_account_steps: "சில எளிய படிகளில் உங்கள் கணக்கை உருவாக்கவும்",
     basic_info: "அடிப்படை தகவல்",
     verification: "சரிபார்ப்பு",
@@ -365,6 +370,7 @@ const translations: Translations = {
     welcome_user: "வரவேற்கிறோம்,",
     complete_profile: "சுயவிவரத்தை முடிக்கவும்",
     find_jobs: "வேலைகளைக் கண்டறியவும்",
+    manage_your_trips: "உங்கள் பயணங்களை நிர்வகிக்கவும்",
     recommended_jobs: "பரிந்துரைக்கப்பட்ட வேலைகள்",
     view_all_jobs: "அனைத்து வேலைகளையும் காண",
     nearby_facilities: "அருகிலுள்ள வசதிகள்",

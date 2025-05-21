@@ -1,8 +1,9 @@
 import { ReactNode } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { useLanguageStore } from "@/lib/i18n";
+import { useAuth } from "@/contexts/auth-context";
 import signoLogo from "@/assets/signo-logo.png";
 
 interface HeaderProps {
@@ -14,10 +15,26 @@ interface HeaderProps {
 
 export const Header = ({ showBack = false, backTo = "/", backAction, children }: HeaderProps) => {
   const { t } = useLanguageStore();
+  const { user, isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
 
   const handleBack = () => {
     if (backAction) {
       backAction();
+    }
+  };
+
+  const handleLogoClick = () => {
+    if (isAuthenticated && user) {
+      // Redirect to appropriate dashboard based on user type
+      if (user.userType === 'driver') {
+        navigate('/driver/dashboard');
+      } else if (user.userType === 'transporter') {
+        navigate('/transporter/dashboard');
+      }
+    } else {
+      // If not authenticated, go to home page
+      navigate('/');
     }
   };
 
@@ -44,9 +61,9 @@ export const Header = ({ showBack = false, backTo = "/", backAction, children }:
               </Link>
             )
           ) : (
-            <Link to="/">
+            <button onClick={handleLogoClick} className="focus:outline-none">
               <img src={signoLogo} alt="SIGNO Logo" className="h-10" />
-            </Link>
+            </button>
           )}
           {children}
         </div>

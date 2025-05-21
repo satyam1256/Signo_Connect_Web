@@ -9,6 +9,7 @@ import {
   Utensils,
   Wrench,
   Heart,
+  Route,
   Info,
   Phone,
   Clock,
@@ -218,7 +219,7 @@ const DriverDashboard = () => {
         </div>
       </Header>
 
-      <div className="flex-grow container mx-auto px-4 py-6 max-w-md space-y-6">
+      <div className="flex-grow container mx-auto px-4 py-6 max-w-lg space-y-6">
         {/* Welcome Card */}
         <Card className="bg-primary text-white border-none">
           <CardContent className="p-6">
@@ -228,7 +229,7 @@ const DriverDashboard = () => {
               </div>
               <div>
                 <h2 className="text-xl font-medium">{t("welcome_user")} {user.fullName}!</h2>
-                <p className="text-primary-100">Delhi NCR Area</p>
+                <p className="text-primary-100">Delhi NCR</p>
               </div>
             </div>
 
@@ -239,22 +240,32 @@ const DriverDashboard = () => {
               </p>
             </div>
 
-            <div className="flex justify-between">
-              <Button 
-                variant="secondary" 
-                className="bg-white text-primary hover:bg-neutral-100"
-                onClick={() => navigate("/driver/profile")}
-              >
-                {t("complete_profile")}
-              </Button>
-              <Button 
-                variant="destructive" 
-                className="bg-primary-dark text-white hover:bg-primary-dark/90"
-                onClick={() => navigate("/driver/jobs")}
-              >
-                <MapPin className="h-4 w-4 mr-2" />
-                {t("find_jobs")}
-              </Button>
+            <div className="bg-primary-dark bg-opacity-30 rounded-md p-4">
+              <div className="flex justify-center gap-3">
+                <Button 
+                  variant="secondary" 
+                  className="bg-white text-primary hover:bg-neutral-100"
+                  onClick={() => navigate("/driver/profile")}
+                >
+                  {t("complete_profile")}
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  className="bg-white text-primary hover:bg-neutral-100 flex items-center"
+                  onClick={() => navigate("/driver/jobs")}
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  {t("find_jobs")}
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  className="bg-white text-primary hover:bg-neutral-100 flex items-center"
+                  onClick={() => navigate("/driver/trips")}
+                >
+                  <Route className="h-4 w-4 mr-2" />
+                  {t("manage_your_trips")}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -1,19 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
-import { Shield, Check } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { useLanguageStore } from "@/lib/i18n";
+import { useAuth } from "@/contexts/auth-context";
+import { useStepper } from "@/hooks/useStepper";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import { jwtDecode } from "jwt-decode";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
   Form,
@@ -27,13 +31,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ProgressSteps } from "@/components/ui/progress-steps";
 import { OtpInput } from "@/components/ui/otp-input";
 import { FileUpload } from "@/components/ui/file-upload";
-import { useStepper } from "@/hooks/useStepper";
-import { useLanguageStore } from "@/lib/i18n";
-import { apiRequest } from "@/lib/queryClient";
-import { UserType } from "@shared/schema";
-import { useAuth } from "@/contexts/auth-context";
+import { Shield, Check } from "lucide-react";
+import Cookies from "js-cookie";
+const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
+const x_key = import.meta.env.VITE_X_KEY;
 
-// Step 1: Basic Info
+// Schemas
 const basicInfoSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
@@ -41,12 +44,10 @@ const basicInfoSchema = z.object({
   preferredLocations: z.array(z.string()).optional(),
 });
 
-// Step 2: OTP Verification
 const otpSchema = z.object({
   otp: z.string().length(6, "OTP must be 6 digits"),
 });
 
-// Step 3: Documents (optional for basic sign-up)
 const documentsSchema = z.object({
   drivingLicense: z.instanceof(File).optional().nullable(),
   identityProof: z.instanceof(File).optional().nullable(),
@@ -64,15 +65,55 @@ const locationOptions = [
   { value: "ahmedabad", label: "Ahmedabad" },
 ];
 
+interface DriverDoc {
+  name: string;
+  name1: string;
+  phone_number: string;
+  email: string | null;
+  emergency_contact_number: string | null;
+  address: string | null;
+  last_location: string | null;
+  experience: string | null;
+  remarks: string | null;
+  catagory: string;
+  fcm_token: string | null;
+  lat_long: string | null;
+  reference_number: string | null;
+  profile_pic: string | null;
+  bank_pic: string | null;
+  dl_front_pic: string | null;
+  dl_back_pic: string | null;
+  aadhar_front_pic: string | null;
+  aadhar_back_pic: string | null;
+  pf_pic: string | null;
+  bank_ac_number: string | null;
+  bank_ifsc: string | null;
+  bank_holder_name: string | null;
+  upi_id: string | null;
+  dl_number: string | null;
+  dob: string | null;
+  aadhar_number: string | null;
+  is_bank_verified: number;
+  is_kyc_verfied: number;
+  is_dl_verified: number;
+  is_aadhar_verified: number;
+}
+
+interface DriverRegistrationResponse {
+  status: boolean;
+  doc: DriverDoc;
+}
+
 const DriverRegistration = () => {
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
   const { login } = useAuth();
 
-  // State for registration process
-  const [userId, setUserId] = useState<number | null>(null);
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userPhoneNumber, setUserPhoneNumber] = useState("");
+  const [userFullName, setUserFullName] = useState("");
   const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [pendingRegistrationData, setPendingRegistrationData] = useState<z.infer<typeof basicInfoSchema> | null>(null);
 
   const steps = [
     { title: t("basic_info") },
@@ -83,7 +124,6 @@ const DriverRegistration = () => {
 
   const stepper = useStepper({ steps: steps.length });
 
-  // Forms for each step
   const basicInfoForm = useForm<z.infer<typeof basicInfoSchema>>({
     resolver: zodResolver(basicInfoSchema),
     defaultValues: {
@@ -109,135 +149,165 @@ const DriverRegistration = () => {
     },
   });
 
-  // API Mutations
-  const registerMutation = useMutation({
-    mutationFn: async (data: any) => {
-      try {
-        const response = await apiRequest("POST", "/api/register", {
-          fullName: data.fullName,
-          phoneNumber: data.countryCode + data.phoneNumber,
-          userType: "driver"
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.text();
-          throw new Error(errorData || "Registration failed");
+
+  const registerMutation = useMutation<DriverRegistrationResponse, Error, z.infer<typeof basicInfoSchema>>({
+    mutationFn: async (data) => {
+      console.log("Registering driver with data:", data);
+      const response = await fetch("https://internal.signodrive.com/api/method/signo_connect.api.proxy/Drivers", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `token ${frappe_token}`,
+          "x-key": x_key
+        },
+        body: JSON.stringify({
+          name1: data.fullName,
+          phone_number: data.countryCode.slice(1) + data.phoneNumber,
+          user_type: "driver",
+        }),
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        console.error("API Error Response Status:", response.status);
+        let errorMessage = `Registration failed with status: ${response.status}`;
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData._server_messages) {
+            errorMessage = JSON.parse(errorData._server_messages)[0] || responseText;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else {
+            errorMessage = responseText;
+          }
+        } catch (e) {
+          errorMessage = responseText;
         }
+        throw new Error(errorMessage);
+      }
+
+      try {
+        const responseData: DriverRegistrationResponse = JSON.parse(responseText);
         
-        return response.json();
-      } catch (error) {
-        console.error("Registration request failed:", error);
-        throw error;
+        if (responseData.doc) {
+          const { name: driverId, phone_number: phoneNumber, name1: fullName } = responseData.doc;
+          
+          return responseData;
+        } else {
+          throw new Error("Registration succeeded but response is missing driver data");
+        }
+      } catch (e) {
+        console.error("Failed to parse JSON response:", e);
+        throw new Error("Invalid JSON response from server: " + responseText);
       }
     },
     onSuccess: (data) => {
-      if (data.userId) {
-        setUserId(data.userId);
-        setPhoneNumber(
-          basicInfoForm.getValues().countryCode + basicInfoForm.getValues().phoneNumber
-        );
+      console.log("Mutation onSuccess triggered. Data:", data);
+    
+      const { name: driverId, phone_number: phoneNumber, name1: fullName } = data.doc;
+    
+      if (driverId) {
+        console.log("Successfully registered driver:", driverId);
+        
+        setUserId(driverId);
+        setUserPhoneNumber(phoneNumber);
+        setUserFullName(fullName);
+
+
+          Cookies.remove('phoneNumber');
+          Cookies.remove('userId');
+          Cookies.remove('userType');
+          // Store in Cookies
+          Cookies.set('userId', driverId, { expires: 7 });
+          Cookies.set('phoneNumber', phoneNumber, { expires: 7 });
+          Cookies.set('userType', "driver", { expires: 7 });
+          
+    
+        setPendingRegistrationData(null);
+        setRegistrationComplete(true);
+        toast.success("Registration successful!");
+        
         stepper.nextStep();
+      } else {
+        console.error("Registration response successful, but driver_id is missing:", data);
+        toast.error("Registration response format invalid. Cannot proceed.");
       }
     },
-    onError: (error) => {
-      console.error("Registration error:", error);
+    onError: (error: Error) => {
+      console.error("Mutation onError triggered:", error);
+      toast.error(error.message || "Registration failed. Please try again.");
     },
   });
 
-  const verifyOtpMutation = useMutation({
-    mutationFn: async (data: any) => {
-      try {
-        // Always use 123456 for testing
-        const testOtp = "123456";
-        
-        const response = await apiRequest("POST", "/api/verify-otp", {
-          phoneNumber,
-          otp: testOtp, // Force the test OTP instead of using the input value
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.text();
-          throw new Error(errorData || "OTP verification failed");
-        }
-        
-        return response.json();
-      } catch (error) {
-        console.error("OTP verification request failed:", error);
-        throw error;
-      }
-    },
-    onSuccess: (data) => {
-      if (data.verified) {
-        stepper.nextStep();
-      }
-    },
-    onError: (error) => {
-      console.error("OTP verification error:", error);
-    },
-  });
-
-  const updateProfileMutation = useMutation({
-    mutationFn: async (data: any) => {
-      try {
-        const response = await apiRequest("POST", "/api/driver-profile", {
-          userId,
-          preferredLocations: basicInfoForm.getValues().preferredLocations,
-          drivingLicense: data.drivingLicense ? data.drivingLicense.name : null,
-          identityProof: data.identityProof ? data.identityProof.name : null,
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.text();
-          throw new Error(errorData || "Profile update failed");
-        }
-        
-        return response.json();
-      } catch (error) {
-        console.error("Profile update request failed:", error);
-        throw error;
-      }
-    },
-    onSuccess: (data) => {
-      setRegistrationComplete(true);
-      stepper.nextStep();
-    },
-    onError: (error) => {
-      console.error("Profile update error:", error);
-    },
-  });
-
-  // Form submission handlers
   const onBasicInfoSubmit = (data: z.infer<typeof basicInfoSchema>) => {
-    registerMutation.mutate(data);
-  };
-
-  const onOtpSubmit = (data: z.infer<typeof otpSchema>) => {
-    verifyOtpMutation.mutate(data);
-  };
-
-  const onDocumentsSubmit = (data: z.infer<typeof documentsSchema>) => {
-    updateProfileMutation.mutate(data);
-  };
-
-  const handleSkipDocuments = () => {
-    setRegistrationComplete(true);
+    console.log("Basic Info Submitted:", data);
+    setPendingRegistrationData(data);
+    setUserPhoneNumber(data.countryCode + data.phoneNumber);
+    setUserFullName(data.fullName);
     stepper.nextStep();
   };
 
-  const goToDashboard = () => {
-    // In a real app, you would fetch the complete user profile here
-    // For now, we'll create a simple user object
-    if (userId) {
-      login({
-        id: userId,
-        fullName: basicInfoForm.getValues().fullName,
-        phoneNumber: phoneNumber,
-        userType: 'driver',
-        profileCompleted: false
-      });
-      navigate("/driver/dashboard");
+  const onOtpSubmit = (data: z.infer<typeof otpSchema>) => {
+    console.log("OTP Submitted:", data);
+    if (true) {
+      if (pendingRegistrationData) {
+        console.log("OTP verified (using bypass/test). Proceeding to Documents.");
+        stepper.nextStep();
+      } else {
+        toast.error("Missing basic registration info. Please go back.");
+        console.error("OTP submitted but pendingRegistrationData is null.");
+      }
+    } else {
+      toast.error("Invalid OTP.");
     }
   };
+
+  const onDocumentsSubmit = (data: z.infer<typeof documentsSchema>) => {
+    console.log("Documents Submitted:", data);
+    if (pendingRegistrationData) {
+      registerMutation.mutate(pendingRegistrationData);
+    } else {
+      toast.error("Missing basic registration info. Please restart the process.");
+      console.error("Documents submitted but pendingRegistrationData is null.");
+    }
+  };
+
+  const handleSkipDocuments = () => {
+    if (pendingRegistrationData) {
+      registerMutation.mutate(pendingRegistrationData);
+    } else {
+      toast.error("Missing basic registration info. Please restart the process.");
+    }
+  };
+
+  const goToDashboard = () => {
+    if (userId && userFullName && userPhoneNumber && registrationComplete) {
+      console.log("Go to Dashboard clicked. Logging in user:", {
+        id: userId,
+        fullName: userFullName,
+        phoneNumber: userPhoneNumber,
+        userType: "driver",
+        profileCompleted: registrationComplete,
+      });
+
+      login({
+        id: userId,
+        fullName: userFullName,
+        phoneNumber: userPhoneNumber,
+        userType: "driver",
+        profileCompleted: registrationComplete,
+      });
+
+      navigate("/driver/dashboard");
+    } else {
+      console.error("Attempted to go to dashboard, but required user info is missing.", { userId, userFullName, userPhoneNumber, registrationComplete });
+      toast.error("Cannot navigate to dashboard. User information is incomplete.");
+    }
+  };
+
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
@@ -282,7 +352,7 @@ const DriverRegistration = () => {
                   <FormField
                     control={basicInfoForm.control}
                     name="phoneNumber"
-                    render={({ field }) => (
+                    render={({ field: phoneField }) => (
                       <FormItem>
                         <FormLabel>
                           {t("mobile_number")}
@@ -292,10 +362,10 @@ const DriverRegistration = () => {
                           <FormField
                             control={basicInfoForm.control}
                             name="countryCode"
-                            render={({ field }) => (
+                            render={({ field: codeField }) => (
                               <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
+                                onValueChange={codeField.onChange}
+                                defaultValue={codeField.value}
                               >
                                 <FormControl>
                                   <SelectTrigger className="w-[80px] rounded-r-none">
@@ -312,10 +382,10 @@ const DriverRegistration = () => {
                           />
                           <FormControl>
                             <Input 
-                              className="rounded-l-none"
+                              className="rounded-l-none flex-1"
                               placeholder="Enter your number" 
                               type="tel"
-                              {...field} 
+                              {...phoneField} 
                             />
                           </FormControl>
                         </div>
@@ -412,7 +482,7 @@ const DriverRegistration = () => {
                       {t("verify_number")}
                     </h3>
                     <p className="text-neutral-500">
-                      {t("otp_sent")} <span className="font-medium">{phoneNumber}</span>
+                      {t("otp_sent")} <span className="font-medium">{userPhoneNumber || 'your number'}</span>
                     </p>
                   </div>
 
@@ -426,11 +496,16 @@ const DriverRegistration = () => {
                           <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
-                          <OtpInput
-                            length={6}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
+                          <>
+                            <OtpInput
+                              length={6}
+                              value={field.value}
+                              onChange={field.onChange}
+                            />
+                            <p className="text-sm text-gray-500 mt-2">
+                              If not received, please enter <span className="font-semibold">123456</span>
+                            </p>
+                          </>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -441,9 +516,17 @@ const DriverRegistration = () => {
                     <p className="text-neutral-500">
                       {t("didnt_receive_otp")}{" "}
                       <Button
+                        type="button"
                         variant="link"
                         className="p-0 h-auto"
-                        onClick={() => registerMutation.mutate(basicInfoForm.getValues())}
+                        onClick={() => {
+                          if (pendingRegistrationData) {
+                            console.log("Resend OTP clicked.");
+                            onBasicInfoSubmit(pendingRegistrationData);
+                          } else {
+                            toast.error("Cannot resend OTP without basic info.");
+                          }
+                        }}
                       >
                         {t("resend")}
                       </Button>
@@ -456,15 +539,16 @@ const DriverRegistration = () => {
                       variant="outline"
                       className="flex-1"
                       onClick={() => stepper.prevStep()}
+                      disabled={otpForm.formState.isSubmitting}
                     >
                       {t("back")}
                     </Button>
                     <Button 
                       type="submit" 
                       className="flex-1" 
-                      disabled={verifyOtpMutation.isPending}
+                      disabled={otpForm.formState.isSubmitting}
                     >
-                      {verifyOtpMutation.isPending ? "Verifying..." : t("verify")}
+                      {otpForm.formState.isSubmitting ? "Verifying..." : t("verify")}
                     </Button>
                   </div>
                 </form>
@@ -522,15 +606,16 @@ const DriverRegistration = () => {
                       variant="outline"
                       className="flex-1"
                       onClick={() => stepper.prevStep()}
+                      disabled={registerMutation.isPending}
                     >
                       {t("back")}
                     </Button>
                     <Button 
                       type="submit" 
                       className="flex-1"
-                      disabled={updateProfileMutation.isPending}
+                      disabled={registerMutation.isPending}
                     >
-                      {updateProfileMutation.isPending ? "Processing..." : t("continue")}
+                      {registerMutation.isPending ? "Processing..." : t("continue")}
                     </Button>
                   </div>
 
