@@ -199,6 +199,10 @@ const TransporterRegistration = () => {
         setUserPhoneNumber(phoneNumber);
         setUserFullName(fullName);
         
+
+          Cookies.remove('phoneNumber');
+          Cookies.remove('userId');
+          Cookies.remove('userType');
         // Set cookies
           Cookies.set('userId', transporterId, { expires: 7 });
           Cookies.set('phoneNumber', phoneNumber, { expires: 7 });

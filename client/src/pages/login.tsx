@@ -218,6 +218,8 @@ const LoginPage = () => {
     };
   
     Cookies.remove('phoneNumber');
+    Cookies.remove('userId');
+    Cookies.remove('userType');
   
     // Set new cookies
     Cookies.set('userId', userData.id, cookieOptions);

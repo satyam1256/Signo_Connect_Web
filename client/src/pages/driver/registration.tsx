@@ -215,7 +215,11 @@ const DriverRegistration = () => {
         setUserId(driverId);
         setUserPhoneNumber(phoneNumber);
         setUserFullName(fullName);
-    
+
+
+          Cookies.remove('phoneNumber');
+          Cookies.remove('userId');
+          Cookies.remove('userType');
           // Store in Cookies
           Cookies.set('userId', driverId, { expires: 7 });
           Cookies.set('phoneNumber', phoneNumber, { expires: 7 });
