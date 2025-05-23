@@ -119,28 +119,28 @@ const DriverDashboard = () => {
             </div>
 
             <div className="bg-primary-dark bg-opacity-30 rounded-md p-4">
-              <div className="flex justify-center gap-3">
+              <div className="flex flex-wrap gap-2 justify-center">
                 <Button 
                   variant="secondary" 
-                  className="bg-white text-primary hover:bg-neutral-100"
+                  className="flex-1 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] bg-white text-primary hover:bg-neutral-100 text-sm md:text-base"
                   onClick={() => navigate("/driver/profile")}
                 >
                   {t("complete_profile")}
                 </Button>
                 <Button 
                   variant="secondary" 
-                  className="bg-white text-primary hover:bg-neutral-100 flex items-center"
+                  className="flex-1 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] bg-white text-primary hover:bg-neutral-100 flex items-center justify-center text-sm md:text-base"
                   onClick={() => navigate("/driver/jobs")}
                 >
-                  <MapPin className="h-4 w-4 mr-2" />
+                  <MapPin className="h-4 w-4 mr-1" />
                   {t("find_jobs")}
                 </Button>
                 <Button 
                   variant="secondary" 
-                  className="bg-white text-primary hover:bg-neutral-100 flex items-center"
+                  className="flex-1 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] bg-white text-primary hover:bg-neutral-100 flex items-center justify-center text-sm md:text-base"
                   onClick={() => navigate("/driver/trips")}
                 >
-                  <Route className="h-4 w-4 mr-2" />
+                  <Route className="h-4 w-4 mr-1" />
                   {t("manage_your_trips")}
                 </Button>
               </div>

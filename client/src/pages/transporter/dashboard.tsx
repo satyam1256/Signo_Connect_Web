@@ -141,17 +141,17 @@ const TransporterDashboard = () => {
               </p>
             </div>
 
-            <div className="flex justify-between">
+            <div className="flex gap-2">
               <Button 
                 variant="secondary" 
-                className="bg-white text-[#FF6D00] hover:bg-neutral-100"
+                className="flex-1 bg-white text-[#FF6D00] hover:bg-neutral-100"
                 onClick={() => navigate("/transporter/profile")}
               >
                 {t("complete_profile")}
               </Button>
               <Button 
                 variant="destructive" 
-                className="bg-[#E65100] text-white hover:bg-[#E65100]/90"
+                className="flex-1 bg-[#E65100] text-white hover:bg-[#E65100]/90"
                 onClick={() => navigate("/transporter/jobs")}
               >
                 <Plus className="h-4 w-4 mr-2" />
