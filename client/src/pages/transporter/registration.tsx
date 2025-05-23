@@ -33,7 +33,7 @@ import { toast } from "react-hot-toast";
 import { Textarea } from "@/components/ui/textarea";
 import Cookies from "js-cookie";
 const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
-const x_key = import.meta.env.VITE_X_KEY;
+const x_key = import.meta.env.VITE_FRAPPE_X_KEY;
 
 // --- Zod Schemas (Unchanged) ---
 const basicInfoSchema = z.object({

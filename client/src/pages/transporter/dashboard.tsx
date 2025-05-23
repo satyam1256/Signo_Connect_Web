@@ -20,7 +20,7 @@ import { Chatbot } from "@/components/features/chatbot";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguageStore } from "@/lib/i18n";
 const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
-const x_key = import.meta.env.VITE_X_KEY;
+const x_key = import.meta.env.VITE_FRAPPE_X_KEY;
 
 interface Driver {
   id: string;

@@ -51,7 +51,7 @@ import { BottomNavigation } from "@/components/layout/bottom-navigation";
 import { UserType } from "@shared/schema";
 import Cookies from "js-cookie";
 const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
-const x_key = import.meta.env.VITE_X_KEY;
+const x_key = import.meta.env.VITE_FRAPPE_X_KEY;
 
 // Form schemas
 const phoneSchema = z.object({

@@ -54,7 +54,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import Cookies from "js-cookie";
 const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
-const x_key = import.meta.env.VITE_X_KEY;
+const x_key = import.meta.env.VITE_FRAPPE_X_KEY;
 
 
 interface TransporterProfile {
