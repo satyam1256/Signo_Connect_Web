@@ -198,7 +198,7 @@ const TransporterJobsPage = () => {
       
       console.log("Status update payload:", statusUpdateData);
       
-      const response = await fetch('https://internal.signodrive.com/api/method/signo_connect.apis.transporter.update_job', {
+      const response = await fetch('http://localhost:8000/api/method/signo_connect.apis.transporter.update_job', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -266,7 +266,7 @@ const TransporterJobsPage = () => {
       console.log("Delete job payload:", deleteJobData);
       
 
-      const response = await fetch('https://internal.signodrive.com/api/method/signo_connect.apis.transporter.delete_job', {
+      const response = await fetch('http://localhost:8000/api/method/signo_connect.apis.transporter.delete_job', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -380,7 +380,7 @@ const TransporterJobsPage = () => {
 
       const transporter_id = Cookies.get('userId') || "SIG00031";
       
-      const response = await fetch(`https://internal.signodrive.com/api/method/signo_connect.apis.transporter.get_posted_jobs?transporter=${transporter_id}`, {
+      const response = await fetch(`http://localhost:8000/api/method/signo_connect.apis.transporter.get_posted_jobs?transporter=${transporter_id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -507,7 +507,7 @@ const TransporterJobsPage = () => {
   
 
     try {
-      const response = await fetch('https://internal.signodrive.com/api/method/signo_connect.apis.transporter.post_job', {
+      const response = await fetch('http://localhost:8000/api/method/signo_connect.apis.transporter.post_job', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -611,7 +611,7 @@ const TransporterJobsPage = () => {
       
       console.log("Job update payload:", jobData);
 
-      const response = await fetch('https://internal.signodrive.com/api/method/signo_connect.apis.transporter.update_job', {
+      const response = await fetch('http://localhost:8000/api/method/signo_connect.apis.transporter.update_job', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
