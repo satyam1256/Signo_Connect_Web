@@ -122,7 +122,7 @@ const LoginPage = () => {
         try {
           const formattedPhoneNumber = `${countryCode}${phoneNumber}`.slice(1);
           const driverResponse = await fetch(
-            `http://localhost:8000/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${formattedPhoneNumber}`,
+            `https://internal.signodrive.com/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${formattedPhoneNumber}`,
             {
               method: "GET",
               headers: {
@@ -156,7 +156,7 @@ const LoginPage = () => {
         try {
           const formattedPhoneNumber = `${countryCode}${phoneNumber}`.slice(1);
           const transporterResponse = await fetch(
-            `http://localhost:8000/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${formattedPhoneNumber}`,
+            `https://internal.signodrive.com/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${formattedPhoneNumber}`,
             {
               method: "GET",
               headers: {

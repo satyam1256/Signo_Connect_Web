@@ -39,7 +39,7 @@ const DriverDashboard = () => {
     queryKey: ['jobs'],
     queryFn: async () => {
       const response = await fetch(
-        `http://localhost:8000/api/method/signo_connect.api.proxy/Job?fields=["*"]&limit_page_length=100`,
+        `https://internal.signodrive.com/api/method/signo_connect.api.proxy/Job?fields=["*"]&limit_page_length=100`,
         {
           method: "GET",
           headers: new Headers({
