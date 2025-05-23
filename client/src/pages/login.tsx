@@ -74,6 +74,7 @@ const LoginPage = () => {
   const [step, setStep] = useState<LoginStep>(LoginStep.PHONE);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otp, setOtp] = useState("");
+  const [countryCode, setCountryCode] = useState("+91"); // Default country code
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Phone number form
@@ -119,8 +120,9 @@ const LoginPage = () => {
       if (otp === testOtp) {
         // First try to get driver profile
         try {
+          const formattedPhoneNumber = `${countryCode}${phoneNumber}`.slice(1);
           const driverResponse = await fetch(
-            `https://internal.signodrive.com/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${phoneNumber}`,
+            `http://localhost:8000/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${formattedPhoneNumber}`,
             {
               method: "GET",
               headers: {
@@ -137,7 +139,7 @@ const LoginPage = () => {
               const userData: User = {
                 id: driverData.doc.name,
                 fullName: phoneForm.getValues("fullName"),
-                phoneNumber: phoneNumber,
+                phoneNumber: formattedPhoneNumber,
                 userType: "driver" as const,
                 profileCompleted: true,
               };
@@ -152,8 +154,9 @@ const LoginPage = () => {
   
         // If driver profile not found, try transporter profile
         try {
+          const formattedPhoneNumber = `${countryCode}${phoneNumber}`.slice(1);
           const transporterResponse = await fetch(
-            `https://internal.signodrive.com/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${phoneNumber}`,
+            `http://localhost:8000/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${formattedPhoneNumber}`,
             {
               method: "GET",
               headers: {
@@ -170,7 +173,7 @@ const LoginPage = () => {
               const userData: User = {
                 id: transporterData.doc.name,
                 fullName: phoneForm.getValues("fullName"),
-                phoneNumber: phoneNumber,
+                phoneNumber: formattedPhoneNumber,
                 userType: "transporter" as const,
                 profileCompleted: true,
               };
@@ -310,7 +313,6 @@ const LoginPage = () => {
     </div>
   );
 
-  // Render phone input step
   const renderPhoneStep = () => (
     <div className="flex flex-col space-y-6">
       <div className="text-center">
@@ -348,11 +350,33 @@ const LoginPage = () => {
               <FormItem>
                 <FormLabel>{t("mobile_number")}</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="Enter your phone number"
-                    {...field}
-                    className="h-12"
-                  />
+                  <div className="flex items-center space-x-2">
+                    <Select
+                      value={countryCode}
+                      onValueChange={(value) => setCountryCode(value)}
+                    >
+                      <SelectTrigger className="w-24">
+                        <SelectValue placeholder="Code" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="+91">+91 (India)</SelectItem>
+                        <SelectItem value="+1">+1 (USA)</SelectItem>
+                        <SelectItem value="+44">+44 (UK)</SelectItem>
+                        {/* Add more country codes as needed */}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="tel"
+                      pattern="[0-9]*"
+                      placeholder="Enter your phone number"
+                      {...field}
+                      className="h-12 flex-grow"
+                      onChange={(e) => {
+                        setPhoneNumber(e.target.value);
+                        field.onChange(e);
+                      }}
+                    />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
