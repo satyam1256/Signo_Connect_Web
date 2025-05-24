@@ -71,14 +71,22 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
 import type { Trip } from "@/pages/types/trip";
+import "./trips.css";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { format as formatDateFns } from "date-fns";
+import Cookies from "js-cookie";
+const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
+const x_key = import.meta.env.VITE_FRAPPE_X_KEY;
+
 
 // Form schema for trip validation
 const tripFormSchema = z.object({
   // Basic trip details
   naming_series: z.string().optional(),
-  vehicle: z.string().optional(),
+  vehicle: z.string().min(1, "Vehicle is required"),
   vehicle_type: z.string().optional(),
-  driver: z.string().optional(),
+  driver: z.string().min(1, "Driver is required"),
   driver_name: z.string().optional(),
   driver_phone_number: z.string().optional(),
   origin: z.string().min(1, "Origin is required"),
@@ -90,7 +98,7 @@ const tripFormSchema = z.object({
   paid_amount: z.coerce.number().nonnegative("Paid amount must be positive or zero").optional(),
   
   // Status and dates
-  status: z.enum(["upcoming", "waiting", "completed", "in-progress", "cancelled"]),
+  status: z.enum(["Upcoming", "Waiting", "Running", "Completed"]),
   created_on: z.string().optional(),
   started_on: z.string().optional(),
   ended_on: z.string().optional(),
@@ -100,6 +108,7 @@ const tripFormSchema = z.object({
   // Transporter details
   transporter: z.string().optional(),
   transporter_name: z.string().optional(),
+  transporter_phone: z.string().optional(),
   
   // Odometer and images
   odo_start: z.string().optional(),
@@ -114,6 +123,7 @@ const tripFormSchema = z.object({
   started_by: z.enum(["Driver", "Transporter"]).optional(),
   is_active: z.boolean().optional(),
   handover_checklist: z.string().optional(),
+  company_name: z.string().optional(),
 });
 
 type TripFormValues = z.infer<typeof tripFormSchema>;
@@ -126,7 +136,13 @@ const DriverTripsPage = () => {
   const [isAddTripOpen, setIsAddTripOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
-  const [expandedTrips, setExpandedTrips] = useState<number[]>([]);
+  const [expandedTrips, setExpandedTrips] = useState<string[]>([]);
+  const [transporterId, setTransporterId] = useState("");
+  const [transporterName, setTransporterName] = useState("");
+  const [transporters, setTransporters] = useState<any[]>([]);
+  const [selectedTransporter, setSelectedTransporter] = useState<any | null>(null);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<any | null>(null);
 
   // Form for creating/editing trips
   const form = useForm<TripFormValues>({
@@ -148,7 +164,7 @@ const DriverTripsPage = () => {
       paid_amount: 0,
       
       // Status and dates
-      status: "upcoming",
+      status: "Upcoming",
       created_on: new Date().toISOString(),
       started_on: "",
       ended_on: "",
@@ -158,6 +174,7 @@ const DriverTripsPage = () => {
       // Transporter details
       transporter: "",
       transporter_name: "",
+      transporter_phone: "",
       
       // Odometer and images
       odo_start: "",
@@ -172,44 +189,59 @@ const DriverTripsPage = () => {
       started_by: "Driver",
       is_active: true,
       handover_checklist: "",
+      company_name: "",
     },
   });
 
   // Get trips for the current driver
   const { data: trips, isLoading } = useQuery<Trip[]>({
-    queryKey: ['/api/trips', user?.id],
+    queryKey: ['/api/trips', Cookies.get('userId')],
     queryFn: async () => {
-      if (!user) return [];
-      const response = await fetch(`/api/trips?driver_id=${user.id}`);
+      const userId = Cookies.get('userId');
+      if (!userId) return [];
+      const response = await fetch(`https://internal.signodrive.com/api/method/signo_connect.apis.trip.get_trips?driver_id=${userId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `token ${frappe_token}`,
+          "x-key": x_key
+        }
+      });
       if (!response.ok) throw new Error('Failed to fetch trips');
-      return response.json();
+      const json = await response.json();
+      return json.data || json.message || json.trips || [];
     },
-    enabled: !!user,
+    enabled: !!Cookies.get('userId'),
   });
 
   // Create trip mutation
   const createTripMutation = useMutation({
     mutationFn: async (data: TripFormValues) => {
-      if (!user) throw new Error('User not authenticated');
-      
-      const tripData = {
-        ...data,
-        driver: user.id.toString(),
-      };
-      
-      return fetch('/api/trips', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(tripData),
-      }).then(res => {
-        if (!res.ok) throw new Error('Failed to create trip');
-        return res.json();
-      });
+      const userId = Cookies.get('userId');
+      if (!userId) throw new Error('User not authenticated');
+      try {
+        const response = await fetch('https://internal.signodrive.com/api/method/signo_connect.api.proxy/Trips', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `token ${frappe_token}`,
+            'x-key': x_key
+          },
+          body: JSON.stringify({ ...data, driver: userId }),
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Failed to create trip');
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/trips', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trips', Cookies.get('userId')] });
       toast({
         title: "Trip added successfully",
         description: "Your trip has been recorded",
@@ -218,6 +250,7 @@ const DriverTripsPage = () => {
       form.reset();
     },
     onError: (error: any) => {
+      console.error("Trip creation error", error);
       toast({
         title: "Error adding trip",
         description: error.message,
@@ -228,11 +261,14 @@ const DriverTripsPage = () => {
 
   // Update trip mutation
   const updateTripMutation = useMutation({
-    mutationFn: async (data: { id: number; trip: TripFormValues }) => {
-      return fetch(`/api/trips/${data.id}`, {
+    mutationFn: async (data: { trip_id: string; trip: TripFormValues }) => {
+      return fetch(`https://internal.signodrive.com/api/method/signo_connect.api.proxy/Trips/${data.trip_id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `token ${frappe_token}`,
+          'x-key': x_key
         },
         body: JSON.stringify(data.trip),
       }).then(res => {
@@ -241,12 +277,13 @@ const DriverTripsPage = () => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/trips', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trips', Cookies.get('userId')] });
       toast({
         title: "Trip updated successfully",
         description: "Your trip has been updated",
       });
       setEditingTrip(null);
+      setIsAddTripOpen(false);
       form.reset();
     },
     onError: (error: any) => {
@@ -269,7 +306,7 @@ const DriverTripsPage = () => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/trips', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trips', Cookies.get('userId')] });
       toast({
         title: "Trip deleted successfully",
         description: "Your trip has been removed",
@@ -284,6 +321,98 @@ const DriverTripsPage = () => {
       });
     },
   });
+
+  // Fetch all transporters on mount
+  useEffect(() => {
+    fetch("https://internal.signodrive.com/api/method/signo_connect.api.proxy/Transporters", {
+      method: 'GET',
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": `token ${frappe_token}`,
+        "x-key": x_key
+      }
+    })
+      .then(async res => {
+        if (!res.ok) {
+          console.error('Failed to fetch transporters', res.status, res.statusText);
+          return { data: [] };
+        }
+        const text = await res.text();
+        if (!text) return { data: [] };
+        try {
+          return JSON.parse(text);
+        } catch {
+          return { data: [] };
+        }
+      })
+      .then(data => setTransporters(data.data || []))
+      .catch(err => {
+        console.error('Transporter fetch error:', err);
+        setTransporters([]);
+      });
+  }, []);
+
+  // Fetch all vehicles on mount
+  useEffect(() => {
+    fetch("https://internal.signodrive.com/api/method/signo_connect.api.proxy/Vehicles", {
+      method: 'GET',
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": `token ${frappe_token}`,
+        "x-key": x_key
+      }
+    })
+      .then(async res => {
+        if (!res.ok) {
+          console.error('Failed to fetch vehicles', res.status, res.statusText);
+          return { data: [] };
+        }
+        const text = await res.text();
+        if (!text) return { data: [] };
+        try {
+          return JSON.parse(text);
+        } catch {
+          return { data: [] };
+        }
+      })
+      .then(data => setVehicles(data.data || []))
+      .catch(err => {
+        console.error('Vehicle fetch error:', err);
+        setVehicles([]);
+      });
+  }, []);
+
+  // Update handleCompanySelect to set both transporter and company_name
+  const handleCompanySelect = (transporterId: string) => {
+    const transporter = transporters.find(t => t.name === transporterId);
+    setSelectedTransporter(transporter);
+    if (transporter) {
+      form.setValue("transporter", transporter.name); // backend expects this
+      form.setValue("company_name", transporter.company_name); // for display
+      form.setValue("transporter_name", transporter.name1);
+      form.setValue("transporter_phone", transporter.phone_number);
+    } else {
+      form.setValue("transporter", "");
+      form.setValue("company_name", "");
+      form.setValue("transporter_name", "");
+      form.setValue("transporter_phone", "");
+    }
+  };
+
+  // When vehicle is selected, set selectedVehicle and update form fields
+  const handleVehicleSelect = (vehicleId: string) => {
+    const vehicle = vehicles.find(v => v.name === vehicleId);
+    setSelectedVehicle(vehicle);
+    if (vehicle) {
+      form.setValue("vehicle", vehicle.name);
+      form.setValue("vehicle_type", vehicle.vehicle_type || "");
+    } else {
+      form.setValue("vehicle", "");
+      form.setValue("vehicle_type", "");
+    }
+  };
 
   // If no user is logged in, redirect to welcome page
   useEffect(() => {
@@ -312,7 +441,7 @@ const DriverTripsPage = () => {
         paid_amount: editingTrip.paid_amount || 0,
         
         // Status and dates
-        status: editingTrip.status as "upcoming" | "waiting" | "completed" | "in-progress" | "cancelled",
+        status: editingTrip.status as "Upcoming" | "Waiting" | "Running" | "Completed",
         created_on: editingTrip.created_on || new Date().toISOString(),
         started_on: editingTrip.started_on ? new Date(editingTrip.started_on).toISOString().substring(0, 16) : "",
         ended_on: editingTrip.ended_on ? new Date(editingTrip.ended_on).toISOString().substring(0, 16) : "",
@@ -322,6 +451,7 @@ const DriverTripsPage = () => {
         // Transporter details
         transporter: editingTrip.transporter || "",
         transporter_name: editingTrip.transporter_name || "",
+        transporter_phone: editingTrip.transporter_phone || "",
         
         // Odometer and images
         odo_start: editingTrip.odo_start || "",
@@ -336,6 +466,7 @@ const DriverTripsPage = () => {
         started_by: editingTrip.started_by || "Driver",
         is_active: editingTrip.is_active ?? true,
         handover_checklist: editingTrip.handover_checklist || "",
+        company_name: editingTrip.company_name || "",
       });
       setIsAddTripOpen(true);
     }
@@ -360,7 +491,7 @@ const DriverTripsPage = () => {
       paid_amount: 0,
       
       // Status and dates
-      status: "upcoming",
+      status: "Upcoming",
       created_on: new Date().toISOString(),
       started_on: new Date().toISOString().substring(0, 16),
       ended_on: "",
@@ -370,6 +501,7 @@ const DriverTripsPage = () => {
       // Transporter details
       transporter: "",
       transporter_name: "",
+      transporter_phone: "",
       
       // Odometer and images
       odo_start: "",
@@ -384,15 +516,19 @@ const DriverTripsPage = () => {
       started_by: "Driver",
       is_active: true,
       handover_checklist: "",
+      company_name: "",
     });
     setIsAddTripOpen(true);
   };
 
   const onSubmit = (data: TripFormValues) => {
+    console.log("Form Data Submitted:", data);
+    const formattedEta = data.eta ? new Date(data.eta).toISOString().replace('T', ' ').substring(0, 19) : "";
+    const payload = { ...data, eta: formattedEta };
     if (editingTrip) {
-      updateTripMutation.mutate({ id: parseInt(editingTrip.naming_series, 10), trip: data });
+      updateTripMutation.mutate({ trip_id: editingTrip.name || editingTrip.naming_series, trip: payload });
     } else {
-      createTripMutation.mutate(data);
+      createTripMutation.mutate(payload);
     }
   };
 
@@ -407,10 +543,10 @@ const DriverTripsPage = () => {
   };
 
   const toggleTripExpand = (naming_series: string) => {
-    if (expandedTrips.includes(Number(naming_series))) {
-      setExpandedTrips(expandedTrips.filter(series => series !== Number(naming_series)));
+    if (expandedTrips.includes(naming_series)) {
+      setExpandedTrips(expandedTrips.filter(series => series !== naming_series));
     } else {
-      setExpandedTrips([...expandedTrips, Number(naming_series)]);
+      setExpandedTrips([...expandedTrips, naming_series]);
     }
   };
 
@@ -426,12 +562,10 @@ const DriverTripsPage = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed":
+      case "Completed":
         return "bg-green-50 text-green-700 hover:bg-green-100";
-      case "in-progress":
+      case "Running":
         return "bg-blue-50 text-blue-700 hover:bg-blue-100";
-      case "cancelled":
-        return "bg-red-50 text-red-700 hover:bg-red-100";
       default:
         return "bg-neutral-100 text-neutral-700";
     }
@@ -449,7 +583,7 @@ const DriverTripsPage = () => {
         </h1>
       </Header>
 
-      <div className="flex-grow container mx-auto px-4 py-6 max-w-md">
+      <div className="flex-grow container mx-auto px-4 py-6 max-w-6xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-medium">Your Trips</h2>
           <Button onClick={handleAddTrip} className="bg-[#FF6D00] hover:bg-[#E65100]">
@@ -465,227 +599,248 @@ const DriverTripsPage = () => {
         ) : trips && trips.length > 0 ? (
           <div className="space-y-4">
             {trips.map((trip) => (
-                <Card key={trip.naming_series} className="overflow-hidden">
-                <CardHeader className="py-3 px-4 bg-neutral-50 border-b cursor-pointer" onClick={() => toggleTripExpand(trip.naming_series)}>
-                  <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-2">
-                    {trip.naming_series ? (
-                    <div className="font-mono text-xs bg-neutral-200 py-1 px-2 rounded mr-2">{trip.naming_series}</div>
-                    ) : null}
-                    <MapPin className="h-4 w-4 text-[#FF6D00]" />
-                    <div>
-                    <span className="font-medium">{trip.origin}</span>
-                    <span className="mx-2 text-neutral-400">→</span>
-                    <span className="font-medium">{trip.destination}</span>
+              <Card key={trip.name || trip.naming_series} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-1">
+                          <div className="font-mono text-xs bg-neutral-200 py-1 px-2 rounded mr-2">{trip.naming_series}</div>
+                          <Badge className={getStatusColor(trip.status)}>
+                            {trip.status}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-x-6 gap-y-2 text-neutral-500 text-sm mb-3">
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-2 text-[#FF6D00]" />
+                            <span className="font-medium text-neutral-800">{trip.origin}</span>
+                            <span className="mx-2 text-neutral-400">→</span>
+                            <span className="font-medium text-neutral-800">{trip.destination}</span>
+                          </div>
+                          {trip.vehicle_type && (
+                            <div className="flex items-center">
+                              <Truck className="h-4 w-4 mr-2" />
+                              <span>{trip.vehicle_type}</span>
+                            </div>
+                          )}
+                          {trip.driver_name && (
+                            <div className="flex items-center">
+                              <User className="h-4 w-4 mr-2" />
+                              <span>{trip.driver_name}</span>
+                            </div>
+                          )}
+                          {trip.transporter_name && (
+                            <div className="flex items-center">
+                              <Users className="h-4 w-4 mr-2" />
+                              <span>{trip.transporter_name}</span>
+                            </div>
+                          )}
+                          {trip.trip_cost !== undefined && (
+                            <div className="flex items-center">
+                              <IndianRupee className="h-4 w-4 mr-2" />
+                              <span>₹{(trip.trip_cost || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                          )}
+                          {trip.started_on && (
+                            <div className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-2" />
+                              <span>{formatDate(trip.started_on)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setEditingTrip(trip)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button 
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => toggleTripExpand(trip.naming_series)}
+                        >
+                          {expandedTrips.includes(trip.naming_series) ? (
+                            <ChevronUp className="h-4 w-4 text-neutral-400" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-neutral-400" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center">
-                    <Badge className={getStatusColor(trip.status)}>
-                    {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
-                    </Badge>
-                    {expandedTrips.includes(Number(trip.naming_series)) ? (
-                    <ChevronUp className="h-4 w-4 text-neutral-400 ml-2" />
-                    ) : (
-                    <ChevronDown className="h-4 w-4 text-neutral-400 ml-2" />
-                    )}
-                  </div>
-                  </div>
-                </CardHeader>
 
-                {expandedTrips.includes(Number(trip.naming_series)) && (
-                  <CardContent className="p-4">
-                  {/* Timeline Information */}
-                  <div className="mb-4 pb-4 border-b">
-                    <h4 className="text-sm font-semibold mb-3">Trip Timeline</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      <span>Started:</span>
-                      </div>
-                      <p className="text-sm font-medium">{formatDate(trip.started_on)}</p>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      <span>Ended:</span>
-                      </div>
-                      <p className="text-sm font-medium">{formatDate(trip.ended_on)}</p>
-                    </div>
-                    
-                    {trip.eta && (
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                        <Clock className="h-4 w-4 mr-2" />
-                        <span>ETA:</span>
-                      </div>
-                      <p className="text-sm font-medium">{formatDate(trip.eta)}</p>
+                    {expandedTrips.includes(trip.naming_series) && (
+                      <div className="pt-4 border-t mt-2">
+                        {/* Timeline Information */}
+                        <div className="mb-4 pb-4 border-b">
+                          <h4 className="text-sm font-semibold mb-3">Trip Timeline</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center text-sm text-neutral-500">
+                                <Calendar className="h-4 w-4 mr-2" />
+                                <span>Started:</span>
+                              </div>
+                              <p className="text-sm font-medium">{formatDate(trip.started_on)}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center text-sm text-neutral-500">
+                                <Calendar className="h-4 w-4 mr-2" />
+                                <span>Ended:</span>
+                              </div>
+                              <p className="text-sm font-medium">{formatDate(trip.ended_on)}</p>
+                            </div>
+                            {trip.eta && (
+                              <div className="space-y-1">
+                                <div className="flex items-center text-sm text-neutral-500">
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  <span>ETA:</span>
+                                </div>
+                                <p className="text-sm font-medium">{formatDate(trip.eta)}</p>
+                              </div>
+                            )}
+                            {trip.eta_str && (
+                              <div className="space-y-1">
+                                <div className="flex items-center text-sm text-neutral-500">
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  <span>ETA String:</span>
+                                </div>
+                                <p className="text-sm font-medium">{trip.eta_str}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {/* Vehicle & Driver Information */}
+                        <div className="mb-4 pb-4 border-b">
+                          <h4 className="text-sm font-semibold mb-3">Vehicle & Driver</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            {trip.vehicle_type && (
+                              <div className="space-y-1">
+                                <div className="flex items-center text-sm text-neutral-500">
+                                  <Truck className="h-4 w-4 mr-2" />
+                                  <span>Vehicle Type:</span>
+                                </div>
+                                <p className="text-sm font-medium">{trip.vehicle_type}</p>
+                              </div>
+                            )}
+                            {trip.driver_name && (
+                              <div className="space-y-1">
+                                <div className="flex items-center text-sm text-neutral-500">
+                                  <User className="h-4 w-4 mr-2" />
+                                  <span>Driver:</span>
+                                </div>
+                                <p className="text-sm font-medium">{trip.driver_name}</p>
+                              </div>
+                            )}
+                            {trip.transporter_name && (
+                              <div className="space-y-1">
+                                <div className="flex items-center text-sm text-neutral-500">
+                                  <Users className="h-4 w-4 mr-2" />
+                                  <span>Transporter:</span>
+                                </div>
+                                <p className="text-sm font-medium">{trip.transporter_name}</p>
+                              </div>
+                            )}
+                            {trip.started_by && (
+                              <div className="space-y-1">
+                                <div className="flex items-center text-sm text-neutral-500">
+                                  <User className="h-4 w-4 mr-2" />
+                                  <span>Started By:</span>
+                                </div>
+                                <p className="text-sm font-medium">{trip.started_by}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {/* Trip Metrics */}
+                        <div className="mb-4 pb-4 border-b">
+                          <h4 className="text-sm font-semibold mb-3">Trip Metrics</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            {trip.odo_start && (
+                              <div className="space-y-1">
+                                <div className="flex items-center text-sm text-neutral-500">
+                                  <Truck className="h-4 w-4 mr-2" />
+                                  <span>Odometer Start:</span>
+                                </div>
+                                <p className="text-sm font-medium">{trip.odo_start}</p>
+                              </div>
+                            )}
+                            {trip.odo_end && (
+                              <div className="space-y-1">
+                                <div className="flex items-center text-sm text-neutral-500">
+                                  <Truck className="h-4 w-4 mr-2" />
+                                  <span>Odometer End:</span>
+                                </div>
+                                <p className="text-sm font-medium">{trip.odo_end}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {/* Financial Details */}
+                        <div className="mb-4 pb-4 border-b">
+                          <h4 className="text-sm font-semibold mb-3">Financial Details</h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center text-sm text-neutral-500">
+                                <IndianRupee className="h-4 w-4 mr-2" />
+                                <span>Trip Cost:</span>
+                              </div>
+                              <p className="text-sm font-medium">₹{(trip.trip_cost || 0).toLocaleString('en-IN')}</p>
+                            </div>
+                            {trip.paid_amount !== undefined && (
+                              <div className="space-y-1">
+                                <div className="flex items-center text-sm text-neutral-500">
+                                  <IndianRupee className="h-4 w-4 mr-2" />
+                                  <span>Paid:</span>
+                                </div>
+                                <p className="text-sm font-medium">₹{trip.paid_amount.toLocaleString('en-IN')}</p>
+                              </div>
+                            )}
+                            {trip.pending_amount !== undefined && (
+                              <div className="space-y-1">
+                                <div className="flex items-center text-sm text-neutral-500">
+                                  <IndianRupee className="h-4 w-4 mr-2" />
+                                  <span>Pending:</span>
+                                </div>
+                                <p className="text-sm font-medium">₹{trip.pending_amount.toLocaleString('en-IN')}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {/* Additional Details */}
+                        <div className="mb-4">
+                          {trip.share_text && (
+                            <div className="space-y-1 mb-4">
+                              <div className="flex items-center text-sm text-neutral-500">
+                                <FileText className="h-4 w-4 mr-2" />
+                                <span>Notes:</span>
+                              </div>
+                              <p className="text-sm bg-neutral-50 p-2 rounded">{trip.share_text}</p>
+                            </div>
+                          )}
+                          <div className="flex items-center mb-4">
+                            <div className="flex items-center text-sm text-neutral-500 mr-2">
+                              <Activity className="h-4 w-4 mr-1" />
+                              <span>Status:</span>
+                            </div>
+                            <div className="flex">
+                              <span className={`text-sm font-medium px-2 py-0.5 rounded ${
+                                trip.is_active 
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-neutral-100 text-neutral-800"
+                              }`}>
+                                {trip.is_active ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
-                    
-                    {trip.eta_str && (
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                        <Clock className="h-4 w-4 mr-2" />
-                        <span>ETA String:</span>
-                      </div>
-                      <p className="text-sm font-medium">{trip.eta_str}</p>
-                      </div>
-                    )}
-                    </div>
                   </div>
-                  
-                  {/* Vehicle & Driver Information */}
-                  <div className="mb-4 pb-4 border-b">
-                    <h4 className="text-sm font-semibold mb-3">Vehicle & Driver</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                    {trip.vehicle_type && (
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                        <Truck className="h-4 w-4 mr-2" />
-                        <span>Vehicle Type:</span>
-                      </div>
-                      <p className="text-sm font-medium">{trip.vehicle_type}</p>
-                      </div>
-                    )}
-                    
-                    {trip.driver_name && (
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                        <User className="h-4 w-4 mr-2" />
-                        <span>Driver:</span>
-                      </div>
-                      <p className="text-sm font-medium">{trip.driver_name}</p>
-                      </div>
-                    )}
-                    
-                    {trip.transporter_name && (
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                        <Users className="h-4 w-4 mr-2" />
-                        <span>Transporter:</span>
-                      </div>
-                      <p className="text-sm font-medium">{trip.transporter_name}</p>
-                      </div>
-                    )}
-                    
-                    {trip.started_by && (
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                        <User className="h-4 w-4 mr-2" />
-                        <span>Started By:</span>
-                      </div>
-                      <p className="text-sm font-medium">{trip.started_by}</p>
-                      </div>
-                    )}
-                    </div>
-                  </div>
-                  
-                  {/* Trip Metrics */}
-                  <div className="mb-4 pb-4 border-b">
-                    <h4 className="text-sm font-semibold mb-3">Trip Metrics</h4>
-                    <div className="grid grid-cols-2 gap-4">
-
-                    {trip.odo_start && (
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                        <Truck className="h-4 w-4 mr-2" />
-                        <span>Odometer Start:</span>
-                      </div>
-                      <p className="text-sm font-medium">{trip.odo_start}</p>
-                      </div>
-                    )}
-                    
-                    {trip.odo_end && (
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                        <Truck className="h-4 w-4 mr-2" />
-                        <span>Odometer End:</span>
-                      </div>
-                      <p className="text-sm font-medium">{trip.odo_end}</p>
-                      </div>
-                    )}
-                    </div>
-                  </div>
-                  
-                  {/* Financial Details */}
-                  <div className="mb-4 pb-4 border-b">
-                    <h4 className="text-sm font-semibold mb-3">Financial Details</h4>
-                    <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                      <IndianRupee className="h-4 w-4 mr-2" />
-                      <span>Trip Cost:</span>
-                      </div>
-                      <p className="text-sm font-medium">₹{(trip.trip_cost || 0).toLocaleString('en-IN')}</p>
-                    </div>
-                    
-                    {trip.paid_amount !== undefined && (
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                        <IndianRupee className="h-4 w-4 mr-2" />
-                        <span>Paid:</span>
-                      </div>
-                      <p className="text-sm font-medium">₹{trip.paid_amount.toLocaleString('en-IN')}</p>
-                      </div>
-                    )}
-                    
-                    {trip.pending_amount !== undefined && (
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm text-neutral-500">
-                        <IndianRupee className="h-4 w-4 mr-2" />
-                        <span>Pending:</span>
-                      </div>
-                      <p className="text-sm font-medium">₹{trip.pending_amount.toLocaleString('en-IN')}</p>
-                      </div>
-                    )}
-                    </div>
-                  </div>
-                  
-                  {/* Additional Details */}
-                  <div className="mb-4">
-                    {trip.share_text && (
-                    <div className="space-y-1 mb-4">
-                      <div className="flex items-center text-sm text-neutral-500">
-                      <FileText className="h-4 w-4 mr-2" />
-                      <span>Notes:</span>
-                      </div>
-                      <p className="text-sm bg-neutral-50 p-2 rounded">{trip.share_text}</p>
-                    </div>
-                    )}
-                    
-                    <div className="flex items-center mb-4">
-                    <div className="flex items-center text-sm text-neutral-500 mr-2">
-                      <Activity className="h-4 w-4 mr-1" />
-                      <span>Status:</span>
-                    </div>
-                    <div className="flex">
-                      <span className={`text-sm font-medium px-2 py-0.5 rounded ${
-                      trip.is_active 
-                        ? "bg-green-100 text-green-800"
-                        : "bg-neutral-100 text-neutral-800"
-                      }`}>
-                      {trip.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end space-x-2 mt-4">
-                    <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => setEditingTrip(trip)}
-                    >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                    </Button>
-                    {/* Removed Delete Button */}
-                  </div>
-                  </CardContent>
-                )}
-                </Card>
+                </CardContent>
+              </Card>
             ))}
           </div>
         ) : (
@@ -707,7 +862,7 @@ const DriverTripsPage = () => {
 
       {/* Add/Edit Trip Dialog */}
       <Dialog open={isAddTripOpen} onOpenChange={setIsAddTripOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingTrip ? "Edit Trip" : "Add New Trip"}</DialogTitle>
             <DialogDescription>
@@ -738,7 +893,36 @@ const DriverTripsPage = () => {
                       </FormItem>
                     )}
                   />
-                  
+                  <FormField
+                    control={form.control}
+                    name="vehicle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Vehicle</FormLabel>
+                        <FormControl>
+                          <Select
+                            onValueChange={value => {
+                              field.onChange(value);
+                              handleVehicleSelect(value);
+                            }}
+                            value={field.value || ""}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select vehicle" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vehicles.map(v => (
+                                <SelectItem key={v.name} value={v.name}>
+                                  {v.registration_number || v.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="status"
@@ -754,11 +938,10 @@ const DriverTripsPage = () => {
                               <SelectValue placeholder="Trip status" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="upcoming">Upcoming</SelectItem>
-                              <SelectItem value="waiting">Waiting</SelectItem>
-                              <SelectItem value="in-progress">In Progress</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                              <SelectItem value="Upcoming">Upcoming</SelectItem>
+                              <SelectItem value="Waiting">Waiting</SelectItem>
+                              <SelectItem value="Running">Running</SelectItem>
+                              <SelectItem value="Completed">Completed</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>
@@ -776,21 +959,7 @@ const DriverTripsPage = () => {
                       <FormItem>
                         <FormLabel>Vehicle Type</FormLabel>
                         <FormControl>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select vehicle type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="10-wheeler">10-wheeler</SelectItem>
-                              <SelectItem value="16-wheeler">16-wheeler</SelectItem>
-                              <SelectItem value="Mini Truck">Mini Truck</SelectItem>
-                              <SelectItem value="Container">Container</SelectItem>
-                              <SelectItem value="Tanker">Tanker</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Input value={selectedVehicle?.vehicle_type || field.value || ""} readOnly />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -840,7 +1009,14 @@ const DriverTripsPage = () => {
                       <FormItem>
                         <FormLabel>Started On</FormLabel>
                         <FormControl>
-                          <Input type="datetime-local" {...field} />
+                          <DatePicker
+                            selected={field.value ? new Date(field.value) : null}
+                            onChange={(date: Date | null) => field.onChange(date ? formatDateFns(date, "yyyy-MM-dd HH:mm:ss") : "")}
+                            showTimeSelect
+                            dateFormat="yyyy-MM-dd HH:mm:ss"
+                            placeholderText="Select start date/time"
+                            className="w-full border rounded px-2 py-1"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -854,7 +1030,14 @@ const DriverTripsPage = () => {
                       <FormItem>
                         <FormLabel>Ended On</FormLabel>
                         <FormControl>
-                          <Input type="datetime-local" {...field} />
+                          <DatePicker
+                            selected={field.value ? new Date(field.value) : null}
+                            onChange={(date: Date | null) => field.onChange(date ? formatDateFns(date, "yyyy-MM-dd HH:mm:ss") : "")}
+                            showTimeSelect
+                            dateFormat="yyyy-MM-dd HH:mm:ss"
+                            placeholderText="Select end date/time"
+                            className="w-full border rounded px-2 py-1"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -870,7 +1053,14 @@ const DriverTripsPage = () => {
                       <FormItem>
                         <FormLabel>ETA</FormLabel>
                         <FormControl>
-                          <Input type="datetime-local" {...field} />
+                          <DatePicker
+                            selected={field.value ? new Date(field.value) : null}
+                            onChange={(date: Date | null) => field.onChange(date ? formatDateFns(date, "yyyy-MM-dd HH:mm:ss") : "")}
+                            showTimeSelect
+                            dateFormat="yyyy-MM-dd HH:mm:ss"
+                            placeholderText="Select ETA"
+                            className="w-full border rounded px-2 py-1"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -926,7 +1116,39 @@ const DriverTripsPage = () => {
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <FormField
+                    control={form.control}
+                    name="transporter"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Transporter Company</FormLabel>
+                        <FormControl>
+                          <Select
+                            onValueChange={value => {
+                              field.onChange(value);
+                              handleCompanySelect(value);
+                            }}
+                            value={field.value || ""}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select company" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {transporters.map(t => (
+                                <SelectItem key={t.name} value={t.name}>
+                                  {t.company_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
                   <FormField
                     control={form.control}
                     name="transporter_name"
@@ -934,32 +1156,20 @@ const DriverTripsPage = () => {
                       <FormItem>
                         <FormLabel>Transporter Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Company name" {...field} />
+                          <Input value={selectedTransporter?.name1 || ""} readOnly />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
                   <FormField
                     control={form.control}
-                    name="started_by"
+                    name="transporter_phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Started By</FormLabel>
+                        <FormLabel>Transporter Phone</FormLabel>
                         <FormControl>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Who started the trip" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Driver">Driver</SelectItem>
-                              <SelectItem value="Transporter">Transporter</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Input value={selectedTransporter?.phone_number || ""} readOnly />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -979,7 +1189,7 @@ const DriverTripsPage = () => {
                       <FormItem>
                         <FormLabel>Trip Cost (₹)</FormLabel>
                         <FormControl>
-                          <Input type="number" min="0" step="1" {...field} />
+                          <Input type="number" min="0" step="1" className="no-spinner" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -993,7 +1203,7 @@ const DriverTripsPage = () => {
                       <FormItem>
                         <FormLabel>Paid Amount (₹)</FormLabel>
                         <FormControl>
-                          <Input type="number" min="0" step="1" {...field} />
+                          <Input type="number" min="0" step="1" className="no-spinner" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1007,7 +1217,7 @@ const DriverTripsPage = () => {
                       <FormItem>
                         <FormLabel>Pending Amount (₹)</FormLabel>
                         <FormControl>
-                          <Input type="number" min="0" step="1" {...field} />
+                          <Input type="number" min="0" step="1" className="no-spinner" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1070,31 +1280,6 @@ const DriverTripsPage = () => {
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="is_active"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <FormControl>
-                          <Select 
-                            onValueChange={(value) => field.onChange(value === "true")}
-                            defaultValue={field.value ? "true" : "false"}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="true">Active</SelectItem>
-                              <SelectItem value="false">Inactive</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
                   <FormField
                     control={form.control}
                     name="started_by"

@@ -18,7 +18,8 @@ import {
   Truck,
   Edit,
   Camera,
-  Loader2
+  Loader2,
+  Check
 } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import { Header } from "@/components/layout/header";
@@ -55,6 +56,19 @@ import Cookies from "js-cookie";
 
 const frappe_token = import.meta.env.VITE_FRAPPE_API_TOKEN;
 const x_key = import.meta.env.VITE_FRAPPE_X_KEY
+
+
+const vehicleOptions = [
+  { label: "4-Wheel Driver", value: "4-wheel" },
+  { label: "3-Wheel Driver", value: "3-wheel" },
+  { label: "2-Wheel Driver", value: "2-wheel" },
+  { label: "Truck Driver", value: "truck" },
+  { label: "Trailer Driver", value: "trailer" },
+  { label: "Hazmat Driver", value: "hazmat" },
+];
+
+
+
 
 const getProfileCompletionData = (data: Record<string, any> | null) => {
   // Return default values if data is null or undefined
@@ -603,6 +617,12 @@ const DriverProfilePage = () =>  {
     return name.slice(0, 2).toUpperCase();
   };
 
+  // Inside the DriverProfilePage component, add this helper function
+  const parseVehicleTypes = (types: string | undefined): string[] => {
+    if (!types) return [];
+    return types.split(',').map(type => type.trim()).filter(Boolean);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 pb-16">
       <Header>
@@ -745,8 +765,14 @@ const DriverProfilePage = () =>  {
                         <p className="text-neutral-600">{data?.experience ? `${data.experience}` : "Not added"}</p>
                       </div>
                       <div>
-                        <h4 className="font-medium">Preferred Vehicle Type</h4>
-                        <p className="text-neutral-600 capitalize">{data?.catagory || "Not specified"}</p>
+                        <h4 className="font-medium">Preferred Vehicle Types</h4>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {parseVehicleTypes(data?.catagory).map((type) => (
+                            <Badge key={type} variant="secondary" className="capitalize">
+                              {vehicleOptions.find(opt => opt.value === type)?.label || type}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                        <div>
                         <h4 className="font-medium">Date of Birth</h4>
@@ -1123,23 +1149,46 @@ const DriverProfilePage = () =>  {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="catagory">Preferred Vehicle Type</Label>
+                  <Label htmlFor="catagory">Preferred Vehicle Types</Label>
                   <Select
                     value={editedProfile.catagory ?? (data?.catagory || "")}
-                    onValueChange={(value) => setEditedProfile({...editedProfile, catagory: value})}
+                    onValueChange={(value) => {
+                      const currentTypes = parseVehicleTypes(editedProfile.catagory ?? data?.catagory);
+                      const newTypes = currentTypes.includes(value)
+                        ? currentTypes.filter(type => type !== value)
+                        : [...currentTypes, value];
+                      setEditedProfile({...editedProfile, catagory: newTypes.join(',')});
+                    }}
                   >
-                    <SelectTrigger id="catagory">
-                      <SelectValue placeholder="Select vehicle type" />
+                    <SelectTrigger id="catagory" className="min-h-[2.5rem]">
+                      <SelectValue placeholder="Select vehicle types">
+                        {parseVehicleTypes(editedProfile.catagory ?? data?.catagory).length > 0
+                          ? parseVehicleTypes(editedProfile.catagory ?? data?.catagory)
+                              .map(type => vehicleOptions.find(opt => opt.value === type)?.label)
+                              .join(', ')
+                          : "Select vehicle types"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="heavy">Heavy Vehicle</SelectItem>
-                      <SelectItem value="medium">Medium Vehicle</SelectItem>
-                      <SelectItem value="light">Light Vehicle</SelectItem>
-                      <SelectItem value="Truck">Truck</SelectItem>
-                      <SelectItem value="trailer">Trailer</SelectItem>
-                      <SelectItem value="bus">Bus</SelectItem>
+                      {vehicleOptions.map((option) => (
+                        <SelectItem 
+                          key={option.value} 
+                          value={option.value}
+                          className={parseVehicleTypes(editedProfile.catagory ?? data?.catagory).includes(option.value) ? "bg-primary/10" : ""}
+                        >
+                          <div className="flex items-center">
+                            {parseVehicleTypes(editedProfile.catagory ?? data?.catagory).includes(option.value) && (
+                              <Check className="h-4 w-4 mr-2" />
+                            )}
+                            {option.label}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-neutral-500">
+                    Selected: {parseVehicleTypes(editedProfile.catagory ?? data?.catagory).length} vehicle type(s)
+                  </p>
                 </div>
               </div>
             </div>

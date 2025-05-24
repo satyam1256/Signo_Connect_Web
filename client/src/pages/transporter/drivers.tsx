@@ -52,6 +52,25 @@ const formatWhatsAppNumber = (phone: string) => {
   return cleanNumber;
 };
 
+const allTags = [
+  { value: "4-wheel", label: "4-Wheel Driver" },
+  { value: "3-wheel", label: "3-Wheel Driver" },
+  { value: "2-wheel", label: "2-Wheel Driver" },
+  { value: "truck", label: "Truck Driver" },
+  { value: "trailer", label: "Trailer Driver" },
+  { value: "hazmat", label: "Hazmat Driver" },
+  { value: "kyc_verified", label: "KYC Verified" },
+  { value: "kyc_pending", label: "KYC Pending" }
+];
+
+// Add helper function to get vehicle type labels
+const getVehicleTypeLabels = (types: string | null): string[] => {
+  if (!types) return [];
+  return types.split(',')
+    .map(type => type.trim())
+    .map(type => allTags.find(tag => tag.value === type.toLowerCase())?.label || type)
+    .filter(Boolean);
+};
 
 const getProfileCompletionData = (driver: Driver | null) => {
   if (!driver) return 0;
@@ -164,27 +183,16 @@ const TransporterDrivers = () => {
 
       // Apply tag filters if any are selected
       if (activeFilters.length > 0) {
+        const driverTypes = driver.catagory?.split(',').map(type => type.trim().toLowerCase()) || [];
         const driverTags = [
-          driver.catagory?.toLowerCase() || '',
+          ...driverTypes,
           driver.is_kyc_verfied ? 'kyc_verified' : 'kyc_pending'
-        ].filter(Boolean);
-        return driverTags.some(tag => activeFilters.includes(tag));
+        ];
+        return activeFilters.some(filter => driverTags.includes(filter));
       }
 
       return true;
     });
-
-    const allTags = [
-      { value: "heavy", label: "Heavy Vehicle" },
-      { value: "medium", label: "Medium Vehicle" },
-      { value: "light", label: "Light Vehicle" },
-      { value: "truck", label: "Truck" },
-      { value: "trailer", label: "Trailer" },
-      { value: "bus", label: "Bus" },
-      { value: "kyc_verified", label: "KYC Verified" },
-      { value: "kyc_pending", label: "KYC Pending" }
-    ];
-      
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 pb-16">
@@ -297,12 +305,14 @@ const TransporterDrivers = () => {
                           </div>
                         )}
                         <div className="flex flex-wrap gap-2 mb-3">
-                        {driver.catagory && (
-                            <span className="bg-neutral-100 text-neutral-600 text-xs py-1 px-2 rounded-full">
-                            {driver.catagory?.toLowerCase() 
-                            ? allTags.find(tag => tag.value === driver.catagory?.toLowerCase())?.label || driver.catagory 
-                            : "Vehicle type not specified"}
-                            </span>
+                          {driver.catagory && (
+                            <>
+                              {getVehicleTypeLabels(driver.catagory).map((label, index) => (
+                                <span key={index} className="bg-neutral-100 text-neutral-600 text-xs py-1 px-2 rounded-full">
+                                  {label}
+                                </span>
+                              ))}
+                            </>
                           )}
                           <span className={`text-xs py-1 px-2 rounded-full ${
                             driver.is_kyc_verfied 

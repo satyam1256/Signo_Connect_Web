@@ -148,6 +148,8 @@ const TransporterJobsPage = () => {
   // Add toast state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  const [viewDetailsJobId, setViewDetailsJobId] = useState<string | number | null>(null);
+
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = 
       searchQuery === "" || 
@@ -629,9 +631,9 @@ const TransporterJobsPage = () => {
         throw new Error('Failed to update job: ' + errorMessage);
       }
 
-
       setIsEditingJob(false);
       setEditingJobId(null);
+      setViewDetailsJobId(null);
       
       setToast({ message: "Job updated successfully!", type: "success" });
       
@@ -997,10 +999,9 @@ const TransporterJobsPage = () => {
         </div>
 
         <Tabs defaultValue="active" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 mb-6">
+          <TabsList className="w-full grid grid-cols-2 mb-6">
             <TabsTrigger value="all">All Jobs ({jobs.length})</TabsTrigger>
             <TabsTrigger value="active">Active ({jobs.filter(j => j.status === 'active').length})</TabsTrigger>
-            <TabsTrigger value="saved">Templates</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="mt-0">
@@ -1052,6 +1053,12 @@ const TransporterJobsPage = () => {
                                 <BadgeIndianRupee className="h-4 w-4 mr-2" />
                                 <span>{job.salary}</span>
                               </div>
+                              {typeof job.no_of_openings !== 'undefined' && (
+                                <div className="flex items-center">
+                                  <Users className="h-4 w-4 mr-2" />
+                                  <span>{job.no_of_openings} Opening{job.no_of_openings > 1 ? 's' : ''}</span>
+                                </div>
+                              )}
                               {/* Comment out postedDate as it's not in the backend
                               <div className="flex items-center">
                                 <Calendar className="h-4 w-4 mr-2" />
@@ -1062,9 +1069,9 @@ const TransporterJobsPage = () => {
                           </div>
 
                           <div className="flex items-center sm:items-start gap-3">
-                            <Dialog>
+                            <Dialog open={viewDetailsJobId === job.id} onOpenChange={open => setViewDetailsJobId(open ? job.id : null)}>
                               <DialogTrigger asChild>
-                                <Button variant="outline" size={isMobile ? "sm" : "default"}>
+                                <Button variant="outline" size={isMobile ? "sm" : "default"} onClick={() => setViewDetailsJobId(job.id)}>
                                   <Eye className="h-4 w-4 sm:mr-2" />
                                   <span className="hidden sm:inline">View Details</span>
                                 </Button>
@@ -1112,16 +1119,6 @@ const TransporterJobsPage = () => {
                                       </div>
                                     </div>
 
-                                    {/* Comment out postedDate as it's not in the backend
-                                    <div className="flex items-center">
-                                      <Calendar className="h-5 w-5 mr-3 text-neutral-500" />
-                                      <div>
-                                        <h4 className="font-medium">Posted Date</h4>
-                                        <p className="text-neutral-600">{job.postedDate}</p>
-                                      </div>
-                                    </div>
-                                    */}
-
                                     <div className="flex items-center">
                                       <Clock className="h-5 w-5 mr-3 text-neutral-500" />
                                       <div>
@@ -1130,36 +1127,35 @@ const TransporterJobsPage = () => {
                                       </div>
                                     </div>
 
-
-                                    {/* Comment out vehicleType as it's not in the backend
-                                    <div className="flex items-center">
-                                      <Truck className="h-5 w-5 mr-3 text-neutral-500" />
-                                      <div>
-                                        <h4 className="font-medium">Vehicle Type</h4>
-                                        <p className="text-neutral-600">{job.vehicleType}</p>
+                                    {typeof job.no_of_openings !== 'undefined' && (
+                                      <div className="flex items-center">
+                                        <Users className="h-5 w-5 mr-3 text-neutral-500" />
+                                        <div>
+                                          <h4 className="font-medium">No. of Openings</h4>
+                                          <p className="text-neutral-600">{job.no_of_openings}</p>
+                                        </div>
                                       </div>
-                                    </div>
-                                    */}
+                                    )}
 
-                                    {/* Comment out experience as it's not in the backend
-                                    <div className="flex items-center">
-                                      <Briefcase className="h-5 w-5 mr-3 text-neutral-500" />
-                                      <div>
-                                        <h4 className="font-medium">Experience</h4>
-                                        <p className="text-neutral-600">{job.experience}</p>
+                                    {job.transporter_name && (
+                                      <div className="flex items-center">
+                                        <Users className="h-5 w-5 mr-3 text-neutral-500" />
+                                        <div>
+                                          <h4 className="font-medium">Transporter Name</h4>
+                                          <p className="text-neutral-600">{job.transporter_name}</p>
+                                        </div>
                                       </div>
-                                    </div>
-                                    */}
+                                    )}
 
-                                    {/* Comment out viewsCount as it's not in the backend
-                                    <div className="flex items-center">
-                                      <Eye className="h-5 w-5 mr-3 text-neutral-500" />
-                                      <div>
-                                        <h4 className="font-medium">Views</h4>
-                                        <p className="text-neutral-600">{job.viewsCount} views</p>
+                                    {job.transporter && (
+                                      <div className="flex items-center">
+                                        <User className="h-5 w-5 mr-3 text-neutral-500" />
+                                        <div>
+                                          <h4 className="font-medium">Transporter ID</h4>
+                                          <p className="text-neutral-600">{job.transporter}</p>
+                                        </div>
                                       </div>
-                                    </div>
-                                    */}
+                                    )}
                                   </div>
 
                                   <Separator className="mb-4" />
@@ -1182,10 +1178,7 @@ const TransporterJobsPage = () => {
                                 <DialogFooter>
                                   <Button variant="outline" onClick={() => {
                                     openEditDialog(job);
-                                    const closeButton = document.querySelector('[data-radix-collection-item]');
-                                    if (closeButton) {
-                                      (closeButton as HTMLElement).click();
-                                    }
+                                    setViewDetailsJobId(null);
                                   }}>
                                     Edit Job
                                   </Button>
@@ -1341,6 +1334,10 @@ const TransporterJobsPage = () => {
 
                         <div className="flex flex-wrap gap-x-6 gap-y-2 text-neutral-500 text-sm mb-3">
                           <div className="flex items-center">
+                            <Building className="h-4 w-4 mr-2" />
+                            <span>{user?.fullName || "Your Company"}</span>
+                          </div>
+                          <div className="flex items-center">
                             <MapPin className="h-4 w-4 mr-2" />
                             <span>{job.city}</span>
                           </div>
@@ -1348,6 +1345,12 @@ const TransporterJobsPage = () => {
                             <BadgeIndianRupee className="h-4 w-4 mr-2" />
                             <span>{job.salary}</span>
                           </div>
+                          {typeof job.no_of_openings !== 'undefined' && (
+                            <div className="flex items-center">
+                              <Users className="h-4 w-4 mr-2" />
+                              <span>{job.no_of_openings} Opening{job.no_of_openings > 1 ? 's' : ''}</span>
+                            </div>
+                          )}
                           {/* Comment out postedDate as it's not in the backend
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-2" />
@@ -1435,10 +1438,7 @@ const TransporterJobsPage = () => {
                             <DialogFooter>
                               <Button variant="outline" onClick={() => {
                                 openEditDialog(job);
-                                const closeButton = document.querySelector('[data-radix-collection-item]');
-                                if (closeButton) {
-                                  (closeButton as HTMLElement).click();
-                                }
+                                setViewDetailsJobId(null);
                               }}>
                                 Edit Job
                         </Button>
@@ -1500,24 +1500,6 @@ const TransporterJobsPage = () => {
                 </Card>
               ))
             )}
-          </TabsContent>
-
-          <TabsContent value="saved" className="mt-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Job Templates</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center py-12">
-                    <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
-                  <FileText className="h-6 w-6 text-neutral-400" />
-                    </div>
-                <h3 className="text-lg font-medium mb-2">No job templates saved</h3>
-                    <p className="text-neutral-500 max-w-md mx-auto mb-4">
-                  Save your frequently posted jobs as templates to quickly create new job postings.
-                </p>
-                <Button variant="outline">Create Template</Button>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
                           </div>

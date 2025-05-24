@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useLocation, useParams } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
 import { 
   Truck, 
   MapPin, 
@@ -12,9 +11,7 @@ import {
   FileText,
   User,
   Phone,
-  Calendar,
-  ChevronLeft,
-  Loader2
+  Calendar
 } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { BottomNavigation } from '@/components/layout/bottom-navigation';
@@ -37,38 +34,123 @@ import { useAuth } from '@/contexts/auth-context';
 import { useLanguageStore } from '@/lib/i18n';
 import type { Trip } from '@/pages/types/trip';
 
-interface DriverAnalytics {
-  driverId: number;
-  fullName: string;
-  phoneNumber: string;
-  profileImage?: string;
-  totalTrips: number;
-  completedTrips: number;
-  cancelledTrips: number;
-  totalDistance: number;
-  averageTripDuration: number;
-  totalEarnings: number;
-  averageRating: number;
-  experienceYears: number;
-  preferredVehicleTypes: string[];
-  preferredLocations: string[];
-  recentTrips: Trip[];
-  monthlyTrips: { month: string; count: number }[];
-  monthlyDistance: { month: string; distance: number }[];
-  monthlyEarnings: { month: string; earnings: number }[];
-}
+// Mock data for analytics
+const mockAnalytics = {
+  driverId: 1,
+  fullName: "John Doe",
+  phoneNumber: "+91 98765 43210",
+  profileImage: "",
+  totalTrips: 156,
+  completedTrips: 142,
+  cancelledTrips: 14,
+  totalDistance: 12500,
+  averageTripDuration: 4.5,
+  totalEarnings: 250000,
+  averageRating: 4.7,
+  experienceYears: 3,
+  preferredVehicleTypes: ["Truck", "Mini Truck"],
+  preferredLocations: ["Mumbai", "Delhi", "Bangalore"],
+  recentTrips: [
+    {
+      name: "TRIP-001",
+      naming_series: "TRIP-001",
+      vehicle: "VEH-001",
+      vehicle_type: "Truck",
+      driver: "DRV-001",
+      driver_name: "John Doe",
+      driver_phone_number: "+91 98765 43210",
+      origin: "Mumbai",
+      destination: "Delhi",
+      trip_cost: 15000,
+      pending_amount: 0,
+      paid_amount: 15000,
+      handover_checklist: "",
+      status: "completed",
+      created_on: "2024-03-15T09:00:00.000Z",
+      started_on: "2024-03-15T10:00:00.000Z",
+      ended_on: "2024-03-16T15:00:00.000Z",
+      eta: "",
+      eta_str: "",
+      transporter: "TRN-001",
+      transporter_name: "Transporter Co.",
+      transporter_phone: "+91 12345 67890",
+      company_name: "",
+      odo_start: "1000",
+      odo_start_pic: "",
+      odo_end: "1500",
+      odo_end_pic: "",
+      trip_pic: "",
+      documents: "",
+      share_text: "Completed trip successfully.",
+      started_by: "Driver",
+      is_active: false,
+    },
+    {
+      name: "TRIP-002",
+      naming_series: "TRIP-002",
+      vehicle: "VEH-002",
+      vehicle_type: "Mini Truck",
+      driver: "DRV-001",
+      driver_name: "John Doe",
+      driver_phone_number: "+91 98765 43210",
+      origin: "Delhi",
+      destination: "Bangalore",
+      trip_cost: 20000,
+      pending_amount: 5000,
+      paid_amount: 15000,
+      handover_checklist: "",
+      status: "in-progress",
+      created_on: "2024-03-17T07:00:00.000Z",
+      started_on: "2024-03-17T08:00:00.000Z",
+      ended_on: null,
+      eta: "2024-03-18T12:00:00.000Z",
+      eta_str: "ETA: March 18, 12:00 PM",
+      transporter: "TRN-001",
+      transporter_name: "Transporter Co.",
+      transporter_phone: "+91 12345 67890",
+      company_name: "",
+      odo_start: "1500",
+      odo_start_pic: "",
+      odo_end: null,
+      odo_end_pic: "",
+      trip_pic: "",
+      documents: "",
+      share_text: "Trip currently in progress.",
+      started_by: "Driver",
+      is_active: true,
+    }
+  ] as Trip[],
+  monthlyTrips: [
+    { month: "Oct", count: 25 },
+    { month: "Nov", count: 28 },
+    { month: "Dec", count: 22 },
+    { month: "Jan", count: 30 },
+    { month: "Feb", count: 27 },
+    { month: "Mar", count: 24 }
+  ],
+  monthlyDistance: [
+    { month: "Oct", distance: 2000 },
+    { month: "Nov", distance: 2200 },
+    { month: "Dec", distance: 1800 },
+    { month: "Jan", distance: 2400 },
+    { month: "Feb", distance: 2100 },
+    { month: "Mar", distance: 2000 }
+  ],
+  monthlyEarnings: [
+    { month: "Oct", earnings: 40000 },
+    { month: "Nov", earnings: 44000 },
+    { month: "Dec", earnings: 36000 },
+    { month: "Jan", earnings: 48000 },
+    { month: "Feb", earnings: 42000 },
+    { month: "Mar", earnings: 40000 }
+  ]
+};
 
 const DriverAnalyticsPage = () => {
   const { phoneNumber } = useParams<{ phoneNumber: string }>();
   const { user } = useAuth();
   const { t } = useLanguageStore();
   const [, navigate] = useLocation();
-
-  const { data: analytics, isLoading } = useQuery<DriverAnalytics>({
-    queryKey: [`/api/drivers/${phoneNumber}/analytics`],
-    enabled: !!phoneNumber,
-    refetchOnWindowFocus: false
-  });
 
   useEffect(() => {
     if (!user) {
@@ -80,32 +162,13 @@ const DriverAnalyticsPage = () => {
     return null;
   }
 
-  if (isLoading || !analytics) {
-    return (
-      <div className="min-h-screen flex flex-col bg-neutral-50">
-        <Header showBack backTo="/fleet-owner/drivers">
-          <h1 className="text-xl font-bold text-neutral-800 ml-2">
-            Driver Analytics
-          </h1>
-        </Header>
-        
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-lg text-neutral-600">Loading driver data...</p>
-        </div>
-        
-        <BottomNavigation userType="transporter" />
-      </div>
-    );
-  }
-
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-IN').format(num);
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 pb-16">
-      <Header showBack backTo="/fleet-owner/drivers">
+      <Header showBack backTo="/transporter/drivers">
         <h1 className="text-xl font-bold text-neutral-800 ml-2">
           Driver Analytics
         </h1>
@@ -116,15 +179,15 @@ const DriverAnalyticsPage = () => {
         <Breadcrumb className="mb-4">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/fleet-owner/dashboard">Dashboard</BreadcrumbLink>
+              <BreadcrumbLink href="/transporter/dashboard">Dashboard</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href="/fleet-owner/drivers">Drivers</BreadcrumbLink>
+              <BreadcrumbLink href="/transporter/drivers">Drivers</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink>{analytics.fullName}</BreadcrumbLink>
+              <BreadcrumbLink>{mockAnalytics.fullName}</BreadcrumbLink>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -138,7 +201,7 @@ const DriverAnalyticsPage = () => {
                 size="sm" 
                 variant="secondary" 
                 className="absolute bottom-4 right-4 text-xs"
-                onClick={() => window.open(`tel:${analytics.phoneNumber}`)}
+                onClick={() => window.open(`tel:${mockAnalytics.phoneNumber}`)}
               >
                 <Phone className="h-3 w-3 mr-1" />
                 Contact Driver
@@ -149,9 +212,9 @@ const DriverAnalyticsPage = () => {
             <div className="px-6 pb-6 relative">
               <div className="absolute -top-10 left-6">
                 <Avatar className="h-20 w-20 border-4 border-white">
-                  <AvatarImage src={analytics.profileImage} alt={analytics.fullName} />
+                  <AvatarImage src={mockAnalytics.profileImage} alt={mockAnalytics.fullName} />
                   <AvatarFallback className="bg-primary text-white text-xl">
-                    {analytics.fullName.slice(0, 2).toUpperCase()}
+                    {mockAnalytics.fullName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </div>
@@ -159,30 +222,30 @@ const DriverAnalyticsPage = () => {
               <div className="pt-12">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-xl font-bold">{analytics.fullName}</h2>
+                    <h2 className="text-xl font-bold">{mockAnalytics.fullName}</h2>
                     <div className="flex items-center text-neutral-600 gap-2 mt-1">
                       <div className="flex items-center">
                         <Phone className="h-4 w-4 mr-1 text-neutral-500" />
-                        <span className="text-sm">{analytics.phoneNumber}</span>
+                        <span className="text-sm">{mockAnalytics.phoneNumber}</span>
                       </div>
                       
                       <span className="text-neutral-300">•</span>
                       
                       <div className="flex items-center">
                         <Calendar className="h-4 w-4 mr-1 text-neutral-500" />
-                        <span className="text-sm">{analytics.experienceYears} years exp.</span>
+                        <span className="text-sm">{mockAnalytics.experienceYears} years exp.</span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex items-center">
                     <Star className="h-5 w-5 text-yellow-400 fill-yellow-400 mr-1" />
-                    <span className="text-lg font-bold">{analytics.averageRating.toFixed(1)}</span>
+                    <span className="text-lg font-bold">{mockAnalytics.averageRating.toFixed(1)}</span>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2 mt-4">
-                  {analytics.preferredVehicleTypes.map((type: string, index: number) => (
+                  {mockAnalytics.preferredVehicleTypes.map((type: string, index: number) => (
                     <Badge key={`vehicle-${index}`} variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
                       {type}
                     </Badge>
@@ -190,7 +253,7 @@ const DriverAnalyticsPage = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {analytics.preferredLocations.map((location: string, index: number) => (
+                  {mockAnalytics.preferredLocations.map((location: string, index: number) => (
                     <Badge key={`location-${index}`} variant="secondary" className="bg-neutral-100">
                       <MapPin className="h-3 w-3 mr-1" />
                       {location}
@@ -206,14 +269,14 @@ const DriverAnalyticsPage = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <StatsCard
             title="Total Trips"
-            value={analytics.totalTrips}
+            value={mockAnalytics.totalTrips}
             icon={<Route className="h-6 w-6" />}
             trend={{ value: 12, isPositive: true, label: "vs last month" }}
           />
           
           <StatsCard
             title="Distance Covered"
-            value={formatNumber(analytics.totalDistance)}
+            value={formatNumber(mockAnalytics.totalDistance)}
             valueSuffix=" km"
             icon={<Truck className="h-6 w-6" />}
             trend={{ value: 8, isPositive: true, label: "vs last month" }}
@@ -221,7 +284,7 @@ const DriverAnalyticsPage = () => {
           
           <StatsCard
             title="Avg Trip Duration"
-            value={analytics.averageTripDuration.toFixed(1)}
+            value={mockAnalytics.averageTripDuration.toFixed(1)}
             valueSuffix=" hrs"
             icon={<Clock className="h-6 w-6" />}
           />
@@ -229,7 +292,7 @@ const DriverAnalyticsPage = () => {
           <StatsCard
             title="Total Earnings"
             valuePrefix="₹"
-            value={formatNumber(analytics.totalEarnings)}
+            value={formatNumber(mockAnalytics.totalEarnings)}
             icon={<IndianRupee className="h-6 w-6" />}
             trend={{ value: 5, isPositive: true, label: "vs last month" }}
           />
@@ -248,7 +311,7 @@ const DriverAnalyticsPage = () => {
             <AnalyticsChart
               title="Monthly Trips"
               description="Number of trips completed in the last 6 months"
-              data={analytics.monthlyTrips}
+              data={mockAnalytics.monthlyTrips}
               type="bar"
               xAxisKey="month"
               yAxisKey="count"
@@ -258,7 +321,7 @@ const DriverAnalyticsPage = () => {
             <AnalyticsChart
               title="Monthly Distance Covered"
               description="Total kilometers driven per month"
-              data={analytics.monthlyDistance}
+              data={mockAnalytics.monthlyDistance}
               type="line"
               xAxisKey="month"
               yAxisKey="distance"
@@ -268,7 +331,7 @@ const DriverAnalyticsPage = () => {
             <AnalyticsChart
               title="Monthly Earnings"
               description="Driver's earnings trend over 6 months"
-              data={analytics.monthlyEarnings}
+              data={mockAnalytics.monthlyEarnings}
               type="area"
               xAxisKey="month"
               yAxisKey="earnings"
@@ -276,7 +339,7 @@ const DriverAnalyticsPage = () => {
           </TabsContent>
 
           <TabsContent value="trips" className="space-y-6">
-            <TripHistory trips={analytics.recentTrips} title="Trip History" />
+            <TripHistory trips={mockAnalytics.recentTrips} title="Trip History" />
           </TabsContent>
 
           <TabsContent value="performance" className="space-y-6">
@@ -299,10 +362,10 @@ const DriverAnalyticsPage = () => {
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-lg">
-                        {Math.round((analytics.completedTrips / analytics.totalTrips) * 100)}%
+                        {Math.round((mockAnalytics.completedTrips / mockAnalytics.totalTrips) * 100)}%
                       </p>
                       <p className="text-sm text-neutral-500">
-                        {analytics.completedTrips} of {analytics.totalTrips} trips
+                        {mockAnalytics.completedTrips} of {mockAnalytics.totalTrips} trips
                       </p>
                     </div>
                   </div>
@@ -320,10 +383,10 @@ const DriverAnalyticsPage = () => {
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-lg">
-                        {Math.round((analytics.cancelledTrips / analytics.totalTrips) * 100)}%
+                        {Math.round((mockAnalytics.cancelledTrips / mockAnalytics.totalTrips) * 100)}%
                       </p>
                       <p className="text-sm text-neutral-500">
-                        {analytics.cancelledTrips} of {analytics.totalTrips} trips
+                        {mockAnalytics.cancelledTrips} of {mockAnalytics.totalTrips} trips
                       </p>
                     </div>
                   </div>
@@ -341,12 +404,12 @@ const DriverAnalyticsPage = () => {
                     </div>
                     <div className="text-right">
                       <div className="flex items-center justify-end">
-                        <p className="font-medium text-lg mr-2">{analytics.averageRating.toFixed(1)}</p>
+                        <p className="font-medium text-lg mr-2">{mockAnalytics.averageRating.toFixed(1)}</p>
                         <div className="flex">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star 
                               key={star}
-                              className={`h-4 w-4 ${star <= Math.round(analytics.averageRating) 
+                              className={`h-4 w-4 ${star <= Math.round(mockAnalytics.averageRating) 
                                 ? 'text-yellow-400 fill-yellow-400' 
                                 : 'text-neutral-300'}`} 
                             />

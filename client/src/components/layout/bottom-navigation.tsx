@@ -101,7 +101,15 @@ export const BottomNavigation = ({ userType }: BottomNavigationProps) => {
             color={activeColor}
           />
         )}
-
+        {!isDriver && (
+          <NavItem
+            to={`${baseRoute}/trips`}
+            icon={<FileText {...getIconSize} />}
+            label={"Trips"}
+            isActive={location === `${baseRoute}/trips`}
+            color={activeColor}
+          />
+        )}
         <NavItem
           to={`${baseRoute}/profile`}
           icon={<User {...getIconSize} />}

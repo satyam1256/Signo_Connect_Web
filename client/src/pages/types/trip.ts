@@ -1,4 +1,5 @@
 export interface Trip {
+    name?: string; // Unique trip id from backend (e.g., "TR-00003")
     naming_series: string; // e.g., "TR-#####"
     vehicle: string; // Link to Vehicles
     vehicle_type: string; // Link to Vehicle Type
@@ -19,6 +20,8 @@ export interface Trip {
     eta_str: string; // ETA as a string
     transporter: string; // Link to Transporters
     transporter_name: string; // Transporter's name
+    transporter_phone?: string; // Transporter's phone number
+    company_name?: string; // Transporter company name
     odo_start: string; // Odometer reading at the start
     odo_start_pic: string; // Image of odometer at the start
     odo_end: string; // Odometer reading at the end
