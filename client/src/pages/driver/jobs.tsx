@@ -133,20 +133,25 @@ export const postJobApplication = async (jobId: string, feedId: string, driverId
 // Function to transform API job data to our Job interface
 const transformApiJobToJob = (apiJob: ApiJob): Job => {
   // Basic date formatting (can be improved with a library like date-fns if creation is a full timestamp)
-  let postedDate = "Recently";
+  const { t } = useLanguageStore.getState(); // Access translation function here
+
+  let postedDate = t("recently");
   if (apiJob.creation) {
     try {
       const date = new Date(apiJob.creation);
       const today = new Date();
       const diffTime = Math.abs(today.getTime() - date.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays === 0) postedDate = "Just now";
-      else if (diffDays === 1) postedDate = "1 day ago";
-      else postedDate = `${diffDays} days ago`;
+      if (diffDays === 0) postedDate = t("just_now");
+      else if (diffDays === 1) postedDate = t("one_day_ago");
+      else postedDate = t("days_ago", { count: diffDays });
     } catch (e) {
-      // Keep "Recently" if date parsing fails
+      // Keep translated "Recently" if date parsing fails
     }
   }
+
+  // Translate job type
+  const translatedJobType = apiJob.type_of_job === 'Full-time' ? t('full_time') : t('part_time');
 
   return {
     id: apiJob.feed || apiJob.name, // Use 'feed' as primary ID, fallback to 'name'
@@ -155,11 +160,11 @@ const transformApiJobToJob = (apiJob: ApiJob): Job => {
     location: apiJob.city,
     salary: `₹${parseInt(apiJob.salary, 10).toLocaleString('en-IN')}/month`, // Format salary
     postedDate: postedDate,
-    jobType: apiJob.type_of_job,
-    distance: "Details in description", // Placeholder as API doesn't provide it
+    jobType: translatedJobType, // Use translated job type
+    distance: t("job_distance_placeholder"), // Use translated placeholder
     description: apiJob.description,
     requirements: [], // Default to empty as API doesn't provide it
-    tags: [apiJob.type_of_job, apiJob.city].filter(Boolean) as string[], // Add job type and city as tags
+    tags: [translatedJobType, apiJob.city].filter(Boolean) as string[], // Add translated job type and city as tags
     numberOfOpenings: apiJob.no_of_openings,
     name: apiJob.name, // Add this
     feed: apiJob.feed, // Add this
@@ -501,7 +506,7 @@ const DriverJobsPage = () => {
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-4 w-4" />
             <Input
-              placeholder="Search jobs, companies, locations..."
+              placeholder={t("search_placeholder")}
               className="pl-9 bg-white"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -517,7 +522,7 @@ const DriverJobsPage = () => {
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:w-[400px] overflow-y-auto">
                 <SheetHeader className="mb-2">
-                  <SheetTitle>Filter Jobs</SheetTitle>
+                  <SheetTitle>{t("filter_jobs")}</SheetTitle>
                 </SheetHeader>
                 {FilterSidebar}
               </SheetContent>
@@ -531,7 +536,7 @@ const DriverJobsPage = () => {
                </SheetTrigger>
                <SheetContent side="left" className="w-[300px] sm:w-[400px] overflow-y-auto">
                  <SheetHeader className="mb-2">
-                   <SheetTitle>Filter Jobs</SheetTitle>
+                   <SheetTitle>{t("filter_jobs")}</SheetTitle>
                  </SheetHeader>
                  {FilterSidebar}
                </SheetContent>
@@ -552,9 +557,9 @@ const DriverJobsPage = () => {
             <Tabs defaultValue="all">
               <div className="bg-white rounded-t-lg border border-neutral-200 p-1 mb-4">
                 <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3">
-                  <TabsTrigger value="all">All Jobs</TabsTrigger>
-                  <TabsTrigger value="saved">Saved</TabsTrigger>
-                  <TabsTrigger value="applied">Applied</TabsTrigger>
+                  <TabsTrigger value="all">{t("all_jobs")}</TabsTrigger>
+                  <TabsTrigger value="saved">{t("saved")}</TabsTrigger>
+                  <TabsTrigger value="applied">{t("applied")}</TabsTrigger>
                 </TabsList>
               </div>
 
@@ -562,8 +567,8 @@ const DriverJobsPage = () => {
                 {isLoading && (
                   <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg border border-neutral-200">
                     <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                    <h3 className="text-lg font-medium text-neutral-700">Loading Jobs...</h3>
-                    <p className="text-neutral-500">Please wait while we fetch available jobs.</p>
+                    <h3 className="text-lg font-medium text-neutral-700">{t("loading_jobs")}</h3>
+                    <p className="text-neutral-500">{t("loading_jobs_message")}</p>
                   </div>
                 )}
 
@@ -572,9 +577,9 @@ const DriverJobsPage = () => {
                     <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100">
                       <AlertTriangle className="h-6 w-6 text-red-500" />
                     </div>
-                    <h3 className="text-lg font-medium mb-2 text-red-700">Error Fetching Jobs</h3>
+                    <h3 className="text-lg font-medium mb-2 text-red-700">{t("error_fetching_jobs")}</h3>
                     <p className="text-neutral-500 max-w-md mx-auto">
-                      We couldn't load the jobs. Please try again later.
+                      {t("error_fetching_jobs_message")}
                     </p>
                     {error && <p className="text-xs text-red-400 mt-2">Details: {error.message}</p>}
                   </div>
@@ -585,9 +590,9 @@ const DriverJobsPage = () => {
                     <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
                       <Search className="h-6 w-6 text-neutral-400" />
                     </div>
-                    <h3 className="text-lg font-medium mb-2">No jobs found</h3>
+                    <h3 className="text-lg font-medium mb-2">{t("no_jobs_found")}</h3>
                     <p className="text-neutral-500 max-w-md mx-auto">
-                      We couldn't find any jobs matching your search criteria. Try adjusting your filters or search term.
+                      {t("no_jobs_found_message")}
                     </p>
                   </div>
                 )}
@@ -599,7 +604,7 @@ const DriverJobsPage = () => {
                         <div className="p-4 sm:p-6">
                           <div className="flex items-start justify-between mb-2">
                             <h3 className="text-xl font-semibold text-neutral-900">{job.title}</h3>
-                            <Badge variant={job.postedDate.includes("Just now") || job.postedDate.includes("1 day ago") ? "default" : "outline"} className={job.postedDate.includes("Just now") ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
+                            <Badge variant={job.postedDate.includes(t("just_now")) || job.postedDate.includes(t("one_day_ago")) ? "default" : "outline"} className={job.postedDate.includes(t("just_now")) ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
                               {job.postedDate}
                             </Badge>
                           </div>
@@ -612,29 +617,29 @@ const DriverJobsPage = () => {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mb-4">
                             <div className="flex items-center">
                               <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
-                              <span className="text-neutral-600 text-sm">{job.location}</span>
+                              <span className="text-neutral-600 text-sm">{t("job_location_label")}: {job.location}</span>
                             </div>
                             <div className="flex items-center">
                               <Tag className="h-4 w-4 text-neutral-400 mr-2" />
-                              <span className="text-neutral-600 text-sm">{job.salary}</span>
+                              <span className="text-neutral-600 text-sm">{t("job_salary_label")}: {job.salary}</span>
                             </div>
                             <div className="flex items-center">
                               <Clock className="h-4 w-4 text-neutral-400 mr-2" />
-                              <span className="text-neutral-600 text-sm">{job.jobType}</span>
+                              <span className="text-neutral-600 text-sm">{t("job_type_label")}: {job.jobType}</span>
                             </div>
                             <div className="flex items-center">
                               <Truck className="h-4 w-4 text-neutral-400 mr-2" />
-                              <span className="text-neutral-600 text-sm">{job.distance}</span>
+                              <span className="text-neutral-600 text-sm">{t("job_distance_label")}: {job.distance}</span>
                             </div>
                              {job.numberOfOpenings && (
                                 <div className="flex items-center">
-                                    <Users className="h-4 w-4 text-neutral-400 mr-2" /> {/* Assuming you have Users icon */}
-                                    <span className="text-neutral-600 text-sm">{job.numberOfOpenings} openings</span>
+                                    <Users className="h-4 w-4 text-neutral-400 mr-2" />
+                                    <span className="text-neutral-600 text-sm">{t("job_openings_label")}: {job.numberOfOpenings} {t("openings")}</span>
                                 </div>
                             )}
                           </div>
 
-                          <p className="text-neutral-600 mb-4 text-sm">{job.description}</p>
+                          <p className="text-neutral-600 mb-4 text-sm">{t("description")}: {job.description}</p>
 
                           {job.tags && job.tags.length > 0 && (
                             <div className="flex flex-wrap gap-2 mb-4">
@@ -655,12 +660,12 @@ const DriverJobsPage = () => {
                               {savedJobs.includes(job.id) ? (
                                 <>
                                   <BookmarkIcon className="h-4 w-4 mr-2 fill-current" />
-                                  Saved
+                                  {t("saved")}
                                 </>
                               ) : (
                                 <>
                                   <BookmarkIcon className="h-4 w-4 mr-2" />
-                                  Save Job
+                                  {t("save_job")}
                                 </>
                               )}
                             </Button>
@@ -673,15 +678,15 @@ const DriverJobsPage = () => {
                               {appliedJobs.some(aj => aj.jobId === job.name) ? (
                                 <>
                                   <UserCheck className="h-4 w-4 mr-2" />
-                                  Applied
+                                  {t("applied")}
                                 </>
                               ) : applyMutation.isPending ? (
                                 <>
                                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Applying...
+                                  {t("applying")}
                                 </>
                               ) : (
-                                "Apply Now"
+                                t("apply_now")
                               )}
                             </Button>
                           </div>
@@ -691,25 +696,24 @@ const DriverJobsPage = () => {
                   ))
                 )}
 
-                {!isLoading && !isError && displayJobs.length > 0 && ( // Assuming you'll implement pagination later
+                {!isLoading && !isError && displayJobs.length > 0 && (
                   <div className="flex justify-center mt-6">
-                    <Button variant="outline" className="min-w-[150px]" disabled> {/* Disabled for now as no pagination logic */}
-                      Load More <ChevronRight className="h-4 w-4 ml-2" />
+                    <Button variant="outline" className="min-w-[150px]" disabled>
+                      {t("load_more")} <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   </div>
                 )}
               </TabsContent>
 
-              {/* // Replace the existing saved TabsContent */}
               <TabsContent value="saved" className="space-y-4 mt-0">
                 {savedJobs.length === 0 ? (
                   <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
                     <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
                       <BookmarkIcon className="h-6 w-6 text-neutral-400" />
                     </div>
-                    <h3 className="text-lg font-medium mb-2">No saved jobs yet</h3>
+                    <h3 className="text-lg font-medium mb-2">{t("no_saved_jobs")}</h3>
                     <p className="text-neutral-500 max-w-md mx-auto">
-                      Jobs you save will appear here for easy access. Start browsing jobs and save the ones you're interested in.
+                      {t("no_saved_jobs_message")}
                     </p>
                   </div>
                 ) : (
@@ -735,11 +739,11 @@ const DriverJobsPage = () => {
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mb-4">
                                 <div className="flex items-center">
                                   <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
-                                  <span className="text-neutral-600 text-sm">{job.location}</span>
+                                  <span className="text-neutral-600 text-sm">{t("job_location_label")}: {job.location}</span>
                                 </div>
                                 <div className="flex items-center">
                                   <Tag className="h-4 w-4 text-neutral-400 mr-2" />
-                                  <span className="text-neutral-600 text-sm">{job.salary}</span>
+                                  <span className="text-neutral-600 text-sm">{t("job_salary_label")}: {job.salary}</span>
                                 </div>
                               </div>
 
@@ -750,7 +754,7 @@ const DriverJobsPage = () => {
                                   onClick={() => handleSaveJob(job.id)}
                                 >
                                   <BookmarkIcon className="h-4 w-4 mr-2 fill-current" />
-                                  Remove
+                                  {t("remove")}
                                 </Button>
                                 <Button 
                                   className="sm:w-auto w-full"
@@ -761,15 +765,15 @@ const DriverJobsPage = () => {
                                   {appliedJobs.some(aj => aj.jobId === job.name) ? (
                                     <>
                                       <UserCheck className="h-4 w-4 mr-2" />
-                                      Applied
+                                      {t("applied")}
                                     </>
                                   ) : applyMutation.isPending ? (
                                     <>
                                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                      Applying...
+                                      {t("applying")}
                                     </>
                                   ) : (
-                                    "Apply Now"
+                                    t("apply_now")
                                   )}
                                 </Button>
                               </div>
@@ -781,21 +785,20 @@ const DriverJobsPage = () => {
                 )}
               </TabsContent>
 
-              {/* // Replace the existing Applied jobs tab content */}
               <TabsContent value="applied" className="space-y-4 mt-0">
                 {isLoadingAppliedJobs ? (
                   <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg border border-neutral-200">
                     <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                    <h3 className="text-lg font-medium text-neutral-700">Loading Applications...</h3>
+                    <h3 className="text-lg font-medium text-neutral-700">{t("loading_applications")}</h3>
                   </div>
                 ) : appliedJobs.length === 0 ? (
                   <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
                     <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-100">
                       <Calendar className="h-6 w-6 text-neutral-400" />
                     </div>
-                    <h3 className="text-lg font-medium mb-2">No applications yet</h3>
+                    <h3 className="text-lg font-medium mb-2">{t("no_applications")}</h3>
                     <p className="text-neutral-500 max-w-md mx-auto">
-                      Start applying to jobs to track your application status here.
+                      {t("no_applications_message")}
                     </p>
                   </div>
                 ) : (
@@ -810,7 +813,7 @@ const DriverJobsPage = () => {
                             <div className="flex items-start justify-between mb-2">
                               <h3 className="text-xl font-semibold text-neutral-900">{job.title}</h3>
                               <Badge variant="outline">
-                                Applied on {new Date(application.appliedOn).toLocaleDateString()}
+                                {t("applied_on")} {new Date(application.appliedOn).toLocaleDateString()}
                               </Badge>
                             </div>
                             <div className="flex items-center mb-3">
@@ -820,18 +823,18 @@ const DriverJobsPage = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mb-4">
                               <div className="flex items-center">
                                 <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
-                                <span className="text-neutral-600 text-sm">{job.location}</span>
+                                <span className="text-neutral-600 text-sm">{t("job_location_label")}: {job.location}</span>
                               </div>
                               <div className="flex items-center">
                                 <Tag className="h-4 w-4 text-neutral-400 mr-2" />
-                                <span className="text-neutral-600 text-sm">{job.salary}</span>
+                                <span className="text-neutral-600 text-sm">{t("job_salary_label")}: {job.salary}</span>
                               </div>
                             </div>
                             <Badge 
                               variant={application.status === "Applied" ? "secondary" : "default"}
                               className="mt-2"
                             >
-                              Status: {application.status}
+                              {t("status")}: {application.status}
                             </Badge>
                           </CardContent>
                         </Card>

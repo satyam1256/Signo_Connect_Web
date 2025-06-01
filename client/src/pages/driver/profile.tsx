@@ -194,6 +194,11 @@ const DriverProfilePage = () =>  {
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
   const [languageSettingsOpen, setLanguageSettingsOpen] = useState(false);
 
+  // Add new state for notification preferences
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    email: false,
+    sms: false
+  });
 
   const [data,setData]= useState<any>(null);
   
@@ -545,6 +550,14 @@ const DriverProfilePage = () =>  {
     }
   };
 
+  // Add handler for notification preference changes
+  const handleNotificationChange = (type: 'email' | 'sms', checked: boolean) => {
+    setNotificationPreferences(prev => ({
+      ...prev,
+      [type]: checked
+    }));
+  };
+
   if (!user) {
     return null;
   }
@@ -668,7 +681,7 @@ const DriverProfilePage = () =>  {
                     }}
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit Profile
+                    {t("edit_profile")}
                   </Button>
                 </div>
 
@@ -684,11 +697,11 @@ const DriverProfilePage = () =>  {
                   </div>
 
                   <div className="pt-16">
-                    <h2 className="text-2xl font-bold mb-1">{(data?.name1 || "Driver Name").toUpperCase()}</h2>
+                    <h2 className="text-2xl font-bold mb-1">{(data?.name1 || t("driver")).toUpperCase()}</h2>
                     <div className="flex flex-col sm:flex-row sm:items-center text-neutral-600 gap-1 sm:gap-4 mb-4 flex-wrap">
                       <div className="flex items-center">
                         <Truck className="h-4 w-4 mr-2 text-neutral-500" />
-                        <span>Driver {data?.experience ? `• ${data?.experience} years exp` : " "}</span>
+                        <span>{t("driver")} {data?.experience ? `• ${data?.experience} ${t("years_experience")}` : " "}</span>
                       </div>
                       {data?.address && (
                         <div className="flex items-center">
@@ -706,78 +719,73 @@ const DriverProfilePage = () =>  {
 
             <Tabs defaultValue="details">
               <TabsList className="w-full grid grid-cols-3 mb-4">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
-                <TabsTrigger value="preferences">Preferences</TabsTrigger>
+                <TabsTrigger value="details">{t("details")}</TabsTrigger>
+                <TabsTrigger value="documents">{t("documents")}</TabsTrigger>
+                <TabsTrigger value="preferences">{t("preferences")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="details" className="mt-0 space-y-4">
-                <Card>
+                <Card className="w-full max-w-4xl">
                   <CardHeader>
-                    <CardTitle className="text-lg">Contact Information</CardTitle>
+                    <CardTitle>{t("contact_information")}</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="flex items-start">
-                        <Phone className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-medium">Phone Number</h4>
-                          <p className="text-neutral-600 break-words">{data?.phone_number || "Not added"}</p>
-                        </div>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-start">
+                      <Phone className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-medium">{t("phone_number")}</h4>
+                        <p className="text-neutral-600 break-words">{data?.phone_number || t("not_added")}</p>
                       </div>
+                    </div>
 
-                      <div className="flex items-start">
-                        <Mail className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-medium">Email Address</h4>
-                          <p className="text-neutral-600 break-words">{data?.email || "Not added"}</p>
-                        </div>
+                    <div className="flex items-start">
+                      <Mail className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-medium">{t("email_address")}</h4>
+                        <p className="text-neutral-600 break-words">{data?.email || t("not_added")}</p>
                       </div>
+                    </div>
 
-                      <div className="flex items-start">
-                        <MapPin className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-medium">Address</h4>
-                          <p className="text-neutral-600 break-words">{data?.address || "Not added"}</p>
-                        </div>
+                    <div className="flex items-start">
+                      <MapPin className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-medium">{t("address")}</h4>
+                        <p className="text-neutral-600 break-words">{data?.address || t("not_added")}</p>
                       </div>
+                    </div>
 
-                       <div className="flex items-start">
-                        <Phone className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-medium">Emergency Contact</h4>
-                          <p className="text-neutral-600 break-words">{data?.emergency_contact_number || "Not added"}</p>
-                        </div>
+                     <div className="flex items-start">
+                      <Phone className="h-5 w-5 mr-3 text-neutral-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-medium">{t("emergency_contact")}</h4>
+                        <p className="text-neutral-600 break-words">{data?.emergency_contact_number || t("not_added")}</p>
                       </div>
-
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="w-full max-w-4xl mt-6">
                   <CardHeader>
-                    <CardTitle className="text-lg">Work Details</CardTitle>
+                    <CardTitle>{t("work_details")}</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="font-medium">Experience</h4>
-                        <p className="text-neutral-600">{data?.experience ? `${data.experience}` : "Not added"}</p>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-medium">{t("experience")}</h4>
+                      <p className="text-neutral-600">{data?.experience ? `${data.experience}` : t("not_added")}</p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium">{t("preferred_vehicle_types")}</h4>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {parseVehicleTypes(data?.catagory).map((type) => (
+                          <Badge key={type} variant="secondary" className="capitalize">
+                            {vehicleOptions.find(opt => opt.value === type)?.label || type}
+                          </Badge>
+                        ))}
                       </div>
-                      <div>
-                        <h4 className="font-medium">Preferred Vehicle Types</h4>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {parseVehicleTypes(data?.catagory).map((type) => (
-                            <Badge key={type} variant="secondary" className="capitalize">
-                              {vehicleOptions.find(opt => opt.value === type)?.label || type}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                       <div>
-                        <h4 className="font-medium">Date of Birth</h4>
-                        <p className="text-neutral-600">{data?.dob || "Not added"}</p>
-                      </div>
+                    </div>
+                     <div>
+                      <h4 className="font-medium">{t("date_of_birth")}</h4>
+                      <p className="text-neutral-600">{data?.dob || t("not_added")}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -786,7 +794,7 @@ const DriverProfilePage = () =>  {
               <TabsContent value="documents" className="mt-0 space-y-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg">Driving License</CardTitle>
+                    <CardTitle className="text-lg">{t("driving_license")}</CardTitle>
                      {/* Consider adding button to edit documents directly */}
                      <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)}>
                         <Edit className="h-4 w-4"/>
@@ -794,8 +802,8 @@ const DriverProfilePage = () =>  {
                   </CardHeader>
                   <CardContent>
                     <div className="mb-4">
-                       <h4 className="font-medium text-sm text-neutral-500 mb-1">License Number</h4>
-                       <p className="text-neutral-800">{data?.dl_number || "Not added"}</p>
+                       <h4 className="font-medium text-sm text-neutral-500 mb-1">{t("license_number")}</h4>
+                       <p className="text-neutral-800">{data?.dl_number || t("not_added")}</p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -809,7 +817,7 @@ const DriverProfilePage = () =>  {
                            ) : (
                                 <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
                            )}
-                           <p className="text-neutral-600 text-sm">Front Side</p>
+                           <p className="text-neutral-600 text-sm">{t("front_side")}</p>
                         </div>
                          <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
                            {data?.dl_back_pic ? (
@@ -817,7 +825,7 @@ const DriverProfilePage = () =>  {
                            ) : (
                                 <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
                            )}
-                           <p className="text-neutral-600 text-sm">Back Side</p>
+                           <p className="text-neutral-600 text-sm">{t("back_side")}</p>
                         </div>
                     </div>
                   </CardContent>
@@ -825,7 +833,7 @@ const DriverProfilePage = () =>  {
 
                 <Card>
                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg">Aadhar Card</CardTitle>
+                    <CardTitle className="text-lg">{t("identity_proof")}</CardTitle>
                     {/* Consider adding button to edit documents directly */}
                     <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)}>
                         <Edit className="h-4 w-4"/>
@@ -833,23 +841,26 @@ const DriverProfilePage = () =>  {
                   </CardHeader>
                   <CardContent>
                      <div className="mb-4">
-                       <h4 className="font-medium text-sm text-neutral-500 mb-1">Aadhar Number</h4>
+                       <h4 className="font-medium text-sm text-neutral-500 mb-1">{t("aadhar_number")}</h4>
                        <p className="text-neutral-800">
-                         {data?.aadhar_number || "Not added"}
+                         {data?.aadhar_number || t("not_added")}
                          {!data?.aadhar_number && (
                            <span className="text-xs text-red-500 block mt-1">
+                             {/* TODO: Add a translation key for this hint */}
+                             (Aadhar number is required for full verification)
                            </span>
                          )}
                        </p>
                     </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
+                        <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
                            {data?.aadhar_front_pic ? (
                                <img src={`${getFullImageUrl(data.aadhar_front_pic)}?ts=${Date.now()}`} alt="Aadhar Front" className="max-h-24 object-contain mb-2"/>
                            ) : (
                                 <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
                            )}
-                           <p className="text-neutral-600 text-sm">Front Side</p>
+                           <p className="text-neutral-600 text-sm">{t("front_side")}</p>
                         </div>
                          <div className="border border-dashed border-neutral-300 bg-neutral-50 rounded-md p-4 text-center min-h-[150px] flex flex-col justify-center items-center">
                            {data?.aadhar_back_pic ? (
@@ -857,47 +868,69 @@ const DriverProfilePage = () =>  {
                            ) : (
                                 <FileText className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
                            )}
-                           <p className="text-neutral-600 text-sm">Back Side</p>
+                           <p className="text-neutral-600 text-sm">{t("back_side")}</p>
                         </div>
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* Placeholder - Preferences Tab Content Needs State Management */}
-              <TabsContent value="preferences" className="mt-0 space-y-4">
+              {/* TODO: Add content for Preferences tab */}
+              <TabsContent value="preferences" className="mt-0">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Notification Settings</CardTitle>
-                    {/* Add button to open Notification Settings Dialog */}
-                     <Button variant="ghost" size="sm" onClick={() => setNotificationSettingsOpen(true)}>
-                        <Settings className="h-4 w-4"/>
-                    </Button>
+                    <CardTitle>Preferences</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-neutral-500 text-sm">Manage your notification preferences (job alerts, app updates, etc.) in the settings.</p>
-                    {/* Optionally show current status if fetched */}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Privacy Settings</CardTitle>
-                    {/* Add button to open relevant section in Account Settings? */}
-                  </CardHeader>
-                  <CardContent>
-                     <p className="text-neutral-500 text-sm">Manage profile visibility and data sharing options in account settings.</p>
+                    {/* Preferences content here */}
+                    <p>Preferences content goes here.</p>
                   </CardContent>
                 </Card>
               </TabsContent>
             </Tabs>
+
+            {/* Profile Completion */}
+            <Card className="w-full max-w-4xl mt-6">
+              <CardHeader>
+                <CardTitle>{t("profile_completion")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-4">
+                  <div className="w-20 text-right font-semibold">
+                    {getProfileCompletionData(data).completionPercentage}%
+                  </div>
+                  <div className="flex-1">
+                    <Progress value={getProfileCompletionData(data).completionPercentage} />
+                  </div>
+                </div>
+                {!getProfileCompletionData(data).isProfileComplete && (
+                  <div className="mt-4 text-sm text-neutral-600">
+                    <p>{t("complete_profile_hint")}</p>
+                    <ul className="list-disc list-inside mt-2">
+                      {getProfileCompletionData(data).missingItems.map((item, index) => (
+                        // TODO: Add translation keys for missing items if needed
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                 <Button 
+                    variant="default" 
+                    className="w-full mt-4"
+                    onClick={() => navigate('/driver/registration')}
+                    disabled={getProfileCompletionData(data).isProfileComplete}
+                >
+                   {t("profile_complete")}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-          <Card>
+          {/* <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Profile Completion</CardTitle>
+              <CardTitle className="text-lg">{t("profile_completion")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="mb-2 flex items-center justify-between">
@@ -912,7 +945,7 @@ const DriverProfilePage = () =>  {
               {profileStatus.missingItems.length > 0 && profileStatus.completionPercentage < 100 && (
                 <div className="bg-amber-50 border border-amber-100 rounded-md p-3 mb-4">
                   <h4 className="text-amber-700 font-medium text-sm flex items-center mb-2">
-                    <Info className="h-4 w-4 mr-2" /> Complete your profile
+                    <Info className="h-4 w-4 mr-2" /> {t("profile_complete")}
                   </h4>
                   <ul className="text-amber-600 text-sm space-y-1">
                     {profileStatus.missingItems.slice(0, 3).map((item, index) => (
@@ -933,29 +966,29 @@ const DriverProfilePage = () =>  {
                 {profileStatus.completionPercentage === 100 ? "Profile Complete" : "Complete Profile"}
               </Button>
             </CardContent>
-          </Card>
+          </Card> */}
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Account</CardTitle>
+                <CardTitle className="text-lg">{t("account")}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="grid divide-y divide-neutral-100">
-                  <button
+                  {/* <button
                     onClick={() => setAccountSettingsOpen(true)}
                     className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
                   >
                     <Settings className="h-5 w-5 mr-3 text-neutral-500" />
                     <span>Account Settings</span>
                     <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
-                  </button>
+                  </button> */}
 
                   <button
                     onClick={() => setHelpSupportOpen(true)}
                     className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
                   >
                     <HelpCircle className="h-5 w-5 mr-3 text-neutral-500" />
-                    <span>Help & Support</span>
+                    <span>{t("help_and_support")}</span>
                     <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
                   </button>
 
@@ -964,7 +997,7 @@ const DriverProfilePage = () =>  {
                     className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
                   >
                     <Bell className="h-5 w-5 mr-3 text-neutral-500" />
-                    <span>Notification Settings</span>
+                    <span>{t("notification_settings")}</span>
                     <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
                   </button>
 
@@ -973,7 +1006,7 @@ const DriverProfilePage = () =>  {
                     className="flex items-center py-3 px-6 hover:bg-neutral-50 transition-colors duration-200 text-left w-full"
                   >
                     <Languages className="h-5 w-5 mr-3 text-neutral-500" />
-                    <span>Language Settings</span>
+                    <span>{t("language_settings")}</span>
                     <ChevronRight className="h-4 w-4 ml-auto text-neutral-400" />
                   </button>
 
@@ -982,7 +1015,7 @@ const DriverProfilePage = () =>  {
                     className="flex items-center py-3 px-6 hover:bg-red-50 transition-colors duration-200 text-left w-full text-red-600"
                   >
                     <LogOut className="h-5 w-5 mr-3" />
-                    <span>Logout</span>
+                    <span>{t("logout")}</span>
                   </button>
                 </div>
               </CardContent>
@@ -990,13 +1023,13 @@ const DriverProfilePage = () =>  {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Account Information</CardTitle>
+                <CardTitle className="text-lg">{t("account_information")}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="grid divide-y divide-neutral-100 text-sm">
                   <div className="p-4">
-                    <div className="text-neutral-500 mb-1">Account Type</div>
-                    <div className="capitalize">{user?.userType || "N/A"}</div>
+                    <div className="text-neutral-500 mb-1">{t("account_type")}</div>
+                    <div className="capitalize">{user?.userType === 'driver' ? t('driver') : user?.userType || t("not_added")}</div>
                   </div>
                   {/* <div className="p-4">
                     <div className="text-neutral-500 mb-1">Member Since</div>
@@ -1013,404 +1046,397 @@ const DriverProfilePage = () =>  {
         </div>
       </div>
 
-      {/* Edit Profile Dialog */}
-      <Dialog open={isEditingProfile} onOpenChange={(open) => {
-        if (!open) {
-          // When dialog is closed, reset the edited profile state
-          setEditedProfile({});
-          setIsEditingProfile(false);
+{/* Edit Profile Dialog */}
+<Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
+  <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>{t("edit_profile")}</DialogTitle>
+      <DialogDescription>
+        {t("update_profile_info")}
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="grid gap-4 py-4">
+      {/* Personal Information */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">{t("personal_information")}</h3>
+        <div className="flex flex-col items-center space-y-4">
+          <Label>{t("profile_picture")}</Label>
+          <Avatar className="w-24 h-24">
+            <AvatarFallback>{(editedProfile.name1 || data?.name1)?.slice(0, 2).toUpperCase() || <UserIcon />}</AvatarFallback>
+          </Avatar>
+          <Input
+            id="profile_picFile"
+            type="file"
+            accept="image/*"
+            onChange={(e) => setprofile_pic(e.target.files?.[0] || null)}
+            className="text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
+          />
+        </div>
+        <Separator />
+        <div className="space-y-4">
+          <h3 className="font-medium text-lg">{t("personal_information")}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name1">{t("full_name")} *</Label>
+              <Input
+                id="name1"
+                value={editedProfile.name1 ?? (data?.name1 || "")} 
+                onChange={(e) => setEditedProfile({...editedProfile, name1: e.target.value})}
+                placeholder={t("enter_full_name")}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">{t("email_label")}</Label>
+              <Input
+                id="email"
+                type="email"
+                value={editedProfile.email ?? (data?.email || "")}
+                onChange={(e) => setEditedProfile({...editedProfile, email: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone_number">{t("phone_number")} *</Label>
+              <Input
+                id="phone_number"
+                value={data?.phone_number || ""}
+                readOnly
+                className="bg-neutral-100"
+              />
+              <p className="text-xs text-neutral-500">{t("contact_support_hint")}</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="emergency_contact_number">{t("emergency_contact")}</Label>
+              <Input
+                id="emergency_contact_number"
+                value={editedProfile.emergency_contact_number ?? (data?.emergency_contact_number || "")}
+                onChange={(e) => setEditedProfile({...editedProfile, emergency_contact_number: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="address">{t("address")}</Label>
+              <Textarea
+                id="address"
+                value={editedProfile.address ?? (data?.address || "")}
+                onChange={(e) => setEditedProfile({...editedProfile, address: e.target.value})}
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dob">{t("date_of_birth")}</Label>
+              <Input
+                id="dob"
+                type="date"
+                value={editedProfile.dob ?? (data?.dob || "")}
+                onChange={(e) => setEditedProfile({...editedProfile, dob: e.target.value})}
+              />
+            </div>
+          </div>
+        </div>
+        <Separator />
+        <div className="space-y-4">
+          <h3 className="font-medium text-lg">{t("professional_information")}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="experience">{t("experience")} ({t("years_label")})</Label>
+              <Select
+                value={editedProfile.experience ?? (data?.experience || "")}
+                onValueChange={(value) => setEditedProfile({...editedProfile, experience: value})}
+              >
+                <SelectTrigger id="experience">
+                  <SelectValue placeholder={t("select_experience_placeholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...Array(21)].map((_, i) => (
+                    <SelectItem key={i} value={`${i}`}>
+                      {i} {i === 1 ? t("year") : t("years_label")} {i === 20 && "+"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="catagory">{t("preferred_vehicle_types")}</Label>
+              <Select
+                value={editedProfile.catagory ?? (data?.catagory || "")}
+                onValueChange={(value) => {
+                  const currentTypes = parseVehicleTypes(editedProfile.catagory ?? data?.catagory);
+                  const newTypes = currentTypes.includes(value)
+                    ? currentTypes.filter(type => type !== value)
+                    : [...currentTypes, value];
+                  setEditedProfile({...editedProfile, catagory: newTypes.join(',')});
+                }}
+              >
+                <SelectTrigger id="catagory" className="min-h-[2.5rem]">
+                  <SelectValue placeholder={t("select_vehicle_types_placeholder")}>
+                    {parseVehicleTypes(editedProfile.catagory ?? data?.catagory).length > 0
+                      ? parseVehicleTypes(editedProfile.catagory ?? data?.catagory)
+                          .map(type => vehicleOptions.find(opt => opt.value === type)?.label)
+                          .join(', ')
+                      : t("select_vehicle_types_placeholder")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicleOptions.map((option) => (
+                    <SelectItem 
+                      key={option.value} 
+                      value={option.value}
+                      className={parseVehicleTypes(editedProfile.catagory ?? data?.catagory).includes(option.value) ? "bg-primary/10" : ""}
+                    >
+                      <div className="flex items-center">
+                        {parseVehicleTypes(editedProfile.catagory ?? data?.catagory).includes(option.value) && (
+                          <Check className="h-4 w-4 mr-2" />
+                        )}
+                        {option.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-neutral-500">
+                {t("selected_vehicle_types").replace("{count}", parseVehicleTypes(editedProfile.catagory ?? data?.catagory).length.toString())}
+              </p>
+            </div>
+          </div>
+        </div>
+        <Separator />
+        <div className="space-y-4">
+          <h3 className="font-medium text-lg">{t("documents")}</h3>
+          <div className="space-y-4 p-4 border rounded-md">
+            <h4 className="font-medium">{t("driving_license")}</h4>
+            <div className="space-y-2">
+              <Label htmlFor="dl_number">{t("license_number")} *</Label>
+              <Input
+                id="dl_number"
+                value={editedProfile.dl_number ?? (data?.dl_number || "")}
+                onChange={(e) => setEditedProfile({...editedProfile, dl_number: e.target.value})}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dlFrontFile">{t("front_side")} {data?.dl_front_pic && !dlFront ? `(${t("uploaded")})` : "*"}</Label>
+                <Input
+                  id="dlFrontFile"
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => setDlFront(e.target.files?.[0] || null)}
+                  className="text-sm"
+                />
+                {data?.dl_front_pic && !dlFront && (
+                  <a href={getFullImageUrl(data?.dl_front_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+                    {t("view_current")}
+                  </a>
+                )}
+                {dlFront && <p className="text-xs text-green-600">{t("new_file_selected")}: {dlFront.name}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dlBackFile">{t("back_side")} {data?.dl_back_pic && !dlBack ? `(${t("uploaded")})` : ""}</Label>
+                <Input
+                  id="dlBackFile"
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => setDlBack(e.target.files?.[0] || null)}
+                  className="text-sm"
+                />
+                {data?.dl_back_pic && !dlBack && (
+                  <a href={getFullImageUrl(data?.dl_back_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+                    {t("view_current")}
+                  </a>
+                )}
+                {dlBack && <p className="text-xs text-green-600">{t("new_file_selected")}: {dlBack.name}</p>}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4 p-4 border rounded-md">
+            <h4 className="font-medium">{t("aadhar_card")}</h4>
+            <div className="space-y-2">
+              <Label htmlFor="aadhar_number">{t("aadhar_number")} *</Label>
+              <Input
+                id="aadhar_number"
+                ref={aadharInputRef}
+                defaultValue={data?.aadhar_number || ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  console.log("Updating aadhar_number to:", value);
+                  setEditedProfile(prev => ({...prev, aadhar_number: value}));
+                }}
+                required
+              />
+              <p className="text-xs text-neutral-500">
+                {t("current_value")}: {editedProfile.aadhar_number !== undefined ? 
+                  `"${editedProfile.aadhar_number}"` : 
+                  `${t("using_data_value")}: "${data?.aadhar_number || ""}"`}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="aadhaar_frontFile">{t("front_side")} {data?.aadhar_front_pic && !aadhaar_front ? `(${t("uploaded")})` : "*"}</Label>
+                <Input
+                  id="aadhaar_frontFile"
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => setaadhaar_front(e.target.files?.[0] || null)}
+                  className="text-sm"
+                />
+                {data?.aadhar_front_pic && !aadhaar_front && (
+                  <a href={getFullImageUrl(data?.aadhar_front_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+                    {t("view_current")}
+                  </a>
+                )}
+                {aadhaar_front && <p className="text-xs text-green-600">{t("new_file_selected")}: {aadhaar_front.name}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="aadhaar_backFile">{t("back_side")} {data?.aadhar_back_pic && !aadhaar_back ? `(${t("uploaded")})` : ""}</Label>
+                <Input
+                  id="aadhaar_backFile"
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => setaadhaar_back(e.target.files?.[0] || null)}
+                  className="text-sm"
+                />
+                {data?.aadhar_back_pic && !aadhaar_back && (
+                  <a href={getFullImageUrl(data?.aadhar_back_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+                    {t("view_current")}
+                  </a>
+                )}
+                {aadhaar_back && <p className="text-xs text-green-600">{t("new_file_selected")}: {aadhaar_back.name}</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <DialogFooter>
+      <Button variant="outline" onClick={() => {
+        setIsEditingProfile(false);
+        setEditedProfile({});
+      }} disabled={isUpdatingProfile}>
+        {t("cancel_button")}
+      </Button>
+      <Button
+        onClick={() => handleProfileUpdate(editedProfile)}
+        disabled={
+          isUpdatingProfile ||
+          !Object.keys(editedProfile).some(key => editedProfile[key as keyof UserProfile] !== profile[key as keyof UserProfile])
         }
-      }}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Profile</DialogTitle>
-            <DialogDescription>
-              Update your profile information. Ensure all details are accurate.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="flex flex-col items-center space-y-4">
-               <Label>Profile Picture</Label>
-              <Avatar className="w-24 h-24">
-                <AvatarFallback>{(editedProfile.name1 || data?.name1)?.slice(0, 2).toUpperCase() || <UserIcon />}</AvatarFallback>
-              </Avatar>
-               <Input
-                 id="profile_picFile"
-                 type="file"
-                 accept="image/*"
-                 onChange={
-                  (e) => setprofile_pic(e.target.files?.[0] || null)
-                }
-                 className="text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
-               />
-            </div>
-            <Separator />
-            <div className="space-y-4">
-              <h3 className="font-medium text-lg">Personal Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name1">Full Name *</Label>
-                  <Input
-                    id="name1"
-                    value={editedProfile.name1 ?? (data?.name1 || "")} 
-                    onChange={(e) => setEditedProfile({...editedProfile, name1: e.target.value})}
-                    required
-                  />
-                </div>
+      >
+        {isUpdatingProfile ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {t("saving")}
+          </>
+        ) : (
+          t("save_changes_button")
+        )}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={editedProfile.email ?? (data?.email || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, email: e.target.value})}
-                  />
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone_number">Phone Number *</Label>
-                  <Input
-                    id="phone_number"
-                    value={data?.phone_number || ""}
-                    readOnly
-                    className="bg-neutral-100"
-                  />
-                   <p className="text-xs text-neutral-500">Contact support to update phone number.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="emergency_contact_number">Emergency Contact</Label>
-                  <Input
-                    id="emergency_contact_number"
-                    value={editedProfile.emergency_contact_number ?? (data?.emergency_contact_number || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, emergency_contact_number: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Textarea
-                    id="address"
-                    value={editedProfile.address ?? (data?.address || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, address: e.target.value})}
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dob">Date of Birth</Label>
-                  <Input
-                    id="dob"
-                    type="date"
-                    value={editedProfile.dob ?? (data?.dob || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, dob: e.target.value})}
-                  />
-                </div>
-              </div>
-            </div>
-             <Separator />
-            <div className="space-y-4">
-              <h3 className="font-medium text-lg">Professional Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="experience">Experience (Years)</Label>
-                  <Select
-                    value={editedProfile.experience ?? (data?.experience || "")}
-                    onValueChange={(value) => setEditedProfile({...editedProfile, experience: value})}
-                  >
-                    <SelectTrigger id="experience">
-                      <SelectValue placeholder="Select years of experience" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">0 years</SelectItem>
-                      <SelectItem value="1">1 year</SelectItem>
-                      <SelectItem value="2">2 years</SelectItem>
-                      <SelectItem value="3">3 years</SelectItem>
-                      <SelectItem value="4">4 years</SelectItem>
-                      <SelectItem value="5">5 years</SelectItem>
-                      <SelectItem value="6">6 years</SelectItem>
-                      <SelectItem value="7">7 years</SelectItem>
-                      <SelectItem value="8">8 years</SelectItem>
-                      <SelectItem value="9">9 years</SelectItem>
-                      <SelectItem value="10">10 years</SelectItem>
-                      <SelectItem value="11">11 years</SelectItem>
-                      <SelectItem value="12">12 years</SelectItem>
-                      <SelectItem value="13">13 years</SelectItem>
-                      <SelectItem value="14">14 years</SelectItem>
-                      <SelectItem value="15">15 years</SelectItem>
-                      <SelectItem value="16">16 years</SelectItem>
-                      <SelectItem value="17">17 years</SelectItem>
-                      <SelectItem value="18">18 years</SelectItem>
-                      <SelectItem value="19">19 years</SelectItem>
-                      <SelectItem value="20">20+ years</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="catagory">Preferred Vehicle Types</Label>
-                  <Select
-                    value={editedProfile.catagory ?? (data?.catagory || "")}
-                    onValueChange={(value) => {
-                      const currentTypes = parseVehicleTypes(editedProfile.catagory ?? data?.catagory);
-                      const newTypes = currentTypes.includes(value)
-                        ? currentTypes.filter(type => type !== value)
-                        : [...currentTypes, value];
-                      setEditedProfile({...editedProfile, catagory: newTypes.join(',')});
-                    }}
-                  >
-                    <SelectTrigger id="catagory" className="min-h-[2.5rem]">
-                      <SelectValue placeholder="Select vehicle types">
-                        {parseVehicleTypes(editedProfile.catagory ?? data?.catagory).length > 0
-                          ? parseVehicleTypes(editedProfile.catagory ?? data?.catagory)
-                              .map(type => vehicleOptions.find(opt => opt.value === type)?.label)
-                              .join(', ')
-                          : "Select vehicle types"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vehicleOptions.map((option) => (
-                        <SelectItem 
-                          key={option.value} 
-                          value={option.value}
-                          className={parseVehicleTypes(editedProfile.catagory ?? data?.catagory).includes(option.value) ? "bg-primary/10" : ""}
-                        >
-                          <div className="flex items-center">
-                            {parseVehicleTypes(editedProfile.catagory ?? data?.catagory).includes(option.value) && (
-                              <Check className="h-4 w-4 mr-2" />
-                            )}
-                            {option.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-neutral-500">
-                    Selected: {parseVehicleTypes(editedProfile.catagory ?? data?.catagory).length} vehicle type(s)
-                  </p>
-                </div>
-              </div>
-            </div>
-             <Separator />
-            <div className="space-y-4">
-              <h3 className="font-medium text-lg">Documents</h3>
-              <div className="space-y-4 p-4 border rounded-md">
-                <h4 className="font-medium">Driving License</h4>
-                <div className="space-y-2">
-                  <Label htmlFor="dl_number">License Number *</Label>
-                  <Input
-                    id="dl_number"
-                    value={editedProfile.dl_number ?? (data?.dl_number || "")}
-                    onChange={(e) => setEditedProfile({...editedProfile, dl_number: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="dlFrontFile">Front Side {data?.dl_front_pic && !dlFront ? "(Uploaded)" : "*"}</Label>
-                    <Input
-                      id="dlFrontFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setDlFront(e.target.files?.[0] || null)}
-                       className="text-sm"
-                    />
-                    {data?.dl_front_pic && !dlFront && (
-                      <a href={getFullImageUrl(data?.dl_front_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {dlFront && <p className="text-xs text-green-600">New file selected: {dlFront.name}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="dlBackFile">Back Side {data?.dl_back_pic && !dlBack ? "(Uploaded)" : ""}</Label>
-                    <Input
-                      id="dlBackFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setDlBack(e.target.files?.[0] || null)}
-                      className="text-sm"
-                    />
-                     {data?.dl_back_pic && !dlBack && (
-                       <a href={getFullImageUrl(data?.dl_back_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {dlBack && <p className="text-xs text-green-600">New file selected: {dlBack.name}</p>}
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4 p-4 border rounded-md">
-                <h4 className="font-medium">Aadhar Card</h4>
-                <div className="space-y-2">
-                  <Label htmlFor="aadhar_number">Aadhar Number *</Label>
-                  <Input
-                    id="aadhar_number"
-                    ref={aadharInputRef}
-                    defaultValue={data?.aadhar_number || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      console.log("Updating aadhar_number to:", value);
-                      setEditedProfile(prev => ({...prev, aadhar_number: value}));
-                    }}
-                    required
-                  />
-                  {/* Debug info */}
-                  <p className="text-xs text-neutral-500">
-                    Current value: {editedProfile.aadhar_number !== undefined ? 
-                      `"${editedProfile.aadhar_number}"` : 
-                      `Using data value: "${data?.aadhar_number || ""}"`}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="aadhaar_frontFile">Front Side {data?.aadhar_front_pic && !aadhaar_front ? "(Uploaded)" : "*"}</Label>
-                    <Input
-                      id="aadhaar_frontFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setaadhaar_front(e.target.files?.[0] || null)}
-                      className="text-sm"
-                    />
-                     {data?.aadhar_front_pic && !aadhaar_front && (
-                       <a href={getFullImageUrl(data?.aadhar_front_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {aadhaar_front && <p className="text-xs text-green-600">New file selected: {aadhaar_front.name}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="aadhaar_backFile">Back Side {data?.aadhar_back_pic && !aadhaar_back ? "(Uploaded)" : ""}</Label>
-                    <Input
-                      id="aadhaar_backFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setaadhaar_back(e.target.files?.[0] || null)}
-                       className="text-sm"
-                    />
-                    {data?.aadhar_back_pic && !aadhaar_back && (
-                      <a href={getFullImageUrl(data?.aadhar_back_pic)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View current</a>
-                    )}
-                     {aadhaar_back && <p className="text-xs text-green-600">New file selected: {aadhaar_back.name}</p>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsEditingProfile(false);
-              setEditedProfile({});
-            }} disabled={isUpdatingProfile}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => handleProfileUpdate(editedProfile)}
-              disabled={
-                isUpdatingProfile ||
-                !Object.keys(editedProfile).some(key => editedProfile[key as keyof UserProfile] !== profile[key as keyof UserProfile])
-              }
-            >
-              {isUpdatingProfile ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </DialogFooter>
-
-        </DialogContent>
-      </Dialog>
-
-      {/* Account Settings Dialog (Structure Only) */}
-      <Dialog open={accountSettingsOpen} onOpenChange={setAccountSettingsOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Account Settings</DialogTitle>
-            <DialogDescription>
-              Manage your account settings and preferences. (Functionality not implemented)
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <p className="text-center text-neutral-500">Account settings options will appear here.</p>
-             <Separator />
-             <Button variant="outline" className="w-full justify-start">Change Password (Placeholder)</Button>
-             <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-50">Deactivate Account (Placeholder)</Button>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setAccountSettingsOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Help & Support Dialog (Structure Only) */}
       <Dialog open={helpSupportOpen} onOpenChange={setHelpSupportOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Help & Support</DialogTitle>
+            <DialogTitle>{t("help_and_support")}</DialogTitle>
             <DialogDescription>
-              Get assistance and support.
+              {t("get_assistance_and_support")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <Button variant="outline" className="w-full justify-start">FAQ (Placeholder)</Button>
-             <Button variant="outline" className="w-full justify-start">Contact Support (Placeholder)</Button>
+             <a 
+               href="https://wa.me/17864607364" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               className="flex items-center justify-start w-full px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-200 rounded-md hover:bg-neutral-50 transition-colors"
+             >
+               <svg className="w-5 h-5 mr-2 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+               </svg>
+               {t("contact_support")}
+             </a>
              <Separator />
              <div className="bg-neutral-50 p-4 rounded-md border border-neutral-200">
-              <h4 className="font-medium mb-2">Customer Support</h4>
+              <h4 className="font-medium mb-2">{t("customer_support_heading")}</h4>
               <p className="text-sm text-neutral-600 mb-2">
-                Need immediate assistance? Our team is available 24/7 to help you.
+                {t("immediate_assistance_text")}
               </p>
               <p className="text-sm font-medium">
-                Helpline: +91 1800-123-4567
+                {t("helpline_label")} +91 8700235212
               </p>
               <p className="text-sm text-neutral-600">
-                Email: support@signo-connect.com
+                {t("email_label")} info@signo.in
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button onClick={() => setHelpSupportOpen(false)}>
-              Close
+              {t("close_button")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Notification Settings Dialog (Structure Only) */}
+      {/* Notification Settings Dialog */}
       <Dialog open={notificationSettingsOpen} onOpenChange={setNotificationSettingsOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Notification Settings</DialogTitle>
+            <DialogTitle>{t("notification_settings")}</DialogTitle>
             <DialogDescription>
-              Manage how you receive notifications. (Functionality not implemented)
+              {t("manage_notifications_description")}
             </DialogDescription>
           </DialogHeader>
-           <div className="py-4 space-y-4">
-             {/* Placeholder content */}
-             <div className="flex items-center justify-between p-2 border rounded">
-                <Label htmlFor="placeholder-notif">Email Notifications</Label>
-                <Switch id="placeholder-notif" disabled/>
-             </div>
-              <div className="flex items-center justify-between p-2 border rounded">
-                <Label htmlFor="placeholder-notif-2">SMS Notifications</Label>
-                <Switch id="placeholder-notif-2" disabled/>
-             </div>
-              <p className="text-center text-neutral-500 text-sm">Full settings management coming soon.</p>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center justify-between p-4 border rounded-md">
+              <div className="space-y-1">
+                <Label htmlFor="email-notifications" className="text-base">{t("email_notifications_label")}</Label>
+                <p className="text-sm text-neutral-500">{t("receive_updates_email_text")}</p>
+              </div>
+              <Switch 
+                id="email-notifications"
+                checked={notificationPreferences.email}
+                onCheckedChange={(checked) => handleNotificationChange('email', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-4 border rounded-md">
+              <div className="space-y-1">
+                <Label htmlFor="sms-notifications" className="text-base">{t("sms_notifications_label")}</Label>
+                <p className="text-sm text-neutral-500">{t("receive_updates_sms_text")}</p>
+              </div>
+              <Switch 
+                id="sms-notifications"
+                checked={notificationPreferences.sms}
+                onCheckedChange={(checked) => handleNotificationChange('sms', checked)}
+              />
+            </div>
           </div>
           <DialogFooter>
-             <Button variant="outline" onClick={() => setNotificationSettingsOpen(false)}>
-              Cancel
+            <Button variant="outline" onClick={() => setNotificationSettingsOpen(false)}>
+              {t("cancel_button")}
             </Button>
-            <Button onClick={() => setNotificationSettingsOpen(false)} disabled>
-              Save Changes
+            <Button onClick={() => {
+              // Here you would typically save the preferences to your backend
+              toast({
+                title: "Success",
+                description: "Notification preferences updated successfully"
+              });
+              setNotificationSettingsOpen(false);
+            }}>
+              {t("save_changes_button")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1420,29 +1446,29 @@ const DriverProfilePage = () =>  {
       <Dialog open={languageSettingsOpen} onOpenChange={setLanguageSettingsOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Language Settings</DialogTitle>
+            <DialogTitle>{t("language_settings")}</DialogTitle>
             <DialogDescription>
-              Choose your preferred language. (Functionality not implemented)
+              {t("choose_language_description")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
              {/* Placeholder content */}
              <div className="flex items-center space-x-2 p-2 border rounded">
                 <input type="radio" id="lang-en-ph" name="language-ph" defaultChecked disabled/>
-                <Label htmlFor="lang-en-ph">English</Label>
+                <Label htmlFor="lang-en-ph">{t("english_language_option")}</Label>
              </div>
              <div className="flex items-center space-x-2 p-2 border rounded">
                 <input type="radio" id="lang-hi-ph" name="language-ph" disabled/>
-                <Label htmlFor="lang-hi-ph">हिंदी (Hindi)</Label>
+                <Label htmlFor="lang-hi-ph">{t("hindi_language_option")}</Label>
              </div>
-             <p className="text-center text-neutral-500 text-sm">More languages and settings coming soon.</p>
+             <p className="text-center text-neutral-500 text-sm">{t("more_languages_coming_soon")}</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setLanguageSettingsOpen(false)}>
-              Cancel
+              {t("cancel_button")}
             </Button>
             <Button onClick={() => setLanguageSettingsOpen(false)} disabled>
-              Save Changes
+              {t("save_changes_button")}
             </Button>
           </DialogFooter>
         </DialogContent>

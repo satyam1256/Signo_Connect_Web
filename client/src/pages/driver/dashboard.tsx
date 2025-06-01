@@ -114,7 +114,7 @@ const DriverDashboard = () => {
             <div className="bg-primary-dark bg-opacity-30 rounded-md p-3 mb-4">
               <p className="text-sm flex items-start">
                 <Info className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
-                <span>Complete your profile to increase visibility to employers</span>
+                <span>{t("complete_profile_hint")}</span>
               </p>
             </div>
 
