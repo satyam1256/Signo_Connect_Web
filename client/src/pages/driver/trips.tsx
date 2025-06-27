@@ -199,7 +199,7 @@ const DriverTripsPage = () => {
     queryFn: async () => {
       const userId = Cookies.get('userId');
       if (!userId) return [];
-      const response = await fetch(`https://internal.signodrive.com/api/method/signo_connect.apis.trip.get_trips?driver_id=${userId}`, {
+      const response = await fetch(`http://localhost:8000/api/method/signo_connect.apis.trip.get_trips?driver_id=${userId}`, {
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
@@ -220,7 +220,7 @@ const DriverTripsPage = () => {
       const userId = Cookies.get('userId');
       if (!userId) throw new Error('User not authenticated');
       try {
-        const response = await fetch('https://internal.signodrive.com/api/method/signo_connect.api.proxy/Trips', {
+        const response = await fetch('http://localhost:8000/api/method/signo_connect.api.proxy/Trips', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -262,7 +262,7 @@ const DriverTripsPage = () => {
   // Update trip mutation
   const updateTripMutation = useMutation({
     mutationFn: async (data: { trip_id: string; trip: TripFormValues }) => {
-      return fetch(`https://internal.signodrive.com/api/method/signo_connect.api.proxy/Trips/${data.trip_id}`, {
+      return fetch(`http://localhost:8000/api/method/signo_connect.api.proxy/Trips/${data.trip_id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -324,7 +324,7 @@ const DriverTripsPage = () => {
 
   // Fetch all transporters on mount
   useEffect(() => {
-    fetch("https://internal.signodrive.com/api/method/signo_connect.api.proxy/Transporters", {
+    fetch("http://localhost:8000/api/method/signo_connect.api.proxy/Transporters", {
       method: 'GET',
       headers: {
         "Content-Type": "application/json",
@@ -355,7 +355,7 @@ const DriverTripsPage = () => {
 
   // Fetch all vehicles on mount
   useEffect(() => {
-    fetch("https://internal.signodrive.com/api/method/signo_connect.api.proxy/Vehicles", {
+    fetch("http://localhost:8000/api/method/signo_connect.api.proxy/Vehicles", {
       method: 'GET',
       headers: {
         "Content-Type": "application/json",

@@ -108,7 +108,7 @@ interface AppliedJobResponse {
 }
 
 export const postJobApplication = async (jobId: string, feedId: string, driverId: string) => {
-  const response = await fetch('https://internal.signodrive.com/api/method/signo_connect.api.proxy/Job Applications', {
+  const response = await fetch('http://localhost:8000/api/method/signo_connect.api.proxy/Job Applications', {
     method: 'POST',
     headers: {
       'Authorization': `token ${frappe_token}`,
@@ -173,7 +173,7 @@ const transformApiJobToJob = (apiJob: ApiJob): Job => {
 
 const fetchJobs = async (): Promise<Job[]> => {
   try {
-    const response = await fetch(`https://internal.signodrive.com/api/method/signo_connect.api.proxy/Job?fields=["*"]&limit_page_length=100`, {
+    const response = await fetch(`http://localhost:8000/api/method/signo_connect.api.proxy/Job?fields=["*"]&limit_page_length=100`, {
       method: "GET",
       headers: {
         'Authorization': `token ${frappe_token}`,
@@ -200,7 +200,7 @@ const fetchJobs = async (): Promise<Job[]> => {
 
 const fetchAppliedJobs = async (driverId: string): Promise<AppliedJob[]> => {
   const response = await fetch(
-    `https://internal.signodrive.com/api/method/signo_connect.apis.driver.get_applied_jobs?driver_id=${driverId}`,{
+    `http://localhost:8000/api/method/signo_connect.apis.driver.get_applied_jobs?driver_id=${driverId}`,{
       method : 'GET' ,
       headers: {
         'Authorization': `token ${frappe_token}`,

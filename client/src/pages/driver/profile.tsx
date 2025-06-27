@@ -206,7 +206,7 @@ const DriverProfilePage = () =>  {
     if (!url) return undefined;
     
     if (url.startsWith('/files')) {
-      return `https://internal.signodrive.com${url}`;
+      return `http://localhost:8000${url}`;
     }
     
     return url;
@@ -227,7 +227,7 @@ const DriverProfilePage = () =>  {
       redirect: "follow" as RequestRedirect
     };
 
-    const response = await fetch(`https://internal.signodrive.com/api/method/signo_connect.api.upload_image`, requestOptions);
+    const response = await fetch(`http://localhost:8000/api/method/signo_connect.api.upload_image`, requestOptions);
     if (!response.ok) {
       const errorData = await response.text();
       console.error("Upload Error:", errorData);
@@ -240,7 +240,7 @@ const DriverProfilePage = () =>  {
     
     if (data.status === true && typeof data.file_url === 'string') {
       if (data.file_url.startsWith('/files')) {
-        fileUrl = `https://internal.signodrive.com${data.file_url}`;
+        fileUrl = `http://localhost:8000${data.file_url}`;
         console.log("Constructed complete file URL:", fileUrl);
       } else {
         fileUrl = data.file_url;
@@ -267,7 +267,7 @@ const DriverProfilePage = () =>  {
       const phoneNumber = Cookies.get('phoneNumber');
 
       
-      const res = await fetch(`https://internal.signodrive.com/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${phoneNumber}`, {
+      const res = await fetch(`http://localhost:8000/api/method/signo_connect.apis.driver.get_driver_profile?phone_number=${phoneNumber}`, {
         method: "GET",
         headers: {
           "Authorization": `token ${frappe_token}`
@@ -464,7 +464,7 @@ const DriverProfilePage = () =>  {
         });
         
 
-        const res1 = await fetch(`https://internal.signodrive.com/api/method/signo_connect.api.proxy/Drivers/${userId}`, {
+        const res1 = await fetch(`http://localhost:8000/api/method/signo_connect.api.proxy/Drivers/${userId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",

@@ -143,7 +143,7 @@ const TransporterProfile = () => {
       const phoneNumber = Cookies.get("phoneNumber") || user.phoneNumber;
       
       const response = await fetch(
-        `https://internal.signodrive.com/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${phoneNumber}`,{
+        `http://localhost:8000/api/method/signo_connect.apis.transporter.get_transporter_profile?phone_number=${phoneNumber}`,{
         method: "GET",
         headers: { 
           "Authorization": `token ${frappe_token}`
@@ -188,7 +188,7 @@ const TransporterProfile = () => {
 
       
       const response = await fetch(
-        `https://internal.signodrive.com/api/method/signo_connect.api.proxy/Transporters/${transporterId}`,
+        `http://localhost:8000/api/method/signo_connect.api.proxy/Transporters/${transporterId}`,
         {
           method: "PUT",
           headers: {

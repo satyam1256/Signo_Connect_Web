@@ -53,7 +53,7 @@ const TransporterTripsPage = () => {
     queryKey: ["/api/trips", transporterId],
     queryFn: async () => {
       if (!transporterId) return [];
-      const response = await fetch(`https://internal.signodrive.com/api/method/signo_connect.apis.trip.get_trips?transporter_id=${transporterId}`, {
+      const response = await fetch(`http://localhost:8000/api/method/signo_connect.apis.trip.get_trips?transporter_id=${transporterId}`, {
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
